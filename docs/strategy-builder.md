@@ -441,13 +441,16 @@ AND Gate → Long Signal + SL + TP
 Start → [input] Condition1
 Condition1 → [entry] THEN Gate
 THEN Gate → [output→input] Condition2
-Condition2 → [input] Signal/Fire Event
+Condition2 → [input] Long Signal
+Long Signal → [output→input] SL Node
+Long Signal → [output→input] TP Node
 ```
 **IMPORTANT:** THEN gates use a **linear chain**, NOT the `conditions` handle.
 - The first condition feeds into the THEN Gate's `entry` handle
 - The THEN Gate's `output` feeds into the second condition's `input`
 - `maxGapDays` controls the time window (typical values: 30 for indicators, 60-90 for structural)
 - Do NOT use `targetHandle: "conditions"` with THEN gates — that's for AND/OR gates only
+- **SL and TP nodes ALWAYS connect from the Signal node, NOT from the last condition node**
 
 ### OR Gate with Exit
 ```
@@ -485,7 +488,7 @@ Exit Start → THEN Gate
 5. **Set both `nodeType` and `data.nodeType`** to the same value
 6. **Set `data.pipeline`** on every node (`"entry"`, `"exit"`, or `"cancellation"`)
 7. **Include at least one signal output** (long_signal or signal) in entry pipeline
-8. **Include SL and TP nodes** connected to the signal or gate output
+8. **Include SL and TP nodes** connected to the **signal node** (long_signal), NOT to the last condition or gate
 9. **Node IDs must be unique** — use `node-1`, `node-2`, etc.
 10. **Edge IDs must be unique** — use `edge-{source}-{target}` pattern
 11. **Position nodes logically** — top to bottom flow, ~150px vertical spacing
