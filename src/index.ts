@@ -13,6 +13,7 @@ import { registerPortfolioTools } from './tools/portfolio.js';
 import { registerTradeTools } from './tools/trades.js';
 import { registerCustomEventTools } from './tools/custom-events.js';
 import { registerAISummaryTools } from './tools/ai-summary.js';
+import { registerAcademyTools } from './tools/academy.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 const server = new McpServer({
@@ -37,6 +38,9 @@ registerCustomEventTools(server, client);
 
 // Register all tools — Phase 3 (AI summary endpoints)
 registerAISummaryTools(server, client);
+
+// Register all tools — Phase 4 (Academy — public CDN, no auth)
+registerAcademyTools(server);
 
 // Register resources
 registerSymbolsResource(server, client);
