@@ -12,14 +12,19 @@ export function registerBacktestTools(
     'Trigger a backtest for a strategy. Backtests are async — this returns a requestId. Use dwlf_get_backtest_results to poll for results.',
     {
       strategyId: z.string().describe('Strategy ID to backtest'),
-      symbol: z.string().optional().describe('Symbol to backtest against (e.g. BTC, TSLA)'),
+      symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),
+      symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC, TSLA). Use "symbols" for multiple.'),
       startDate: z.string().optional().describe('Start date (YYYY-MM-DD)'),
       endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
     },
-    async ({ strategyId, symbol, startDate, endDate }) => {
+    async ({ strategyId, symbols, symbol, startDate, endDate }) => {
       try {
         const body: Record<string, unknown> = { strategyId };
-        if (symbol) body.symbol = normalizeSymbol(symbol);
+        if (symbols && symbols.length > 0) {
+          body.symbols = symbols.map(normalizeSymbol);
+        } else if (symbol) {
+          body.symbols = [normalizeSymbol(symbol)];
+        }
         if (startDate) body.startDate = startDate;
         if (endDate) body.endDate = endDate;
 

@@ -1,1 +1,1 @@
-{"version":3,"file":"backtests.d.ts","sourceRoot":"","sources":["../../src/tools/backtests.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,yCAAyC,CAAC;AAEpE,OAAO,EAAE,UAAU,EAAmB,MAAM,cAAc,CAAC;AAE3D,wBAAgB,qBAAqB,CACnC,MAAM,EAAE,SAAS,EACjB,MAAM,EAAE,UAAU,QA6FnB"}
+{"version":3,"file":"backtests.d.ts","sourceRoot":"","sources":["../../src/tools/backtests.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,yCAAyC,CAAC;AAEpE,OAAO,EAAE,UAAU,EAAmB,MAAM,cAAc,CAAC;AAE3D,wBAAgB,qBAAqB,CACnC,MAAM,EAAE,SAAS,EACjB,MAAM,EAAE,UAAU,QAkGnB"}

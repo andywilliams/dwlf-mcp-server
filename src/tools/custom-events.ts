@@ -48,7 +48,29 @@ export function registerCustomEventTools(
     }
   );
 
-  // 3. Create custom event
+  // 3. Compile custom event
+  server.tool(
+    'dwlf_compile_custom_event',
+    'Compile a custom event into an executable event definition. Must be called after creating or updating a custom event.',
+    {
+      eventId: z.string().describe('Custom event ID to compile'),
+    },
+    async ({ eventId }) => {
+      try {
+        const data = await client.post(`/custom-events/${eventId}/compile`, {});
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 4. Create custom event
   server.tool(
     'dwlf_create_custom_event',
     'Create a new custom event definition. Custom events fire when indicator conditions are met.',

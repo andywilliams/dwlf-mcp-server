@@ -56,7 +56,50 @@ export function registerStrategyTools(server, client) {
             };
         }
     });
-    // 4. List public strategies
+    // 4. Update strategy
+    server.tool('dwlf_update_strategy', 'Update an existing visual trading strategy. Provide the strategy ID and updated fields.', {
+        strategyId: z.string().describe('Strategy ID to update'),
+        name: z.string().optional().describe('Updated strategy name'),
+        description: z.string().optional().describe('Updated description'),
+        bodyJson: z.string().optional().describe('Updated strategy body as JSON string (nodes, edges, metadata). Parse before sending.'),
+    }, async ({ strategyId, name, description, bodyJson }) => {
+        try {
+            const extra = bodyJson ? JSON.parse(bodyJson) : {};
+            const body = { ...extra };
+            if (name !== undefined)
+                body.name = name;
+            if (description !== undefined)
+                body.description = description;
+            const data = await client.put(`/visual-strategies/${strategyId}`, body);
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 5. Compile strategy
+    server.tool('dwlf_compile_strategy', 'Compile a visual strategy into an executable trade signal. Must be called after creating or updating a strategy before it can be evaluated or generate signals.', {
+        strategyId: z.string().describe('Strategy ID to compile'),
+    }, async ({ strategyId }) => {
+        try {
+            const data = await client.post(`/visual-strategies/${strategyId}/compile`, {});
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 6. List public strategies
     server.tool('dwlf_list_public_strategies', 'List community-shared public strategies that can be used as inspiration or cloned.', {}, async () => {
         try {
             const data = await client.get('/visual-strategies/public');

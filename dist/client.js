@@ -11,9 +11,11 @@ import axios from 'axios';
  * Known stock/ETF tickers pass through unchanged.
  */
 const KNOWN_STOCKS = new Set([
-    'NVDA', 'TSLA', 'META', 'AAPL', 'AMZN', 'GOOG', 'GOOGL', 'MSFT',
-    'SLV', 'GDXJ', 'SILJ', 'AGQ', 'GLD', 'GDX', // ETFs/metals
-    'MARA', 'RIOT', 'BTBT', 'CIFR', 'IREN', 'CLSK', // crypto-adjacent stocks
+    'NVDA', 'TSLA', 'META', 'AAPL', 'AMZN', 'GOOG', 'GOOGL', 'MSFT', 'AMD',
+    'SLV', 'GDXJ', 'SILJ', 'AGQ', 'GLD', 'GDX', 'GOLD', // ETFs/metals
+    'MARA', 'RIOT', 'BTBT', 'CIFR', 'IREN', 'CLSK', // crypto miners
+    'COIN', 'MSTR', 'HUT', 'HIVE', 'BITF', 'WULF', // crypto-adjacent
+    'LSPD', 'SOFI', // fintech
 ]);
 export function normalizeSymbol(input) {
     let s = input.trim().toUpperCase();
@@ -71,6 +73,14 @@ export class DWLFClient {
     }
     async post(path, data) {
         const response = await this.http.post(path, data);
+        return response.data;
+    }
+    async put(path, data) {
+        const response = await this.http.put(path, data);
+        return response.data;
+    }
+    async delete(path) {
+        const response = await this.http.delete(path);
         return response.data;
     }
 }

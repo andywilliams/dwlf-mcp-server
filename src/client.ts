@@ -12,9 +12,11 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
  * Known stock/ETF tickers pass through unchanged.
  */
 const KNOWN_STOCKS = new Set([
-  'NVDA', 'TSLA', 'META', 'AAPL', 'AMZN', 'GOOG', 'GOOGL', 'MSFT',
-  'SLV', 'GDXJ', 'SILJ', 'AGQ', 'GLD', 'GDX',       // ETFs/metals
-  'MARA', 'RIOT', 'BTBT', 'CIFR', 'IREN', 'CLSK',    // crypto-adjacent stocks
+  'NVDA', 'TSLA', 'META', 'AAPL', 'AMZN', 'GOOG', 'GOOGL', 'MSFT', 'AMD',
+  'SLV', 'GDXJ', 'SILJ', 'AGQ', 'GLD', 'GDX', 'GOLD',  // ETFs/metals
+  'MARA', 'RIOT', 'BTBT', 'CIFR', 'IREN', 'CLSK',       // crypto miners
+  'COIN', 'MSTR', 'HUT', 'HIVE', 'BITF', 'WULF',        // crypto-adjacent
+  'LSPD', 'SOFI',                                          // fintech
 ]);
 
 export function normalizeSymbol(input: string): string {
@@ -93,6 +95,19 @@ export class DWLFClient {
     data?: Record<string, unknown>
   ): Promise<T> {
     const response = await this.http.post<T>(path, data);
+    return response.data;
+  }
+
+  async put<T = unknown>(
+    path: string,
+    data?: Record<string, unknown>
+  ): Promise<T> {
+    const response = await this.http.put<T>(path, data);
+    return response.data;
+  }
+
+  async delete<T = unknown>(path: string): Promise<T> {
+    const response = await this.http.delete<T>(path);
     return response.data;
   }
 }
