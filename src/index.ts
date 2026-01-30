@@ -12,11 +12,12 @@ import { registerBacktestTools } from './tools/backtests.js';
 import { registerPortfolioTools } from './tools/portfolio.js';
 import { registerTradeTools } from './tools/trades.js';
 import { registerCustomEventTools } from './tools/custom-events.js';
+import { registerAISummaryTools } from './tools/ai-summary.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 const server = new McpServer({
   name: 'dwlf',
-  version: '0.2.0',
+  version: '0.3.0',
 });
 
 const client = new DWLFClient();
@@ -33,6 +34,9 @@ registerBacktestTools(server, client);
 registerPortfolioTools(server, client);
 registerTradeTools(server, client);
 registerCustomEventTools(server, client);
+
+// Register all tools — Phase 3 (AI summary endpoints)
+registerAISummaryTools(server, client);
 
 // Register resources
 registerSymbolsResource(server, client);
