@@ -229,6 +229,13 @@ All use `backgroundColor: "#4a5568"`, `borderColor: "#2d3748"`.
 
 Logic gates accept `data.maxGapDays` (for AND/THEN) to control the time window.
 
+> ⚠️ **CRITICAL:** Use the EXACT nodeType values from the table above. Common mistakes:
+> - ❌ `"and"` → ✅ `"and_gate"`
+> - ❌ `"or"` → ✅ `"or_gate"`
+> - ❌ `"then"` → ✅ `"then_gate"`
+> - ❌ `"not"` → ✅ `"not_gate"`
+> Using the wrong values will cause the graph to render disconnected in the UI.
+
 ### Signal / Output Nodes (type: `outputNode`)
 
 | nodeType | Color (bg/border) | Description |
