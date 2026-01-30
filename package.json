@@ -1,7 +1,7 @@
 {
   "name": "@dwlf/mcp-server",
-  "version": "0.1.0",
-  "description": "MCP server for DWLF market analysis platform — exposes market data, indicators, signals, and watchlist as AI-accessible tools",
+  "version": "0.2.0",
+  "description": "MCP server for DWLF market analysis platform — exposes market data, indicators, signals, strategies, backtests, portfolio, trade journal, and more as AI-accessible tools",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
