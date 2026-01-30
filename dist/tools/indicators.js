@@ -1,17 +1,19 @@
 import { z } from 'zod';
+import { normalizeSymbol } from '../client.js';
 export function registerIndicatorTools(server, client) {
     // 1. Get computed chart indicators
     server.tool('dwlf_get_indicators', 'Get computed technical indicators for a symbol (RSI, MACD, moving averages, Bollinger Bands, etc.). Returns current indicator values and states.', {
         symbol: z
             .string()
-            .describe('Trading symbol (e.g., BTC, AAPL, GOLD)'),
+            .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
         interval: z
             .enum(['1d', '4h', '1h'])
             .optional()
             .describe('Chart interval (default: 1d)'),
     }, async ({ symbol, interval }) => {
         try {
-            const data = await client.get(`/chart-indicators/${symbol}`, {
+            const sym = normalizeSymbol(symbol);
+            const data = await client.get(`/chart-indicators/${sym}`, {
                 interval,
             });
             return {
@@ -34,10 +36,11 @@ export function registerIndicatorTools(server, client) {
     server.tool('dwlf_get_trendlines', 'Get automatically detected trendlines for a symbol. Returns trend direction, slope, and key touch points.', {
         symbol: z
             .string()
-            .describe('Trading symbol (e.g., BTC, AAPL, GOLD)'),
+            .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
     }, async ({ symbol }) => {
         try {
-            const data = await client.get(`/trendlines/${symbol}`);
+            const sym = normalizeSymbol(symbol);
+            const data = await client.get(`/trendlines/${sym}`);
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };

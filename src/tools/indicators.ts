@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { DWLFClient } from '../client.js';
+import { DWLFClient, normalizeSymbol } from '../client.js';
 
 export function registerIndicatorTools(
   server: McpServer,
@@ -13,7 +13,7 @@ export function registerIndicatorTools(
     {
       symbol: z
         .string()
-        .describe('Trading symbol (e.g., BTC, AAPL, GOLD)'),
+        .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
       interval: z
         .enum(['1d', '4h', '1h'])
         .optional()
@@ -21,7 +21,8 @@ export function registerIndicatorTools(
     },
     async ({ symbol, interval }) => {
       try {
-        const data = await client.get(`/chart-indicators/${symbol}`, {
+        const sym = normalizeSymbol(symbol);
+        const data = await client.get(`/chart-indicators/${sym}`, {
           interval,
         });
         return {
@@ -48,11 +49,12 @@ export function registerIndicatorTools(
     {
       symbol: z
         .string()
-        .describe('Trading symbol (e.g., BTC, AAPL, GOLD)'),
+        .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
     },
     async ({ symbol }) => {
       try {
-        const data = await client.get(`/trendlines/${symbol}`);
+        const sym = normalizeSymbol(symbol);
+        const data = await client.get(`/trendlines/${sym}`);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };

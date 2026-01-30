@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeSymbol } from '../client.js';
 export function registerWatchlistTools(server, client) {
     // 1. Get watchlist
     server.tool('dwlf_get_watchlist', "Get the user's watchlist — symbols they're actively monitoring.", {}, async () => {
@@ -24,10 +25,11 @@ export function registerWatchlistTools(server, client) {
     server.tool('dwlf_add_to_watchlist', "Add a trading symbol to the user's watchlist for monitoring.", {
         symbol: z
             .string()
-            .describe('Trading symbol to add (e.g., BTC, AAPL, GOLD)'),
+            .describe('Trading symbol to add — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
     }, async ({ symbol }) => {
         try {
-            const data = await client.post('/watchlist', { symbol });
+            const sym = normalizeSymbol(symbol);
+            const data = await client.post('/watchlist', { symbol: sym });
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };

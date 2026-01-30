@@ -1,5 +1,48 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
+/**
+ * Normalize symbol input to DWLF's expected format (e.g. BTC-USD).
+ *
+ * Accepts:
+ *   BTC, BTC/USD, BTC-USD, btc, btc/usd, BTCUSD
+ * Returns:
+ *   BTC-USD (crypto) or AAPL (stocks — no suffix needed)
+ *
+ * Crypto assets get "-USD" appended when no quote currency is present.
+ * Known stock/ETF tickers pass through unchanged.
+ */
+const KNOWN_STOCKS = new Set([
+  'NVDA', 'TSLA', 'META', 'AAPL', 'AMZN', 'GOOG', 'GOOGL', 'MSFT',
+  'SLV', 'GDXJ', 'SILJ', 'AGQ', 'GLD', 'GDX',       // ETFs/metals
+  'MARA', 'RIOT', 'BTBT', 'CIFR', 'IREN', 'CLSK',    // crypto-adjacent stocks
+]);
+
+export function normalizeSymbol(input: string): string {
+  let s = input.trim().toUpperCase();
+
+  // Already has separator: BTC/USD → BTC-USD, BTC-USD stays
+  if (s.includes('/')) {
+    return s.replace('/', '-');
+  }
+  if (s.includes('-')) {
+    return s;
+  }
+
+  // Known stock ticker — pass through as-is
+  if (KNOWN_STOCKS.has(s)) {
+    return s;
+  }
+
+  // Detect concatenated pair: BTCUSD, ETHUSD, SOLUSD etc.
+  const pairMatch = s.match(/^([A-Z]{2,5})(USD|USDT|EUR|GBP|BTC|ETH)$/);
+  if (pairMatch) {
+    return `${pairMatch[1]}-${pairMatch[2]}`;
+  }
+
+  // Bare crypto symbol: BTC → BTC-USD
+  return `${s}-USD`;
+}
+
 export class DWLFClient {
   private http: AxiosInstance;
 

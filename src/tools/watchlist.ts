@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { DWLFClient } from '../client.js';
+import { DWLFClient, normalizeSymbol } from '../client.js';
 
 export function registerWatchlistTools(
   server: McpServer,
@@ -38,11 +38,12 @@ export function registerWatchlistTools(
     {
       symbol: z
         .string()
-        .describe('Trading symbol to add (e.g., BTC, AAPL, GOLD)'),
+        .describe('Trading symbol to add — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
     },
     async ({ symbol }) => {
       try {
-        const data = await client.post('/watchlist', { symbol });
+        const sym = normalizeSymbol(symbol);
+        const data = await client.post('/watchlist', { symbol: sym });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };

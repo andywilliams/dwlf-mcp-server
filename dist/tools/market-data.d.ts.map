@@ -1,1 +1,1 @@
-{"version":3,"file":"market-data.d.ts","sourceRoot":"","sources":["../../src/tools/market-data.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,yCAAyC,CAAC;AAEpE,OAAO,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAE1C,wBAAgB,uBAAuB,CACrC,MAAM,EAAE,SAAS,EACjB,MAAM,EAAE,UAAU,QAqInB"}
+{"version":3,"file":"market-data.d.ts","sourceRoot":"","sources":["../../src/tools/market-data.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,yCAAyC,CAAC;AAEpE,OAAO,EAAE,UAAU,EAAmB,MAAM,cAAc,CAAC;AAE3D,wBAAgB,uBAAuB,CACrC,MAAM,EAAE,SAAS,EACjB,MAAM,EAAE,UAAU,QAwInB"}

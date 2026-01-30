@@ -1,3 +1,4 @@
+export declare function normalizeSymbol(input: string): string;
 export declare class DWLFClient {
     private http;
     constructor();
