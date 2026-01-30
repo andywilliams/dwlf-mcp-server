@@ -10,7 +10,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
     {},
     async () => {
       try {
-        const data = await client.get('/user-trade-signals/active');
+        const data = await client.get('/user/trade-signals/active');
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
@@ -40,7 +40,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
     },
     async ({ limit }) => {
       try {
-        const data = await client.get('/user-trade-signals/recent', { limit });
+        const data = await client.get('/user/trade-signals/recent', { limit });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
@@ -65,7 +65,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
     {},
     async () => {
       try {
-        const data = await client.get('/user-trade-signals/stats');
+        const data = await client.get('/user/trade-signals/stats');
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
