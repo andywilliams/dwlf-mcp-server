@@ -1,0 +1,37 @@
+{
+  "name": "@dwlf/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for DWLF market analysis platform — exposes market data, indicators, signals, and watchlist as AI-accessible tools",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "dwlf-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "dwlf",
+    "trading",
+    "market-data",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "axios": "^1.13.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
