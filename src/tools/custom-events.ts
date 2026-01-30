@@ -73,7 +73,7 @@ export function registerCustomEventTools(
   // 4. Create custom event
   server.tool(
     'dwlf_create_custom_event',
-    'Create a new custom event definition. Custom events fire when indicator conditions are met.',
+    'Create a new custom event definition. Custom events fire when indicator conditions are met. ⚠️ IMPORTANT: After creation, the event will NOT fire until you activate it for specific symbols using dwlf_activate_event_symbols. Always ask the user which symbols to activate for, then call that tool.',
     {
       name: z.string().describe('Event name'),
       bodyJson: z.string().describe('Full event definition body as JSON string (conditions, parameters). Parse before sending.'),
