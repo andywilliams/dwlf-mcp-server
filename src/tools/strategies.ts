@@ -51,7 +51,7 @@ export function registerStrategyTools(
   // 3. Create strategy
   server.tool(
     'dwlf_create_strategy',
-    'Create a new visual trading strategy. Provide name, description, and signal definitions.',
+    'Create a new visual trading strategy. Provide name, description, and signal definitions. ⚠️ IMPORTANT: After creation, the strategy will NOT generate signals until you activate it for specific symbols using dwlf_activate_strategy_symbols. Always ask the user which symbols to activate for, then call that tool.',
     {
       name: z.string().describe('Strategy name'),
       description: z.string().optional().describe('Strategy description'),
