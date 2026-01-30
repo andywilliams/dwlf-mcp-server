@@ -150,7 +150,29 @@ export function registerTradeTools(
     }
   );
 
-  // 6. List trade plans
+  // 6. Get trade notes
+  server.tool(
+    'dwlf_get_trade_notes',
+    'Get all notes for a trade — observations, updates, and lessons recorded during the trade.',
+    {
+      tradeId: z.string().describe('Trade ID'),
+    },
+    async ({ tradeId }) => {
+      try {
+        const data = await client.get(`/trades/${tradeId}/notes`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 7. List trade plans
   server.tool(
     'dwlf_list_trade_plans',
     'List trade plan templates — reusable frameworks for entering trades.',
