@@ -488,6 +488,11 @@ Exit Start → THEN Gate
 
 ## Key Rules
 
+> ⚠️ **CRITICAL: Recompile after every edit!**
+> Strategies and custom events must be recompiled after ANY update (adding/removing nodes, changing conditions, editing parameters). The compiled output is what the evaluator actually runs — without recompilation, your changes have NO effect.
+> - Strategy: `POST /v2/visual-strategies/{id}/compile`
+> - Custom event: `POST /v2/custom-events/{id}/compile`
+
 1. **Every strategy needs a `start` node** — the compiler starts traversal here
 2. **Conditions feed into logic gates** via `targetHandle: "conditions"`
 3. **Start/flow feeds into logic gates** via `targetHandle: "entry"`
