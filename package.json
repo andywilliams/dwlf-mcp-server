@@ -1,16 +1,22 @@
 {
   "name": "@dwlf/mcp-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server for DWLF market analysis platform — exposes market data, indicators, signals, strategies, backtests, portfolio, trade journal, and more as AI-accessible tools",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "dwlf-mcp-server": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -18,9 +24,24 @@
     "dwlf",
     "trading",
     "market-data",
-    "ai-tools"
+    "ai-tools",
+    "claude",
+    "cursor",
+    "vscode"
   ],
+  "author": "DWLF <hello@dwlf.co.uk>",
   "license": "MIT",
+  "homepage": "https://www.dwlf.co.uk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andywilliams/dwlf-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andywilliams/dwlf-mcp-server/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
