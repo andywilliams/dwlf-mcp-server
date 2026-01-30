@@ -436,13 +436,18 @@ Condition B → [conditions] AND Gate
 AND Gate → Long Signal + SL + TP
 ```
 
-### Sequential (THEN Gate)
+### Sequential (THEN Gate) — LINEAR CHAIN PATTERN
 ```
-Start → [entry] THEN Gate
-Step 1 Condition → [conditions] THEN Gate
-THEN Gate → [output→input] Step 2 Condition
+Start → [input] Condition1
+Condition1 → [entry] THEN Gate
+THEN Gate → [output→input] Condition2
+Condition2 → [input] Signal/Fire Event
 ```
-The THEN gate ensures Step 1 fires first, then Step 2 must follow within `maxGapDays`.
+**IMPORTANT:** THEN gates use a **linear chain**, NOT the `conditions` handle.
+- The first condition feeds into the THEN Gate's `entry` handle
+- The THEN Gate's `output` feeds into the second condition's `input`
+- `maxGapDays` controls the time window (typical values: 30 for indicators, 60-90 for structural)
+- Do NOT use `targetHandle: "conditions"` with THEN gates — that's for AND/OR gates only
 
 ### OR Gate with Exit
 ```
