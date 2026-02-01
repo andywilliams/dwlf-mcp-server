@@ -192,7 +192,105 @@ export function registerTradeTools(
     }
   );
 
-  // 7. Get trade state
+  // 7. Update trade
+  server.tool(
+    'dwlf_update_trade',
+    'Update an existing trade by ID. All fields except tradeId are optional (partial update).',
+    {
+      tradeId: z.string().describe('Trade ID'),
+      symbol: z.string().optional().describe('Trading symbol'),
+      direction: z.enum(['long', 'short']).optional().describe('Trade direction'),
+      entryPrice: z.number().optional().describe('Entry price'),
+      stopLoss: z.number().optional().describe('Stop loss price'),
+      takeProfit: z.number().optional().describe('Take profit price'),
+      quantity: z.number().optional().describe('Position size'),
+      notes: z.string().optional().describe('Trade notes'),
+      tags: z.array(z.string()).optional().describe('Tags for the trade'),
+      isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
+    },
+    async ({ tradeId, symbol, direction, entryPrice, stopLoss, takeProfit, quantity, notes, tags, isPaperTrade }) => {
+      try {
+        const body: Record<string, unknown> = {};
+        if (symbol) body.symbol = normalizeSymbol(symbol);
+        if (direction) body.direction = direction;
+        if (entryPrice !== undefined) body.entryPrice = entryPrice;
+        if (stopLoss !== undefined) body.stopLoss = stopLoss;
+        if (takeProfit !== undefined) body.takeProfit = takeProfit;
+        if (quantity !== undefined) body.quantity = quantity;
+        if (notes) body.notes = notes;
+        if (tags) body.tags = tags;
+        if (isPaperTrade !== undefined) body.isPaperTrade = isPaperTrade;
+
+        const data = await client.put(`/trades/${tradeId}`, body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 8. Delete trade
+  server.tool(
+    'dwlf_delete_trade',
+    'Delete a trade by ID.',
+    {
+      tradeId: z.string().describe('Trade ID'),
+    },
+    async ({ tradeId }) => {
+      try {
+        const data = await client.delete(`/trades/${tradeId}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 9. Position size calculator
+  server.tool(
+    'dwlf_position_size',
+    'Calculate recommended position size based on account size, risk percentage, entry price, and stop loss.',
+    {
+      accountSize: z.number().describe('Total account size in currency'),
+      riskPercent: z.number().describe('Risk percentage (e.g. 1 for 1%)'),
+      entryPrice: z.number().describe('Planned entry price'),
+      stopLoss: z.number().describe('Stop loss price'),
+      symbol: z.string().optional().describe('Trading symbol for context'),
+    },
+    async ({ accountSize, riskPercent, entryPrice, stopLoss, symbol }) => {
+      try {
+        const body: Record<string, unknown> = {
+          accountSize,
+          riskPercent,
+          entryPrice,
+          stopLoss,
+        };
+        if (symbol) body.symbol = normalizeSymbol(symbol);
+
+        const data = await client.post('/tools/position-size', body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 10. Get trade state
   server.tool(
     'dwlf_get_trade_state',
     'Get the current state of a trade — including execution history and adjustments.',
