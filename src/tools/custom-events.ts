@@ -26,7 +26,29 @@ export function registerCustomEventTools(
     }
   );
 
-  // 2. Get custom event details
+  // 2. Get custom event notifications (recent fires)
+  server.tool(
+    'dwlf_get_custom_event_notifications',
+    'Get all recently fired custom events where the user has notifications enabled. Returns fires across ALL symbols in one call — the most efficient way to check what custom events have triggered. The eventName field contains the human-readable name (e.g. "wcl_confirmed"). The eventType field is always "custom_event" — use eventName to distinguish events.',
+    {
+      days: z.number().optional().default(7).describe('How many days back to look (default 7)'),
+    },
+    async ({ days }) => {
+      try {
+        const data = await client.get(`/custom-events/notifications?days=${days}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 3. Get custom event details
   server.tool(
     'dwlf_get_custom_event',
     'Get details of a specific custom event including conditions and trigger history.',
