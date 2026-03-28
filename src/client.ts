@@ -54,7 +54,9 @@ export class DWLFClient {
 
     if (!apiKey) {
       console.error(
-        'Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.'
+        'Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.\n' +
+        'For AI agents: Use the same API key from /v2/agent/register in your MCP config.\n' +
+        'See docs/AGENT-ONBOARDING.md for setup instructions.'
       );
     }
 
