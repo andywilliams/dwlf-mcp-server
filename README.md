@@ -4,6 +4,8 @@ MCP server for the [DWLF](https://www.dwlf.co.uk) market analysis platform. 45+ 
 
 Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible client.
 
+> **🤖 AI Agents:** To ensure strategies created via MCP are accessible via REST API, use the same API key for both. See [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md).
+
 ## Quick Start
 
 The fastest way to get running — no cloning needed:
@@ -79,10 +81,30 @@ Add to `.vscode/mcp.json`:
 
 ## Getting an API Key
 
+### Option 1: Web UI (Human Users)
+
 1. Sign up at [dwlf.co.uk](https://www.dwlf.co.uk)
 2. Go to **Settings → API Keys**
 3. Create a new key — it starts with `dwlf_sk_`
 4. Set it as `DWLF_API_KEY` in your MCP client config
+
+### Option 2: Programmatic Registration (AI Agents)
+
+AI agents can register programmatically without browser access:
+
+```bash
+curl -X POST https://api.dwlf.co.uk/v2/agent/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-agent@example.com",
+    "agentId": "my-trading-bot",
+    "purpose": "Autonomous trading"
+  }'
+```
+
+Returns an API key immediately. Use this key for both REST API and MCP to ensure account consistency.
+
+**📖 See [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md) for complete setup instructions.**
 
 ## Configuration
 
