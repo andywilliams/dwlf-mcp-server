@@ -17,6 +17,7 @@ import { registerAcademyTools } from './tools/academy.js';
 import { registerSymbolActivationTools } from './tools/symbol-activations.js';
 import { registerAnnotationTools } from './tools/annotations.js';
 import { registerTradePlanTools } from './tools/trade-plans.js';
+import { registerSemanticTools } from './tools/semantic.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 const server = new McpServer({
@@ -51,6 +52,9 @@ registerAISummaryTools(server, client);
 
 // Register all tools — Phase 4 (Academy — public CDN, no auth)
 registerAcademyTools(server);
+
+// Register all tools — Phase 5 (Semantic layer — regime, intelligence, briefing, agent registration)
+registerSemanticTools(server, client);
 
 // Register resources
 registerSymbolsResource(server, client);
