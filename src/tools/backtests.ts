@@ -9,12 +9,12 @@ export function registerBacktestTools(
   // 1. Run a backtest
   server.tool(
     'dwlf_run_backtest',
-    'Trigger a backtest for a strategy. Backtests are async — this returns a requestId. Use dwlf_get_backtest_results to poll for results.',
+    'Trigger a backtest for a strategy. Backtests are async — this returns a requestId. Use dwlf_get_backtest_results to poll for results. IMPORTANT: The backtester requires at least 200 daily candles of data. Use a startDate at least 10 months before endDate (e.g. startDate 2025-01-01 for a backtest ending 2026-03-31). Shorter periods will silently return zero trades.',
     {
       strategyId: z.string().describe('Strategy ID to backtest'),
-      symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),
-      symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC, TSLA). Use "symbols" for multiple.'),
-      startDate: z.string().optional().describe('Start date (YYYY-MM-DD)'),
+      symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC-USD", "TSLA"]). Defaults to strategy assets.'),
+      symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC-USD, TSLA). Use "symbols" for multiple.'),
+      startDate: z.string().optional().describe('Start date (YYYY-MM-DD). Must be at least 10 months before endDate to ensure 200+ candles. Recommended: 1-2 years of data.'),
       endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
     },
     async ({ strategyId, symbols, symbol, startDate, endDate }) => {
