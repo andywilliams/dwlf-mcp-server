@@ -9,7 +9,7 @@ export function registerBacktestTools(
   // 1. Run a backtest
   server.tool(
     'dwlf_run_backtest',
-    'Trigger a backtest for a strategy. Backtests are async — this returns a requestId. Use dwlf_get_backtest_results to poll for results.',
+    '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data?',
     {
       strategyId: z.string().describe('Strategy ID to backtest'),
       symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),

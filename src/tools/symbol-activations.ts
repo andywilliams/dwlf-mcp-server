@@ -11,7 +11,7 @@ export function registerSymbolActivationTools(
   // 1. Activate symbols for a custom event (bulk enable)
   server.tool(
     'dwlf_activate_event_symbols',
-    'Activate (enable) one or more symbols for a custom event. The event will only fire for symbols that are activated. ⚠️ This MUST be called after creating a custom event — events do NOT fire until symbols are activated.',
+    '⚠️ REQUIRED STEP after creating custom events! Activate (enable) symbols for an event. Events do NOT evaluate automatically — they are invisible to backtests and the daily pipeline until activated. If backtests return 0 trades, you likely forgot this step. Call immediately after compiling an event.',
     {
       eventId: z.string().describe('Custom event ID'),
       symbols: z
@@ -112,7 +112,7 @@ export function registerSymbolActivationTools(
   // 4. Activate symbols for a strategy (bulk enable)
   server.tool(
     'dwlf_activate_strategy_symbols',
-    'Activate (enable) one or more symbols for a strategy. The strategy will only generate signals for symbols that are activated. ⚠️ This MUST be called after creating a strategy — strategies do NOT generate signals until symbols are activated.',
+    '⚠️ REQUIRED STEP after creating strategies! Activate symbols for a strategy. Strategies do NOT generate signals automatically — they are invisible to backtests until symbols are activated. If backtests return 0 trades, you likely forgot this step. Call immediately after compiling a strategy.',
     {
       strategyId: z.string().describe('Strategy ID'),
       symbols: z

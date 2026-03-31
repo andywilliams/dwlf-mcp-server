@@ -51,7 +51,7 @@ export function registerStrategyTools(
   // 3. Create strategy
   server.tool(
     'dwlf_create_strategy',
-    'Create a new visual trading strategy. Provide name, description, and signal definitions. ⚠️ IMPORTANT: After creation, the strategy will NOT generate signals until you activate it for specific symbols using dwlf_activate_strategy_symbols. Always ask the user which symbols to activate for, then call that tool.',
+    '⚠️ Create a new strategy. CRITICAL WORKFLOW: 1) Create strategy → 2) Compile → 3) MUST call dwlf_activate_strategy_symbols (or strategy will NEVER generate signals!) → 4) Run backtest. Without step 3, backtests return 0 trades. The strategy exists but is invisible to the evaluation engine until symbols are activated. Always activate symbols immediately after creation.',
     {
       name: z.string().describe('Strategy name'),
       description: z.string().optional().describe('Strategy description'),
