@@ -92,7 +92,30 @@ export function registerCustomEventTools(
     }
   );
 
-  // 4. Create custom event
+  // 4. Preflight validate custom event
+  server.tool(
+    'dwlf_preflight_custom_event',
+    'Validate a custom event graph WITHOUT saving it. Returns execution tier (fast/async/reject), complexity score with breakdown, graph metrics, plan policy limits, errors, warnings, and suggested fixes. Call this BEFORE creating or updating a complex event to check whether it will be accepted and which execution tier it will land in.',
+    {
+      bodyJson: z.string().describe('Full event body as JSON string with name, visual (nodes + edges), and optionally description, metadata, version'),
+    },
+    async ({ bodyJson }) => {
+      try {
+        const body = JSON.parse(bodyJson);
+        const data = await client.post('/custom-events/preflight', body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 5. Create custom event
   server.tool(
     'dwlf_create_custom_event',
     '⚠️ Create a new custom event. CRITICAL WORKFLOW: 1) Create event → 2) Compile → 3) MUST call dwlf_activate_event_symbols (or event will NEVER fire!) → 4) Trigger evaluation. Without step 3, backtests return 0 trades. The event exists but is invisible to the evaluation engine until symbols are activated. Always activate symbols immediately after creation.',

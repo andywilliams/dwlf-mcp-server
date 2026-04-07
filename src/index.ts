@@ -18,6 +18,7 @@ import { registerSymbolActivationTools } from './tools/symbol-activations.js';
 import { registerAnnotationTools } from './tools/annotations.js';
 import { registerTradePlanTools } from './tools/trade-plans.js';
 import { registerSemanticTools } from './tools/semantic.js';
+import { registerAccountTools } from './tools/account.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 const server = new McpServer({
@@ -55,6 +56,9 @@ registerAcademyTools(server);
 
 // Register all tools — Phase 5 (Semantic layer — regime, intelligence, briefing, agent registration)
 registerSemanticTools(server, client);
+
+// Register all tools — Phase 6 (Account — quotas, plan, policy limits)
+registerAccountTools(server, client);
 
 // Register resources
 registerSymbolsResource(server, client);
