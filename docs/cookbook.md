@@ -2,6 +2,8 @@
 
 Multi-step AI workflows using the DWLF MCP tools. Each example shows the sequence of tool calls an agent would make, with key parameters. These work in Claude Desktop, Cursor, or any MCP client.
 
+> **Building a dashboard?** See the [Build Your First DWLF Dashboard](https://github.com/andywilliams/dwlf-charting-oss/blob/main/docs/BUILD-YOUR-FIRST-DASHBOARD.md) tutorial for a complete React + `@dwlf/charting` + `@dwlf/indicators` walkthrough.
+
 ---
 
 ## 1. Analyze a Symbol
