@@ -177,6 +177,17 @@ DWLF_API_KEY=dwlf_sk_your_key npm run dev
 
 For multi-step workflows, see [docs/cookbook.md](https://github.com/andywilliams/dwlf-mcp-server/blob/master/docs/cookbook.md).
 
+## Open Source Libraries
+
+Building a dashboard or visualization? Use the same libraries that power the DWLF platform:
+
+| Package | Description | Install |
+|---|---|---|
+| [@dwlf/indicators](https://github.com/andywilliams/dwlf-indicators-oss) | Technical indicators (EMA, Bollinger, DSS, Fibonacci, S/R, Swing, Trendlines) — zero dependencies | `npm install @dwlf/indicators` |
+| [@dwlf/charting](https://github.com/andywilliams/dwlf-charting-oss) | React charting library with candlestick charts, 20+ annotations, pan/zoom | `npm install @dwlf/charting` |
+
+Fetch candles via `dwlf_get_market_data`, compute indicators with `@dwlf/indicators`, render with `@dwlf/charting`.
+
 ## License
 
 [MIT](LICENSE) — DWLF / Andy Williams
