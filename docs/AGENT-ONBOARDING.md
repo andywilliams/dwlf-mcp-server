@@ -231,6 +231,51 @@ curl https://api.dwlf.co.uk/v2/visual-strategies \
   -H "Authorization: ApiKey $API_KEY"
 ```
 
+## Building Dashboards and Visualizations
+
+If your agent is building a dashboard, chart, or visualization tool on top of DWLF, use these open-source npm packages. They are the same libraries that power the DWLF platform.
+
+### @dwlf/indicators — Technical Indicator Calculations
+
+```bash
+npm install @dwlf/indicators
+```
+
+Zero dependencies. Pure math — candles in, values out. Includes: EMA, SMA, Bollinger Bands, DSS, Fibonacci, Support/Resistance, Swing detection, Trendlines, and more.
+
+```typescript
+import { EMA, Bollinger, DSS, SupportResistance } from '@dwlf/indicators';
+
+// Fetch candles via DWLF API, then compute indicators locally
+const ema8 = EMA.computeEMA(candles, 8);
+const bb = Bollinger.computeBollingerBands(candles, { length: 20 });
+const dss = DSS.computeDSS(candles, { length: 10 });
+```
+
+GitHub: https://github.com/andywilliams/dwlf-indicators-oss
+
+### @dwlf/charting — React Charting Components
+
+```bash
+npm install @dwlf/charting
+```
+
+Candlestick charts, 20+ annotation types (horizontal lines, trend lines, Fibonacci, rectangles, channels, etc.), pan/zoom, and interaction hooks.
+
+```tsx
+import { DWLFChart, AnnotationLayer, createHLineAnnotation } from '@dwlf/charting';
+import '@dwlf/charting/styles';
+```
+
+GitHub: https://github.com/andywilliams/dwlf-charting-oss
+
+### Putting It Together
+
+1. Fetch candle data via `dwlf_get_market_data` (MCP) or `GET /v2/market-data/{symbol}` (REST)
+2. Compute indicators with `@dwlf/indicators`
+3. Render charts with `@dwlf/charting`
+4. Use DWLF signals/events as overlays on the chart
+
 ## Need Help?
 
 - [Main README](../README.md)
