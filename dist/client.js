@@ -91,8 +91,19 @@ export class DWLFClient {
         const response = await this.http.put(path, data);
         return response.data;
     }
-    async delete(path) {
-        const response = await this.http.delete(path);
+    async delete(path, params) {
+        const cleanParams = {};
+        if (params) {
+            for (const [key, value] of Object.entries(params)) {
+                if (value !== undefined) {
+                    cleanParams[key] = value;
+                }
+            }
+        }
+        const config = {
+            params: Object.keys(cleanParams).length > 0 ? cleanParams : undefined,
+        };
+        const response = await this.http.delete(path, config);
         return response.data;
     }
 }

@@ -118,8 +118,22 @@ export class DWLFClient {
     return response.data;
   }
 
-  async delete<T = unknown>(path: string): Promise<T> {
-    const response = await this.http.delete<T>(path);
+  async delete<T = unknown>(
+    path: string,
+    params?: Record<string, unknown>
+  ): Promise<T> {
+    const cleanParams: Record<string, unknown> = {};
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined) {
+          cleanParams[key] = value;
+        }
+      }
+    }
+    const config: AxiosRequestConfig = {
+      params: Object.keys(cleanParams).length > 0 ? cleanParams : undefined,
+    };
+    const response = await this.http.delete<T>(path, config);
     return response.data;
   }
 }
