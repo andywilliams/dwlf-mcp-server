@@ -129,11 +129,12 @@ export function registerMarketDataTools(
             '`bullish_reversal`, `dss_breakout`).'
         ),
       timeframe: z
-        .enum(['1d', '4h', '1h'])
+        .enum(['1w', '1d', '4h', '1h'])
         .optional()
         .describe(
           'Filter by candle timeframe. Strongly recommended — without it the API returns ' +
-            'mostly hourly events and daily-bar fires get truncated past the limit.'
+            'mostly hourly events and daily-bar fires get truncated past the limit. ' +
+            'Use `1w` to query weekly cycle events (e.g. for multi-timeframe DCL analysis).'
         ),
       days: z
         .number()
