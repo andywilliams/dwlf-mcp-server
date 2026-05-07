@@ -80,25 +80,27 @@ export class DWLFClient {
     });
   }
 
+  /**
+   * Build an Axios request config that strips `undefined` values from query
+   * params. Returns `{}` when there are no params so axios doesn't append
+   * `?` to the URL. Shared by `get` and `delete` — keep them consistent.
+   */
+  private buildParamsConfig(params?: Record<string, unknown>): AxiosRequestConfig {
+    if (!params) return {};
+    const cleanParams: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        cleanParams[key] = value;
+      }
+    }
+    return Object.keys(cleanParams).length > 0 ? { params: cleanParams } : {};
+  }
+
   async get<T = unknown>(
     path: string,
     params?: Record<string, unknown>
   ): Promise<T> {
-    // Filter out undefined params
-    const cleanParams: Record<string, unknown> = {};
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined) {
-          cleanParams[key] = value;
-        }
-      }
-    }
-
-    const config: AxiosRequestConfig = {
-      params: Object.keys(cleanParams).length > 0 ? cleanParams : undefined,
-    };
-
-    const response = await this.http.get<T>(path, config);
+    const response = await this.http.get<T>(path, this.buildParamsConfig(params));
     return response.data;
   }
 
@@ -118,8 +120,11 @@ export class DWLFClient {
     return response.data;
   }
 
-  async delete<T = unknown>(path: string): Promise<T> {
-    const response = await this.http.delete<T>(path);
+  async delete<T = unknown>(
+    path: string,
+    params?: Record<string, unknown>
+  ): Promise<T> {
+    const response = await this.http.delete<T>(path, this.buildParamsConfig(params));
     return response.data;
   }
 }

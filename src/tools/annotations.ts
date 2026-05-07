@@ -97,13 +97,18 @@ export function registerAnnotationTools(
   // 4. Delete annotation
   server.tool(
     'dwlf_delete_annotation',
-    'Delete an annotation by ID.',
+    'Delete an annotation by ID. Backend requires the annotation\'s symbol and timeframe alongside the ID.',
     {
       annotationId: z.string().describe('Annotation ID'),
+      symbol: z.string().describe('Trading symbol the annotation belongs to (e.g. BTC, TSLA, GDXJ)'),
+      timeframe: z.string().describe('Annotation timeframe (e.g. "daily", "weekly", "hourly")'),
     },
-    async ({ annotationId }) => {
+    async ({ annotationId, symbol, timeframe }) => {
       try {
-        const data = await client.delete(`/annotations/${annotationId}`);
+        const data = await client.delete(`/annotations/${annotationId}`, {
+          symbol: normalizeSymbol(symbol),
+          timeframe,
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
