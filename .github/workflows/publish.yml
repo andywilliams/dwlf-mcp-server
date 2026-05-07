@@ -15,7 +15,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     permissions:
-      contents: read
+      contents: write   # required for the tag push step on successful publish
 
     steps:
       - name: Checkout
