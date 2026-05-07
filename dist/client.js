@@ -67,20 +67,24 @@ export class DWLFClient {
             timeout: 30000,
         });
     }
-    async get(path, params) {
-        // Filter out undefined params
+    /**
+     * Build an Axios request config that strips `undefined` values from query
+     * params. Returns `{}` when there are no params so axios doesn't append
+     * `?` to the URL. Shared by `get` and `delete` — keep them consistent.
+     */
+    buildParamsConfig(params) {
+        if (!params)
+            return {};
         const cleanParams = {};
-        if (params) {
-            for (const [key, value] of Object.entries(params)) {
-                if (value !== undefined) {
-                    cleanParams[key] = value;
-                }
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== undefined) {
+                cleanParams[key] = value;
             }
         }
-        const config = {
-            params: Object.keys(cleanParams).length > 0 ? cleanParams : undefined,
-        };
-        const response = await this.http.get(path, config);
+        return Object.keys(cleanParams).length > 0 ? { params: cleanParams } : {};
+    }
+    async get(path, params) {
+        const response = await this.http.get(path, this.buildParamsConfig(params));
         return response.data;
     }
     async post(path, data) {
@@ -92,18 +96,7 @@ export class DWLFClient {
         return response.data;
     }
     async delete(path, params) {
-        const cleanParams = {};
-        if (params) {
-            for (const [key, value] of Object.entries(params)) {
-                if (value !== undefined) {
-                    cleanParams[key] = value;
-                }
-            }
-        }
-        const config = {
-            params: Object.keys(cleanParams).length > 0 ? cleanParams : undefined,
-        };
-        const response = await this.http.delete(path, config);
+        const response = await this.http.delete(path, this.buildParamsConfig(params));
         return response.data;
     }
 }
