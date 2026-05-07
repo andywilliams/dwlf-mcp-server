@@ -37,12 +37,12 @@ export function registerAnnotationTools(
   // 2. Create annotation
   server.tool(
     'dwlf_create_annotation',
-    'Create a chart annotation (horizontal line, text, trendline, rectangle, or channel) for a symbol.',
+    'Create a chart annotation. Supported types: hline, text, trendline, rectangle, channel, long_position, short_position. The position types render an entry line, stop and target zones, and a live R:R badge — data shape: {time1, time2, entryPrice, stopPrice, targetPrice, label?}.',
     {
       symbol: z.string().describe('Trading symbol (e.g. BTC, TSLA)'),
       timeframe: z.string().describe('Timeframe (e.g. "daily", "weekly", "hourly")'),
-      type: z.enum(['hline', 'text', 'trendline', 'rectangle', 'channel']).describe('Annotation type'),
-      data: z.record(z.string(), z.unknown()).describe('Annotation data — varies by type (e.g. {price, color, label, lineStyle, lineWidth, showPrice} for hline)'),
+      type: z.enum(['hline', 'text', 'trendline', 'rectangle', 'channel', 'long_position', 'short_position']).describe('Annotation type'),
+      data: z.record(z.string(), z.unknown()).describe('Annotation data — varies by type. hline: {price, color, label, lineStyle, lineWidth, showPrice}. long_position/short_position: {time1, time2, entryPrice, stopPrice, targetPrice, label?} where times are unix-ms timestamps.'),
       origin: z.string().optional().describe('Origin of the annotation (default: "user")'),
     },
     async ({ symbol, timeframe, type, data, origin }) => {
@@ -124,7 +124,7 @@ export function registerAnnotationTools(
       annotations: z.array(z.object({
         symbol: z.string().describe('Trading symbol'),
         timeframe: z.string().describe('Timeframe'),
-        type: z.enum(['hline', 'text', 'trendline', 'rectangle', 'channel']).describe('Annotation type'),
+        type: z.enum(['hline', 'text', 'trendline', 'rectangle', 'channel', 'long_position', 'short_position']).describe('Annotation type'),
         data: z.record(z.string(), z.unknown()).describe('Annotation data'),
         origin: z.string().optional().describe('Origin of the annotation'),
       })).describe('Array of annotation objects to create'),

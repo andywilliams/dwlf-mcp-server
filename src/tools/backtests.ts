@@ -159,7 +159,10 @@ export function registerBacktestTools(
         const results = data as any;
         let interpretation = '';
         
-        if (results.aggregatePerformance?.profitableSimsPct) {
+        // Use `!= null` rather than a truthy check — `profitableSimsPct === 0`
+        // is a meaningful (worst-case) value that should still produce the
+        // "🔴 POOR robustness" interpretation, not be silently skipped.
+        if (results.aggregatePerformance?.profitableSimsPct != null) {
           const profitablePct = results.aggregatePerformance.profitableSimsPct * 100;
           if (profitablePct >= 80) {
             interpretation = `🟢 EXCELLENT robustness (${profitablePct.toFixed(0)}% profitable) - Strategy performs well across most market conditions.`;
