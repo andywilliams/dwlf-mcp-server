@@ -68,11 +68,30 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 3. Get daily cross-asset briefing
   server.tool(
     'dwlf_get_daily_briefing',
-    'Get the cross-asset daily briefing across your full watchlist. Returns per-symbol price, regime, key levels, active events, and recent state transitions. Also includes sector sentiment analysis. Note: this endpoint can be slow as it computes data serially per symbol.',
-    {},
-    async () => {
+    'Get the cross-asset daily briefing. Returns per-symbol price + MA stack + ribbon, ' +
+      'regime FSM states, cycleAlignment composite (with failed_cycle / DSS / fresh-rising overlays), ' +
+      'recent cycle pivots (daily + weekly), keyLevels, trendlines + break events, fibLevels, ' +
+      'MA crossover events, active events (incl. cycle window-early), open trades, active signals, ' +
+      'and user-drawn long/short position annotations. Cross-asset: sectorSentiment + triggerThemes + ' +
+      'alignmentThemes (composite + family levels). Use `symbols` to extend coverage beyond the watchlist.',
+    {
+      symbols: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Optional additional symbols to include alongside your watchlist for this call only. ' +
+            'Useful when Telegram alerts fire for symbols outside your curated watchlist and you ' +
+            'want the full structural read on them. Each accepts BTC / BTC/USD / BTC-USD / stock-ticker ' +
+            'shapes. Does NOT modify your stored watchlist.'
+        ),
+    },
+    async ({ symbols }) => {
       try {
-        const data = await client.get('/briefing/daily');
+        const params: Record<string, unknown> = {};
+        if (symbols && symbols.length > 0) {
+          params.symbols = symbols.map((s) => normalizeSymbol(s)).join(',');
+        }
+        const data = await client.get('/briefing/daily', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
