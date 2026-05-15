@@ -105,12 +105,7 @@ export function registerEvaluationTools(
     },
     async ({ limit, status }) => {
       try {
-        const params = new URLSearchParams();
-        if (typeof limit === 'number') params.set('limit', String(limit));
-        if (status) params.set('status', status);
-        const qs = params.toString();
-        const path = qs ? `/evaluations?${qs}` : '/evaluations';
-        const data = await client.get(path);
+        const data = await client.get('/evaluations', { limit, status });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
