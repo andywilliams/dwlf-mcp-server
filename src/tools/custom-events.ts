@@ -138,4 +138,56 @@ export function registerCustomEventTools(
       }
     }
   );
+
+  // 6. Update custom event — partial update (PUT). Accepts any subset
+  // of {name, description, visual, metadata, version, notifyOnFire}.
+  // The most useful application is flipping notifyOnFire to true after
+  // creation so future fires appear in dwlf_get_custom_event_notifications.
+  // After editing `visual` or any condition shape, re-call
+  // dwlf_compile_custom_event so the executable is regenerated.
+  server.tool(
+    'dwlf_update_custom_event',
+    'Update an existing custom event. Accepts any subset of {name, description, visual, metadata, version, notifyOnFire} via bodyJson. Most common use: flip notifyOnFire to true after creation so future fires surface in dwlf_get_custom_event_notifications. If you change `visual` or any condition shape, re-call dwlf_compile_custom_event afterwards to regenerate the executable.',
+    {
+      eventId: z.string().describe('Custom event ID to update'),
+      bodyJson: z.string().describe('Partial update body as JSON string. Any subset of name, description, visual, metadata, version, notifyOnFire.'),
+    },
+    async ({ eventId, bodyJson }) => {
+      try {
+        const body = JSON.parse(bodyJson);
+        const data = await client.put(`/custom-events/${eventId}`, body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 7. Delete custom event. Hard delete — also removes the compiled
+  // executable, symbol activations, and watermark state.
+  server.tool(
+    'dwlf_delete_custom_event',
+    'Delete a custom event permanently. Hard delete — also removes the compiled executable, symbol activations, and watermark state. Past fires already written to EventsTable are NOT deleted (they remain as historical record).',
+    {
+      eventId: z.string().describe('Custom event ID to delete'),
+    },
+    async ({ eventId }) => {
+      try {
+        const data = await client.delete(`/custom-events/${eventId}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
 }
