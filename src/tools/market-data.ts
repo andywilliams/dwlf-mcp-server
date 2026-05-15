@@ -156,8 +156,23 @@ export function registerMarketDataTools(
         .number()
         .optional()
         .describe('Number of events to return (default: 20).'),
+      customEventId: z
+        .string()
+        .optional()
+        .describe(
+          'Filter to fires of a specific custom event by its event definition ID. ' +
+            'Only honoured when `type` is `custom_event`. Combine with `symbol` / `symbols` ' +
+            'to scope to a single asset, or omit to see fires across the watchlist.'
+        ),
+      eventName: z
+        .string()
+        .optional()
+        .describe(
+          'Filter custom event fires by their human-readable name (e.g. `bullish_reversal_1`). ' +
+            'Only honoured when `type` is `custom_event`. Useful when you know the name but not the ID.'
+        ),
     },
-    async ({ symbol, symbols, type, timeframe, days, fromDate, toDate, uniquePerSymbol, limit }) => {
+    async ({ symbol, symbols, type, timeframe, days, fromDate, toDate, uniquePerSymbol, limit, customEventId, eventName }) => {
       try {
         const sym = symbol ? normalizeSymbol(symbol) : undefined;
         const symsCsv =
@@ -176,6 +191,8 @@ export function registerMarketDataTools(
           // Backend reads `uniquePerSymbol === 'true'`, so serialise to string.
           uniquePerSymbol: uniquePerSymbol === undefined ? undefined : String(uniquePerSymbol),
           limit,
+          customEventId,
+          eventName,
         });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
