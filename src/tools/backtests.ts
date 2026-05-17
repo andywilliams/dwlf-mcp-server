@@ -9,15 +9,19 @@ export function registerBacktestTools(
   // 1. Run a backtest
   server.tool(
     'dwlf_run_backtest',
-    '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data?',
+    '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data? Optional capital/risk params (initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode) override backend defaults — set portfolioMode=true together with maxConcurrentTrades to model shared-capital concurrency across symbols.',
     {
       strategyId: z.string().describe('Strategy ID to backtest'),
       symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),
       symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC, TSLA). Use "symbols" for multiple.'),
       startDate: z.string().optional().describe('Start date (YYYY-MM-DD)'),
       endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
+      initialCapital: z.number().positive().optional().describe('Starting account size in USD (default 10000).'),
+      riskPerTrade: z.number().gt(0).lte(1).optional().describe('Risk per trade as a decimal, e.g. 0.005 = 0.5% (default 0.02).'),
+      maxConcurrentTrades: z.number().int().positive().optional().describe('Concurrency cap for portfolio mode (default 3). Pair with portfolioMode=true.'),
+      portfolioMode: z.boolean().optional().describe('Opt into shared-capital simulation across symbols (default false). Combine with maxConcurrentTrades to cap simultaneous open positions.'),
     },
-    async ({ strategyId, symbols, symbol, startDate, endDate }) => {
+    async ({ strategyId, symbols, symbol, startDate, endDate, initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode }) => {
       try {
         const body: Record<string, unknown> = { strategyId };
         if (symbols && symbols.length > 0) {
@@ -27,6 +31,10 @@ export function registerBacktestTools(
         }
         if (startDate) body.startDate = startDate;
         if (endDate) body.endDate = endDate;
+        if (initialCapital !== undefined) body.initialCapital = initialCapital;
+        if (riskPerTrade !== undefined) body.riskPerTrade = riskPerTrade;
+        if (maxConcurrentTrades !== undefined) body.maxConcurrentTrades = maxConcurrentTrades;
+        if (portfolioMode !== undefined) body.portfolioMode = portfolioMode;
 
         const data = await client.post('/backtests', body);
         return {
