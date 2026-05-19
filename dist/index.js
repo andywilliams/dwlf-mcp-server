@@ -11,6 +11,7 @@ import { registerBacktestTools } from './tools/backtests.js';
 import { registerPortfolioTools } from './tools/portfolio.js';
 import { registerTradeTools } from './tools/trades.js';
 import { registerCustomEventTools } from './tools/custom-events.js';
+import { registerEvaluationTools } from './tools/evaluations.js';
 import { registerAISummaryTools } from './tools/ai-summary.js';
 import { registerAcademyTools } from './tools/academy.js';
 import { registerSymbolActivationTools } from './tools/symbol-activations.js';
@@ -35,6 +36,8 @@ registerBacktestTools(server, client);
 registerPortfolioTools(server, client);
 registerTradeTools(server, client);
 registerCustomEventTools(server, client);
+// Register all tools — Phase 2d (evaluations — on-demand evaluation triggering and polling)
+registerEvaluationTools(server, client);
 // Register all tools — Phase 2c (annotations & trade plans)
 registerAnnotationTools(server, client);
 registerTradePlanTools(server, client);

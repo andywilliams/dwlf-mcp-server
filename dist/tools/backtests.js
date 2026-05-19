@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerBacktestTools(server, client) {
     // 1. Run a backtest
-    server.tool('dwlf_run_backtest', '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data? Optional capital/risk params (initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding) override backend defaults — set portfolioMode=true together with maxConcurrentTrades to model shared-capital concurrency across symbols; set allowSymbolPyramiding=true to permit more than one concurrent open position per symbol, and maxPositionsPerSymbol to bound that (e.g. 3) so per-symbol concentration stays capped.', {
+    server.tool('dwlf_run_backtest', '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data? Optional capital/risk params (initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding) override backend defaults — set portfolioMode=true together with maxConcurrentTrades to model shared-capital concurrency across symbols; set allowSymbolPyramiding=true to permit more than one concurrent open position per symbol, and maxPositionsPerSymbol to bound that (e.g. 3) so per-symbol concentration stays capped. Set disableTakeProfit=true for exit-signal-only strategies (no tp node) so the backend does NOT force a fallback take-profit that would exit early.', {
         strategyId: z.string().describe('Strategy ID to backtest'),
         symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),
         symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC, TSLA). Use "symbols" for multiple.'),
@@ -14,7 +14,8 @@ export function registerBacktestTools(server, client) {
         portfolioMode: z.boolean().optional().describe('Opt into shared-capital simulation across symbols (default false). Combine with maxConcurrentTrades to cap simultaneous open positions.'),
         allowSymbolPyramiding: z.boolean().optional().describe('Opt into >1 concurrent open position per symbol in portfolio mode (default false = one position per symbol). Note: global maxConcurrentTrades still caps total positions, but per-symbol concentration is unbounded unless maxPositionsPerSymbol is set.'),
         maxPositionsPerSymbol: z.number().int().positive().optional().describe('Bound concurrent open positions per symbol when allowSymbolPyramiding=true (e.g. 3). Default unlimited. No effect when allowSymbolPyramiding is false (cap is 1 then).'),
-    }, async ({ strategyId, symbols, symbol, startDate, endDate, initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding, maxPositionsPerSymbol }) => {
+        disableTakeProfit: z.boolean().optional().describe('Suppress the implicit fallback take-profit (default false). When a strategy has NO take-profit node the backend otherwise force-applies a 3xATR fallback TP, which exits exit-signal-only strategies early. Set true to truly ride the exit graph (e.g. exit on cycle high / trendline break).'),
+    }, async ({ strategyId, symbols, symbol, startDate, endDate, initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding, maxPositionsPerSymbol, disableTakeProfit }) => {
         try {
             const body = { strategyId };
             if (symbols && symbols.length > 0) {
@@ -39,6 +40,8 @@ export function registerBacktestTools(server, client) {
                 body.allowSymbolPyramiding = allowSymbolPyramiding;
             if (maxPositionsPerSymbol !== undefined)
                 body.maxPositionsPerSymbol = maxPositionsPerSymbol;
+            if (disableTakeProfit !== undefined)
+                body.disableTakeProfit = disableTakeProfit;
             const data = await client.post('/backtests', body);
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
