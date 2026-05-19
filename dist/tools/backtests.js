@@ -2,13 +2,18 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerBacktestTools(server, client) {
     // 1. Run a backtest
-    server.tool('dwlf_run_backtest', '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data?', {
+    server.tool('dwlf_run_backtest', '⚠️ Run a strategy backtest (async). Returns requestId → poll with dwlf_get_backtest_results. PREREQUISITES: 1) Strategy MUST have symbols activated (dwlf_activate_strategy_symbols) or backtest returns 0 trades. 2) Requires 200+ daily candles: startDate must be 10+ months before endDate. If backtest returns 0 trades, check: a) Are symbols activated? b) Is date range long enough? c) Do event conditions actually match historical data? Optional capital/risk params (initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding) override backend defaults — set portfolioMode=true together with maxConcurrentTrades to model shared-capital concurrency across symbols; set allowSymbolPyramiding=true to permit more than one concurrent open position per symbol.', {
         strategyId: z.string().describe('Strategy ID to backtest'),
         symbols: z.array(z.string()).optional().describe('Symbols to backtest against (e.g. ["BTC", "TSLA"]). Defaults to strategy assets.'),
         symbol: z.string().optional().describe('Single symbol shorthand (e.g. BTC, TSLA). Use "symbols" for multiple.'),
         startDate: z.string().optional().describe('Start date (YYYY-MM-DD)'),
         endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
-    }, async ({ strategyId, symbols, symbol, startDate, endDate }) => {
+        initialCapital: z.number().positive().optional().describe('Starting account size in USD (default 10000).'),
+        riskPerTrade: z.number().gt(0).lte(1).optional().describe('Risk per trade as a decimal, e.g. 0.005 = 0.5% (default 0.02).'),
+        maxConcurrentTrades: z.number().int().positive().optional().describe('Concurrency cap for portfolio mode (default 3). Pair with portfolioMode=true.'),
+        portfolioMode: z.boolean().optional().describe('Opt into shared-capital simulation across symbols (default false). Combine with maxConcurrentTrades to cap simultaneous open positions.'),
+        allowSymbolPyramiding: z.boolean().optional().describe('Opt into >1 concurrent open position per symbol in portfolio mode (default false = one position per symbol). Note: global maxConcurrentTrades still caps total positions, but per-symbol concentration becomes unbounded.'),
+    }, async ({ strategyId, symbols, symbol, startDate, endDate, initialCapital, riskPerTrade, maxConcurrentTrades, portfolioMode, allowSymbolPyramiding }) => {
         try {
             const body = { strategyId };
             if (symbols && symbols.length > 0) {
@@ -21,6 +26,16 @@ export function registerBacktestTools(server, client) {
                 body.startDate = startDate;
             if (endDate)
                 body.endDate = endDate;
+            if (initialCapital !== undefined)
+                body.initialCapital = initialCapital;
+            if (riskPerTrade !== undefined)
+                body.riskPerTrade = riskPerTrade;
+            if (maxConcurrentTrades !== undefined)
+                body.maxConcurrentTrades = maxConcurrentTrades;
+            if (portfolioMode !== undefined)
+                body.portfolioMode = portfolioMode;
+            if (allowSymbolPyramiding !== undefined)
+                body.allowSymbolPyramiding = allowSymbolPyramiding;
             const data = await client.post('/backtests', body);
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
