@@ -97,6 +97,28 @@ export function registerBacktestTools(
     }
   );
 
+  // 3b. Delete a backtest
+  server.tool(
+    'dwlf_delete_backtest',
+    'Permanently delete a backtest request and its associated result data by requestId. Use to clean up stale or invalid runs (e.g. results computed before an engine bug was fixed). Idempotent — deleting an already-deleted requestId returns success.',
+    {
+      requestId: z.string().describe('Backtest request ID to delete'),
+    },
+    async ({ requestId }) => {
+      try {
+        const data = await client.delete(`/backtests/${requestId}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // 4. Get backtest summary
   server.tool(
     'dwlf_get_backtest_summary',
