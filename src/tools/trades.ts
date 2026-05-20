@@ -137,7 +137,12 @@ export function registerTradeTools(
     },
     async ({ tradeId, content }) => {
       try {
-        const data = await client.post(`/trades/${tradeId}/notes`, { content });
+        // Backend tradeNotesHandler.createNote requires `text` (see
+        // serverless-portfolio-tracker src/handlers/tradeNotesHandler.js).
+        // The MCP-facing parameter is `content` for consumer-friendliness
+        // (matches MCP convention for note bodies elsewhere); map on the
+        // wire to avoid breaking callers of this tool.
+        const data = await client.post(`/trades/${tradeId}/notes`, { text: content });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
