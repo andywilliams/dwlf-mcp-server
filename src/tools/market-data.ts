@@ -318,7 +318,11 @@ export function registerMarketDataTools(
             const price = e.price ?? e.level ?? null;
             // Pick a useful label per category — keeps the row scannable.
             let label = eventType;
-            if (eventType.startsWith('cycle.low')) {
+            if (eventType.startsWith('cycle.')) {
+              // Handles cycle.low.* AND cycle.high.* symmetrically (both lows and
+              // highs carry the same totalScore field). Earlier version checked
+              // `cycle.low` only and silently dropped the score annotation on
+              // cycle highs — flagged by bugbot in the PR review.
               label = e.totalScore ? `${eventType} (score ${e.totalScore})` : eventType;
             } else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')) {
               // sortKey usually contains the length, e.g. "2026-05-22#sma.cross.below#length=50"
