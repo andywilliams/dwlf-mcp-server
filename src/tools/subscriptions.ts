@@ -124,26 +124,60 @@ export function registerSubscriptionTools(
   );
 
   // 3. Update subscription (PATCH)
+  //
+  // sptr PR#455 (merged 2026-05-27) widened the backend PATCH allowlist:
+  // symbols / timeframes / channels / quietHours / dedupeWindowMinutes /
+  // customEventId are now all editable. eventTypeId remains immutable —
+  // switching event class on an existing row still needs delete+recreate.
   server.tool(
     'dwlf_update_subscription',
     "Update an existing subscription (PATCH). Only the fields you supply are changed; everything else is preserved. " +
       "Most-used: toggle `enabled` to pause/resume without losing the subscription's history. " +
-      "⚠️ Backend PATCH currently only accepts a subset of fields (enabled, strategyId, mode, " +
-      "risk/accountBalance/maxConcurrentTrades overrides). Editing symbols/timeframes/channels still requires delete+recreate " +
-      "(separate sptr PR tracks widening this allowlist). If your update silently doesn't take effect, that's why.",
+      "Editable fields: enabled, symbols, timeframes, channels, quietHours, dedupeWindowMinutes, mode, " +
+      "strategyId, risk/accountBalance/maxConcurrentTrades overrides, and customEventId " +
+      "(custom_event subscriptions only). `eventTypeId` is NOT patchable — switching event class on an " +
+      "existing subscription requires delete+recreate.",
     {
       subscriptionId: z.string().describe("The subscriptionId returned by create or list."),
       enabled: z.boolean().optional().describe("Toggle active/paused without deleting."),
+      symbols: z
+        .array(z.string())
+        .optional()
+        .describe("Replace the symbol scope. Pass ['*'] for wildcard across the account universe."),
+      timeframes: z
+        .array(z.string())
+        .optional()
+        .describe("Replace the timeframe scope. Pass ['*'] for any."),
+      channels: z
+        .array(z.record(z.string(), z.unknown()))
+        .optional()
+        .describe("Replace the delivery channels array, e.g. [{ type: 'telegram', destination: { chatId: <number> }, enabled: true }]. Must be non-empty."),
+      quietHours: z
+        .record(z.string(), z.unknown())
+        .nullable()
+        .optional()
+        .describe("Quiet-hours window object, or null to clear. Detailed shape (start/end/timezone) is validated server-side."),
+      dedupeWindowMinutes: z
+        .number()
+        .nullable()
+        .optional()
+        .describe("Dedup window for repeat fires, or null to clear. Must be a non-negative finite number."),
       strategyId: z.string().optional(),
       mode: z.enum(['confirm', 'auto']).optional(),
       riskPerTradeOverride: z.number().optional(),
       accountBalanceOverride: z.number().optional(),
       maxConcurrentTradesOverride: z.number().optional(),
+      customEventId: z
+        .string()
+        .optional()
+        .describe("Only valid on custom_event subscriptions — repoints which custom event the sub watches. Backend returns 400 if the sub isn't a custom_event."),
     },
     async ({ subscriptionId, ...patch }) => {
       try {
         const body: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(patch)) {
+          // Preserve explicit `null` (used to clear quietHours / dedupeWindowMinutes);
+          // only drop undefined keys so they don't unexpectedly null fields out.
           if (v !== undefined) body[k] = v;
         }
         if (Object.keys(body).length === 0) {
