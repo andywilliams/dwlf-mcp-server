@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import axios from 'axios';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 
 export function registerBacktestTools(
@@ -170,6 +171,21 @@ export function registerBacktestTools(
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
+        // Per bugbot PR#41: the tool description promises 409 surfaces
+        // the actual status so callers can branch without a follow-up
+        // GET. The default catch block above would just hand back
+        // axios's generic "Request failed with status code 409" and
+        // throw the response body away. Surface error.response.data
+        // when present (academy.ts uses the same pattern).
+        if (axios.isAxiosError(error) && error.response) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({
+              error: error.response.data,
+              statusCode: error.response.status,
+            }, null, 2) }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
           isError: true,
