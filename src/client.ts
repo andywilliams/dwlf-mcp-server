@@ -127,4 +127,12 @@ export class DWLFClient {
     const response = await this.http.delete<T>(path, this.buildParamsConfig(params));
     return response.data;
   }
+
+  async patch<T = unknown>(
+    path: string,
+    data?: Record<string, unknown>
+  ): Promise<T> {
+    const response = await this.http.patch<T>(path, data);
+    return response.data;
+  }
 }
