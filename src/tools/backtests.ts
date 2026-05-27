@@ -58,7 +58,12 @@ export function registerBacktestTools(
   // 2. Get backtest results
   server.tool(
     'dwlf_get_backtest_results',
-    'Get results for a backtest by requestId. If status is not "complete", poll again shortly.',
+    'Get results for a backtest by requestId. If status is not "complete", poll again shortly. ' +
+      '⚠️ Result payloads are large (1-3 MB for a multi-symbol multi-year run). The MCP transport ' +
+      'will dump them to disk and ask you to extract via subagent — budget for that. ' +
+      '📡 For background polling without burning context window: the REST URL is ' +
+      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}` (returns the same shape) — useful ' +
+      'when waiting on a multi-minute run via a polling subprocess.',
     {
       requestId: z.string().describe('Backtest request ID'),
     },

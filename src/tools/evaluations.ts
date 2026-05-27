@@ -45,7 +45,8 @@ export function registerEvaluationTools(
   // shape, different `type` field.
   server.tool(
     'dwlf_evaluate_strategy',
-    'Trigger an on-demand evaluation run for a specific visual strategy. Parallels dwlf_evaluate_custom_event but for strategies. Returns { requestId, status: "pending" } — poll dwlf_get_evaluation_status until completed. Consumes one EVALUATION quota. Same backfill caveat as dwlf_evaluate_custom_event: defaults to ~400 candles (~14 months); pass lookbackDays to cover a longer history.',
+    'Trigger an on-demand evaluation run for a specific visual strategy. Parallels dwlf_evaluate_custom_event but for strategies. Returns { requestId, status: "pending" } — poll dwlf_get_evaluation_status until completed. Consumes one EVALUATION quota. Same backfill caveat as dwlf_evaluate_custom_event: defaults to ~400 candles (~14 months); pass lookbackDays to cover a longer history. ' +
+      '⚠️ IMPORTANT — this DOES NOT emit `strategy.entry.triggered` events to the dispatcher. Those events are only emitted by the daily cron (`dailyTradeSignalJob`, ~04:00 UTC) when entry conditions match on the *latest bar*. On-demand evaluation populates the signal/event tables for analytical queries (`dwlf_get_recent_signals`, `dwlf_get_events`) but will NOT trigger Telegrams or planned-Trade rows even if it finds matches on historical bars. To get a fresh Telegram fire on a historical signal you need a manual replay through the dispatcher, not this tool. Got bitten by this twice while debugging WULF on 2026-05-27 — documenting so future-me does not re-discover.',
     {
       strategyId: z.string().describe('Visual strategy ID to evaluate'),
       lookbackDays: z.number().int().positive().optional().describe('How many days of history to (re)evaluate, overriding the default ~400-candle (~14-month) window. Set to at least the span of any dependent backtest. Larger-than-history values are safe.'),

@@ -147,7 +147,13 @@ export function registerMarketDataTools(
       days: z
         .number()
         .optional()
-        .describe('Restrict to events fired in the last N days (e.g. `5` for the last 5 days).'),
+        .describe(
+          'Restrict to events fired in the last N days (e.g. `5` for the last 5 days). ' +
+            '⚠️ DEFAULT IS 7 DAYS if omitted — anything older is silently hidden. ' +
+            'For historical lookups (verifying old cycle pivots, debugging "where did that signal go") ' +
+            'pass an explicit larger value like `days: 120` or use `fromDate`/`toDate` for a precise window. ' +
+            'Hit this footgun multiple times across sessions; documenting loudly.'
+        ),
       fromDate: z
         .string()
         .optional()
@@ -313,23 +319,41 @@ export function registerMarketDataTools(
 
         const events: Array<Record<string, any>> = Array.isArray(data?.events) ? data.events : [];
 
-        const narrative = events
+        // Stage 1: project each event into a comparable row shape with a parsed
+        // MA length so we can group cross events that share date + family +
+        // direction in stage 2.
+        type Row = {
+          date: string | null;
+          eventType: string;
+          label: string;
+          price: number | null;
+          timeframe: any;
+          // grouping metadata (not in final output)
+          maGroupKey?: string;
+          maLength?: number;
+        };
+
+        const projected: Row[] = events
           .filter((e) => PRICE_MEANINGFUL_TYPES.has(String(e.eventType ?? '')))
           .map((e) => {
             const eventType = String(e.eventType ?? '');
             const price = e.price ?? e.level ?? null;
-            // Pick a useful label per category — keeps the row scannable.
             let label = eventType;
+            let maGroupKey: string | undefined;
+            let maLength: number | undefined;
+
             if (eventType.startsWith('cycle.')) {
-              // Handles cycle.low.* AND cycle.high.* symmetrically (both lows and
-              // highs carry the same totalScore field). Earlier version checked
-              // `cycle.low` only and silently dropped the score annotation on
-              // cycle highs — flagged by bugbot in the PR review.
               label = e.totalScore ? `${eventType} (score ${e.totalScore})` : eventType;
             } else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')) {
-              // sortKey usually contains the length, e.g. "2026-05-22#sma.cross.below#length=50"
               const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
+              maLength = lengthMatch ? Number(lengthMatch[1]) : NaN;
               label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
+              // Group by date + family (sma/ema) + direction (above/below) so
+              // same-day same-direction crosses on different MA lengths collapse
+              // to a single row like `ema.cross.below(50,100)` instead of two
+              // verbose rows. Cuts the same-day MA noise that was crowding out
+              // older structural events under the limit cap.
+              maGroupKey = `${e.date ?? ''}#${eventType}`;
             } else if (eventType.startsWith('swing_')) {
               label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
             }
@@ -339,8 +363,37 @@ export function registerMarketDataTools(
               label,
               price: price !== null && price !== undefined ? Number(price) : null,
               timeframe: e.timeframe ?? tf,
+              maGroupKey,
+              maLength,
             };
-          })
+          });
+
+        // Stage 2: collapse MA-cross groups. Within a (date, type) group, merge
+        // the row to carry all MA lengths (`ema.cross.below(50,100)`). Keeps the
+        // earliest-seen row's price; lengths sorted ascending for readability.
+        const collapsed: Row[] = [];
+        const maGroupIndex = new Map<string, number>();
+        for (const row of projected) {
+          if (!row.maGroupKey) {
+            collapsed.push(row);
+            continue;
+          }
+          const existingIdx = maGroupIndex.get(row.maGroupKey);
+          if (existingIdx === undefined) {
+            maGroupIndex.set(row.maGroupKey, collapsed.length);
+            collapsed.push(row);
+          } else {
+            const existing = collapsed[existingIdx];
+            const existingLengths = String(existing.label).match(/\(([\d,]+)\)/)?.[1].split(',').map(Number) ?? [];
+            const allLengths = [...existingLengths, row.maLength].filter((n): n is number => Number.isFinite(n));
+            const unique = Array.from(new Set(allLengths)).sort((a, b) => a - b);
+            existing.label = `${row.eventType}(${unique.join(',')})`;
+            // Keep the first price seen (events on same date should agree anyway).
+          }
+        }
+
+        const narrative = collapsed
+          .map(({ maGroupKey: _g, maLength: _m, ...row }) => row)
           .sort((a, b) => {
             // newest first; fall back to string compare if either date missing.
             const dateA = String(a.date ?? '');
@@ -362,9 +415,9 @@ export function registerMarketDataTools(
                   narrative,
                   agentHints: {
                     interpretation:
-                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes. S&R levels are static price magnets. Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
+                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
                     limitations:
-                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (JWT-only).',
+                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (JWT-only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
                   },
                 },
                 null,
