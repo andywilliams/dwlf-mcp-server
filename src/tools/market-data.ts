@@ -208,8 +208,40 @@ export function registerMarketDataTools(
           customEventId,
           eventName,
         });
+
+        // Echo back the effective filter set so agents can see *what window
+        // they actually got*. The 7-day default has bitten multiple sessions
+        // ("where did that old fire go?") — surfacing it inline is cheaper
+        // than tearing the default out and breaking existing callers.
+        // `defaulted: true` flags fields where the backend supplied the
+        // default; explicit caller values get `defaulted: false`.
+        const noTimeWindow = days === undefined && !fromDate && !toDate;
+        const filtersApplied: Record<string, unknown> = {};
+        if (sym) filtersApplied.symbol = sym;
+        if (symsCsv) filtersApplied.symbols = symsCsv.split(',');
+        if (type) filtersApplied.type = type;
+        if (timeframe) filtersApplied.timeframe = timeframe;
+        if (days !== undefined) filtersApplied.days = days;
+        if (fromDate) filtersApplied.fromDate = fromDate;
+        if (toDate) filtersApplied.toDate = toDate;
+        if (noTimeWindow) {
+          filtersApplied.days = 7;
+          filtersApplied.defaulted = { days: true };
+          filtersApplied.hint = 'No fromDate/toDate/days supplied — the backend defaults to last 7 days. Older fires are silently hidden. Pass an explicit `days` or fromDate/toDate to widen.';
+        }
+        if (limit !== undefined) filtersApplied.limit = limit;
+        if (uniquePerSymbol !== undefined) filtersApplied.uniquePerSymbol = uniquePerSymbol;
+        if (customEventId) filtersApplied.customEventId = customEventId;
+        if (eventName) filtersApplied.eventName = eventName;
+
+        // Preserve the backend's existing top-level shape; just splice
+        // filtersApplied alongside it. Keeps existing parsers working.
+        const wrapped = typeof data === 'object' && data !== null
+          ? { ...data as Record<string, unknown>, filtersApplied }
+          : { data, filtersApplied };
+
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(wrapped, null, 2) }],
         };
       } catch (error) {
         return {
