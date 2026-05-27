@@ -9,7 +9,12 @@ export function registerMarketDataTools(
   // 1. Get OHLCV candle data
   server.tool(
     'dwlf_get_market_data',
-    'Get OHLCV candle data for a trading symbol. Returns open, high, low, close, volume over time.',
+    'Get OHLCV candle data for a trading symbol. Returns open, high, low, close, volume over time. ' +
+      '⚠️ Returns 403 for external API-key callers — raw candles are JWT-only (Twelve Data licensing). ' +
+      'If you hit a 403, use `dwlf_get_price_picture(symbol, days)` for a pivot-based price narrative, ' +
+      'or `dwlf_get_events(symbol, timeframe="1d", days=N)` filtered to cycle pivots / swing points / MA crosses / S&R levels — ' +
+      'each event carries the price at its date and together they reconstruct price action without raw bars. ' +
+      'Reach for this tool only when you genuinely need bar-by-bar resolution (e.g. "did price touch $X intra-day on date D").',
     {
       symbol: z
         .string()
@@ -108,7 +113,10 @@ export function registerMarketDataTools(
     'Get indicator events (cycle lows/highs, crossovers, breakouts, divergences, etc.). ' +
       'Filter by a single `symbol` or a `symbols` watchlist, by `type` (e.g. `cycle.low.confirmed`), ' +
       'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
-      'and by time window via `days` or explicit `fromDate` / `toDate`.',
+      'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
+      '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
+      'cycle pivots, swing points, MA/EMA crosses, S&R level fires and trendline breaks each carry the price at the event date. ' +
+      'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.',
     {
       symbol: z
         .string()
@@ -203,6 +211,170 @@ export function registerMarketDataTools(
             {
               type: 'text',
               text: `Error fetching events: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 5. Get a chronological price picture from indicator events.
+  //
+  // Designed as the agent-friendly alternative to raw candle data for callers who
+  // can't access `/market-data` (API-key auth is denied raw OHLC). Aggregates the
+  // price-meaningful event types — cycle pivots, swing points, MA/EMA crosses,
+  // S&R level fires, trendline breaks, bollinger breaks — into a single
+  // chronological narrative with date + price + label per row.
+  //
+  // Rationale: most agent questions ("is BTC trending up?", "where are recent
+  // supports?", "did the strategy's entry conditions exist?") are answered better
+  // by structural pivots than by raw bars. A 6-line pivot summary is more useful
+  // than 60 raw daily candles for narrative context, and we already have the data.
+  server.tool(
+    'dwlf_get_price_picture',
+    'Aggregate the price-meaningful indicator events for a symbol into a chronological narrative — ' +
+      'cycle pivots, swing points, MA/EMA crosses, S&R level fires, trendline breaks, bollinger breaks. ' +
+      'Each row carries date + price (or level) + a human-readable label. ' +
+      'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
+      'or when you want a clean one-call summary instead of stitching together multiple `dwlf_get_events` queries. ' +
+      'Returns events sorted newest-first.',
+    {
+      symbol: z
+        .string()
+        .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
+      days: z
+        .number()
+        .optional()
+        .describe('How many days back to include (default: 90). Smaller = tighter narrative; larger = longer-term structural view.'),
+      timeframe: z
+        .enum(['1w', '1d', '4h', '1h'])
+        .optional()
+        .describe('Timeframe of events to include (default: 1d). Use 1w for weekly structural pivots only.'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Max events to return (default: 50). Most useful narratives fit in 20-40 rows.'),
+    },
+    async ({ symbol, days, timeframe, limit }) => {
+      try {
+        const sym = normalizeSymbol(symbol);
+        const tf = timeframe ?? '1d';
+        const lookback = days ?? 90;
+        const cap = limit ?? 50;
+
+        // Single events fetch — we filter to the price-meaningful types client-side
+        // so we don't need N round-trips. Use a generous backend limit so we don't
+        // lose newer events behind noise from intermediate dates.
+        const data: any = await client.get('/events', {
+          symbol: sym,
+          timeframe: tf,
+          days: lookback,
+          limit: 500,
+        });
+
+        const PRICE_MEANINGFUL_TYPES = new Set([
+          // Cycle pivots — the most structurally meaningful events
+          'cycle.low.confirmed',
+          'cycle.high.confirmed',
+          'cycle.low.higher_low',
+          'cycle.low.lower_low',
+          'cycle.high.higher_high',
+          'cycle.high.lower_high',
+          // Swing structure
+          'higher_low',
+          'lower_low',
+          'higher_high',
+          'lower_high',
+          // Swing breaks/sweeps — for stop-runs and structural shifts
+          'swing_low_break',
+          'swing_low_sweep',
+          'swing_high_break',
+          'swing_high_sweep',
+          // MA / EMA crosses — price-tagged trend changes
+          'sma.cross.above',
+          'sma.cross.below',
+          'ema.cross.above',
+          'ema.cross.below',
+          // Bollinger band breaks
+          'bollinger.break.aboveUpper',
+          'bollinger.break.belowLower',
+          // Support / resistance levels (carry `level` not `price`)
+          'supportResistance.support.level',
+          'supportResistance.resistance.level',
+          // Trendline breaks
+          'trendline_break_bullish',
+          'trendline_break_bearish',
+          'trendline_breach_bullish',
+          'trendline_breach_bearish',
+        ]);
+
+        const events: Array<Record<string, any>> = Array.isArray(data?.events) ? data.events : [];
+
+        const narrative = events
+          .filter((e) => PRICE_MEANINGFUL_TYPES.has(String(e.eventType ?? '')))
+          .map((e) => {
+            const eventType = String(e.eventType ?? '');
+            const price = e.price ?? e.level ?? null;
+            // Pick a useful label per category — keeps the row scannable.
+            let label = eventType;
+            if (eventType.startsWith('cycle.low')) {
+              label = e.totalScore ? `${eventType} (score ${e.totalScore})` : eventType;
+            } else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')) {
+              // sortKey usually contains the length, e.g. "2026-05-22#sma.cross.below#length=50"
+              const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
+              label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
+            } else if (eventType.startsWith('supportResistance')) {
+              label = eventType.includes('support') ? 'support level' : 'resistance level';
+            } else if (eventType.startsWith('swing_')) {
+              label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
+            }
+            return {
+              date: e.date ?? null,
+              eventType,
+              label,
+              price: price !== null && price !== undefined ? Number(price) : null,
+              timeframe: e.timeframe ?? tf,
+            };
+          })
+          .sort((a, b) => {
+            // newest first; fall back to string compare if either date missing.
+            const dateA = String(a.date ?? '');
+            const dateB = String(b.date ?? '');
+            return dateA > dateB ? -1 : dateA < dateB ? 1 : 0;
+          })
+          .slice(0, cap);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  symbol: sym,
+                  timeframe: tf,
+                  days: lookback,
+                  count: narrative.length,
+                  narrative,
+                  agentHints: {
+                    interpretation:
+                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes. S&R levels are static price magnets. Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
+                    limitations:
+                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (JWT-only).',
+                  },
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error fetching price picture for ${symbol}: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           isError: true,
