@@ -147,6 +147,37 @@ export function registerBacktestTools(
     }
   );
 
+  // 3c. Cancel a backtest — state transition, preserves the record.
+  //
+  // pending → clean cancel (worker checks status before running, skips).
+  // running → best-effort cancel (result marked cancelled; mid-run
+  //   computation isn't interrupted). Response carries bestEffort:true.
+  // terminal (completed / failed / cancelled) → 409 with actual status
+  //   so callers can branch without a follow-up GET.
+  //
+  // Use this rather than dwlf_delete_backtest when you want to halt
+  // without scrubbing the audit trail.
+  server.tool(
+    'dwlf_cancel_backtest',
+    'Cancel a queued or running backtest by requestId. Pending requests cancel cleanly (worker skips). Running requests get a best-effort cancel — result is marked cancelled but mid-run computation isn\'t interrupted; the response\'s `bestEffort: true` flag indicates this. Terminal states (completed / failed / already-cancelled) return 409 with the actual status. Use this rather than `dwlf_delete_backtest` when you want to halt without scrubbing the audit trail.',
+    {
+      requestId: z.string().describe('Backtest request ID to cancel'),
+    },
+    async ({ requestId }) => {
+      try {
+        const data = await client.post(`/backtests/${requestId}/cancel`, {});
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // 4. Get backtest summary
   server.tool(
     'dwlf_get_backtest_summary',
