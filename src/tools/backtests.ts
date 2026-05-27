@@ -56,20 +56,43 @@ export function registerBacktestTools(
   );
 
   // 2. Get backtest results
+  //
+  // Default `summary=true` because the full payload (per-symbol equity curves,
+  // per-bar trades, rejected signals) is 1-3 MB on a real multi-symbol multi-year
+  // run and torches context budget when an agent only wanted "did Sharpe go up?".
+  // Pass `summary: false` explicitly to pull the full S3-merged response —
+  // intended for chart rendering, deep dives, or saving to disk.
   server.tool(
     'dwlf_get_backtest_results',
     'Get results for a backtest by requestId. If status is not "complete", poll again shortly. ' +
-      '⚠️ Result payloads are large (1-3 MB for a multi-symbol multi-year run). The MCP transport ' +
-      'will dump them to disk and ask you to extract via subagent — budget for that. ' +
+      'DEFAULTS TO SUMMARY MODE: returns DDB-level per-symbol stats (totalReturn, totalTrades, ' +
+      'winningTrades, sharpe, maxDrawdown, finalEquity) and the portfolio-level aggregate metrics ' +
+      'object, with all bulky fields stripped (per-symbol trades, equityCurve, signals, ' +
+      'monthlyReturns; request-level portfolioEquityCurve, portfolioTrades, portfolioRejectedSignals). ' +
+      'Summary is ~1-3 KB vs ~1-3 MB full — use it for headline metric checks, leaderboard-style ' +
+      'comparisons, and "did it work" sanity passes. ' +
+      'Pass `summary: false` to get the full payload (per-trade rows, equity curves, signals) — ' +
+      'needed for plotting, per-trade analysis, or feeding into another tool. ' +
+      '⚠️ When summary=false, the MCP transport will dump the response to disk and ask you to extract ' +
+      'via subagent — budget for that. ' +
       '📡 For background polling without burning context window: the REST URL is ' +
-      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}` (returns the same shape) — useful ' +
-      'when waiting on a multi-minute run via a polling subprocess.',
+      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`.',
     {
       requestId: z.string().describe('Backtest request ID'),
+      summary: z
+        .boolean()
+        .optional()
+        .describe('Default true — return the lightweight summary view. Set false to pull the full S3-merged payload (~1-3 MB).'),
     },
-    async ({ requestId }) => {
+    async ({ requestId, summary }) => {
       try {
-        const data = await client.get(`/backtests/${requestId}/results`);
+        // Default-on summary mode: explicit `summary: false` opts into the
+        // heavy full payload. Anything else (undefined, true) goes summary.
+        const wantSummary = summary !== false;
+        const data = await client.get(
+          `/backtests/${requestId}/results`,
+          wantSummary ? { summary: 'true' } : undefined
+        );
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
