@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { DWLFClient } from '../client.js';
+import { DWLFClient, normalizeSymbol } from '../client.js';
 
 export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 1. Get active trade signals
@@ -88,8 +88,13 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
           effectiveToDate = today.toISOString().slice(0, 10);
           effectiveFromDate = from.toISOString().slice(0, 10);
         }
+        // Normalize the symbol before sending. Backend stores symbols in the
+        // BTC-USD / TICKER shape, and matches them via formatSymbol on the way
+        // in. Other shapes (BTC, BTC/USD, BTCUSD) silently return empty if
+        // we pass them raw — flagged by bugbot in PR#36.
+        const sym = symbol ? normalizeSymbol(symbol) : undefined;
         const data = await client.get('/user/trade-signals', {
-          symbol,
+          symbol: sym,
           strategy,
           fromDate: effectiveFromDate,
           toDate: effectiveToDate,
