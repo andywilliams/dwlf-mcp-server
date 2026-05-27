@@ -79,15 +79,32 @@ export function registerEvaluationTools(
   // "completed", "failed".
   server.tool(
     'dwlf_get_evaluation_status',
-    'Get the status and result summary of a specific evaluation by requestId. Poll this after calling dwlf_evaluate_custom_event or dwlf_evaluate_strategy until status === "completed". Returns the request shape including processedItems counts. When status is "completed", the evaluation has finished — query the fires it produced via dwlf_get_events(type: "custom_event") or dwlf_get_recent_signals (for strategies).',
+    'Get the status and result summary of a specific evaluation by requestId. Poll this after calling dwlf_evaluate_custom_event or dwlf_evaluate_strategy until status === "completed". ' +
+      '⚠️ IMPORTANT — `summary.totalItems` / `summary.processedItems` count the eval-JOB items (one per strategy or one per custom event), NOT the per-symbol fan-out inside the job. ' +
+      'A strategy eval across 37 symbols will show `totalItems: 1, processedItems: 1` when done — that just means "the strategy job finished," NOT "37 symbols were processed." ' +
+      'For the per-symbol count: the request body itself carries `symbols: [...]` (or empty = all activated). ' +
+      'When the symbols array is present this tool surfaces `symbolsRequested: <count>` next to summary so you can see both numbers; otherwise inspect the request shape directly. ' +
+      'When status is "completed", query the fires it produced via dwlf_get_events(type: "custom_event") or dwlf_get_recent_signals (for strategies) — if you see fewer fires than expected across many symbols, that confirms the eval reached all of them (worker would not have written status=completed without finishing the loop).',
     {
       requestId: z.string().describe('Evaluation request ID returned by dwlf_evaluate_custom_event / dwlf_evaluate_strategy'),
     },
     async ({ requestId }) => {
       try {
-        const data = await client.get(`/evaluations/${requestId}`);
+        const data = await client.get<Record<string, unknown>>(`/evaluations/${requestId}`);
+
+        // Surface the per-symbol count alongside the misleading
+        // `summary.processedItems`. The request body usually carries
+        // `symbols: [...]`; an empty/absent array means "all activated"
+        // and we can't derive the count without another call, so leave
+        // symbolsRequested undefined in that case rather than guess.
+        let enriched: Record<string, unknown> = data;
+        const request = (data as any)?.request ?? data;
+        const symbols = request?.symbols;
+        if (Array.isArray(symbols) && symbols.length > 0) {
+          enriched = { ...data, symbolsRequested: symbols.length };
+        }
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
         };
       } catch (error) {
         return {
