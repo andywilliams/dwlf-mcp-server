@@ -299,9 +299,11 @@ export function registerMarketDataTools(
           // Bollinger band breaks
           'bollinger.break.aboveUpper',
           'bollinger.break.belowLower',
-          // Support / resistance levels (carry `level` not `price`)
-          'supportResistance.support.level',
-          'supportResistance.resistance.level',
+          // NB: supportResistance.{support,resistance}.level events are intentionally
+          // EXCLUDED here. They re-fire every cron run with the same level value, so
+          // a 60-day window dumps ~120 duplicate rows that crowd out the actually
+          // narrative-worthy events (cycle pivots, swing breaks, etc.) under the
+          // limit cap. Use dwlf_get_support_resistance for current S&R levels.
           // Trendline breaks
           'trendline_break_bullish',
           'trendline_break_bearish',
@@ -328,13 +330,6 @@ export function registerMarketDataTools(
               // sortKey usually contains the length, e.g. "2026-05-22#sma.cross.below#length=50"
               const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
               label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
-            } else if (eventType.startsWith('supportResistance')) {
-              // Be precise with the dotted segments — both event types share the
-              // "supportResistance" prefix which itself contains the substring
-              // "support", so a naive `.includes('support')` is true for BOTH
-              // and silently mislabels resistance events as support. Flagged by
-              // bugbot in PR#33.
-              label = eventType.includes('.support.') ? 'support level' : 'resistance level';
             } else if (eventType.startsWith('swing_')) {
               label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
             }
