@@ -329,7 +329,12 @@ export function registerMarketDataTools(
               const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
               label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
             } else if (eventType.startsWith('supportResistance')) {
-              label = eventType.includes('support') ? 'support level' : 'resistance level';
+              // Be precise with the dotted segments — both event types share the
+              // "supportResistance" prefix which itself contains the substring
+              // "support", so a naive `.includes('support')` is true for BOTH
+              // and silently mislabels resistance events as support. Flagged by
+              // bugbot in PR#33.
+              label = eventType.includes('.support.') ? 'support level' : 'resistance level';
             } else if (eventType.startsWith('swing_')) {
               label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
             }
