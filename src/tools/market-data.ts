@@ -236,9 +236,18 @@ export function registerMarketDataTools(
 
         // Preserve the backend's existing top-level shape; just splice
         // filtersApplied alongside it. Keeps existing parsers working.
-        const wrapped = typeof data === 'object' && data !== null
-          ? { ...data as Record<string, unknown>, filtersApplied }
-          : { data, filtersApplied };
+        //
+        // `typeof [] === 'object'` in JS so a bare-array response (some
+        // /events callers return one) would silently get spread into
+        // `{ '0': item, '1': item, filtersApplied }` — numeric-keyed
+        // object, no longer an array. Guard with Array.isArray first
+        // and wrap arrays under `events:` so the data structure
+        // survives. Per bugbot PR#39.
+        const wrapped = Array.isArray(data)
+          ? { events: data, filtersApplied }
+          : (typeof data === 'object' && data !== null
+            ? { ...data as Record<string, unknown>, filtersApplied }
+            : { data, filtersApplied });
 
         return {
           content: [{ type: 'text', text: JSON.stringify(wrapped, null, 2) }],
