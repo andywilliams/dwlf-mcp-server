@@ -85,6 +85,33 @@ export const STRATEGY_NODES: StrategyNode[] = [
       'Post-PR#220 (2026-05-19), the swing-date filter uses `>` not `>=` so same-bar confirmations are no longer silently discarded — old SLs that resolved to deep historical lows are now correctly anchored to the most recent confirmed pivot.',
   },
   {
+    nodeType: 'sl_below_recent_cycle_low',
+    category: 'stopLoss',
+    description:
+      'Place SL 1% below the most recent CONFIRMED cycle pivot for the chosen timeframe (cycle.low.confirmed for long, cycle.high.confirmed for short). Strict DCL semantics — ignores generic swing lows that aren\'t cycle-classified, so mid-cycle bounces in strong uptrends don\'t tighten the stop. Returns null if no eligible pivot exists; caller then falls back to the strategy\'s default risk.',
+    params: [
+      {
+        name: 'timeframe',
+        type: 'enum',
+        enumValues: ['daily', 'weekly', 'hourly', '1d', '1w', '1h'],
+        default: 'daily',
+        description:
+          'Which cycle pivot timeframe to anchor on. Accepts either long ("daily") or short ("1d") form. Use "weekly" to anchor on Weekly Cycle Lows for swing/position-trade stops; use "daily" (default) for DCL-trade stops.',
+        honoredByExecutor: true,
+      },
+      {
+        name: 'bufferPct',
+        type: 'number',
+        default: 1.0,
+        description:
+          'Distance below the cycle low (above the cycle high for short) as a percent. Engine currently hard-codes this as ×0.99 / ×1.01.',
+        honoredByExecutor: false,
+      },
+    ],
+    notes:
+      'Sibling to sl_below_recent_low. Use this when you specifically want DCL-anchored stops; the generic version uses bare swing lows which can include mid-cycle bounces.',
+  },
+  {
     nodeType: 'sl_percentage',
     category: 'stopLoss',
     description: 'Place SL at a fixed percent below entry (long) / above entry (short).',
