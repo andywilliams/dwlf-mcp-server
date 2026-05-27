@@ -129,7 +129,34 @@ export function registerStrategyTools(
     }
   );
 
-  // 6. List public strategies
+  // 6. Delete strategy
+  server.tool(
+    'dwlf_delete_strategy',
+    "Permanently delete a visual strategy. Hard delete — also removes the compiled executable and symbol activations. " +
+      "⚠️ Past UserTradeSignal rows that referenced this strategy are NOT scrubbed (they remain as historical record), " +
+      "but they will be filtered out of the chart's strategy dropdown going forward because the chart filters by " +
+      "current live strategies. If you have an active subscription on this strategy, the subscription will keep " +
+      "consuming events but the dispatcher's strategy lookup will fail — disable the subscription first via " +
+      "`dwlf_update_subscription({ enabled: false })` or delete it via `dwlf_delete_subscription` to keep state clean.",
+    {
+      strategyId: z.string().describe('Strategy ID to delete'),
+    },
+    async ({ strategyId }) => {
+      try {
+        const data = await client.delete(`/visual-strategies/${strategyId}`);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 7. List public strategies
   server.tool(
     'dwlf_list_public_strategies',
     'List community-shared public strategies that can be used as inspiration or cloned.',
