@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import axios from 'axios';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 
 export function registerBacktestTools(
@@ -139,6 +140,52 @@ export function registerBacktestTools(
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
       } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 3c. Cancel a backtest — state transition, preserves the record.
+  //
+  // pending → clean cancel (worker checks status before running, skips).
+  // running → best-effort cancel (result marked cancelled; mid-run
+  //   computation isn't interrupted). Response carries bestEffort:true.
+  // terminal (completed / failed / cancelled) → 409 with actual status
+  //   so callers can branch without a follow-up GET.
+  //
+  // Use this rather than dwlf_delete_backtest when you want to halt
+  // without scrubbing the audit trail.
+  server.tool(
+    'dwlf_cancel_backtest',
+    'Cancel a queued or running backtest by requestId. Pending requests cancel cleanly (worker skips). Running requests get a best-effort cancel — result is marked cancelled but mid-run computation isn\'t interrupted; the response\'s `bestEffort: true` flag indicates this. Terminal states (completed / failed / already-cancelled) return 409 with the actual status. Use this rather than `dwlf_delete_backtest` when you want to halt without scrubbing the audit trail.',
+    {
+      requestId: z.string().describe('Backtest request ID to cancel'),
+    },
+    async ({ requestId }) => {
+      try {
+        const data = await client.post(`/backtests/${requestId}/cancel`, {});
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        // Per bugbot PR#41: the tool description promises 409 surfaces
+        // the actual status so callers can branch without a follow-up
+        // GET. The default catch block above would just hand back
+        // axios's generic "Request failed with status code 409" and
+        // throw the response body away. Surface error.response.data
+        // when present (academy.ts uses the same pattern).
+        if (axios.isAxiosError(error) && error.response) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({
+              error: error.response.data,
+              statusCode: error.response.status,
+            }, null, 2) }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
           isError: true,
