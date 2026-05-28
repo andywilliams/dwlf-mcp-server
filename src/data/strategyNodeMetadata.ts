@@ -28,7 +28,7 @@ export type NodeParam = {
 
 export type StrategyNode = {
   nodeType: string;
-  category: 'signal' | 'stopLoss' | 'takeProfit' | 'logic' | 'cancellation' | 'exit';
+  category: 'signal' | 'stopLoss' | 'takeProfit' | 'logic' | 'cancellation' | 'condition' | 'exit';
   description: string;
   params: NodeParam[];
   notes?: string;
@@ -337,6 +337,47 @@ export const STRATEGY_NODES: StrategyNode[] = [
         honoredByExecutor: false,
       },
     ],
+  },
+
+  // ── Conditions (event nodes with honored params) ───────────────────
+  // The full set of event/condition nodes (cycle events, EMA events, swing
+  // patterns, etc.) is large and mostly parameter-free; only nodes with an
+  // executor-honored per-instance parameter are catalogued here.
+  {
+    nodeType: 'trendline_break_bullish',
+    category: 'condition',
+    description:
+      'Fires when price closes above a resistance trendline (bullish break). Matches stored trendline_break_bullish / trendline_breach_bullish events on the node\'s timeframe. Alias: bullish_trend_break.',
+    params: [
+      {
+        name: 'minTrendlineLengthDays',
+        type: 'number',
+        default: 0,
+        description:
+          'Minimum age of the broken trendline in CALENDAR days, measured anchor → break. The break only counts when the line has spanned at least this long — use it to ignore breaks of short, insignificant lines and require a meaningful one (e.g. 60 ≈ two months). 0 / absent = no age filter. Applies to daily and weekly lines alike. Breaks whose anchor date is unknown (events predating the anchor stamp / not yet backfilled) fail closed when this is set.',
+        honoredByExecutor: true,
+      },
+    ],
+    notes:
+      'Anchor date is stamped onto break/breach events at emit time (trendlineStartDate). Historical events need the break-event backfill before the age filter behaves correctly over old data; live events carry it going forward.',
+  },
+  {
+    nodeType: 'trendline_break_bearish',
+    category: 'condition',
+    description:
+      'Fires when price closes below a support trendline (bearish break). Matches stored trendline_break_bearish / trendline_breach_bearish events on the node\'s timeframe. Alias: bearish_trend_break.',
+    params: [
+      {
+        name: 'minTrendlineLengthDays',
+        type: 'number',
+        default: 0,
+        description:
+          'Minimum age of the broken trendline in CALENDAR days, measured anchor → break. The break only counts when the line has spanned at least this long. 0 / absent = no age filter. Applies to daily and weekly lines alike. Breaks whose anchor date is unknown fail closed when this is set.',
+        honoredByExecutor: true,
+      },
+    ],
+    notes:
+      'Same anchor-stamp / backfill caveat as trendline_break_bullish.',
   },
 
   // ── Exit graph ─────────────────────────────────────────────────────
