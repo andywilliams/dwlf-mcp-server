@@ -61,8 +61,16 @@ export const STRATEGY_NODES: StrategyNode[] = [
         type: 'number',
         default: 1.0,
         description:
-          'Distance below the swing low (above the swing high for short) as a percent. Engine currently hard-codes this as ×0.99 / ×1.01.',
-        honoredByExecutor: false,
+          'Distance below the swing low (above the swing high for short) as a percent. Accepts fractions (0.5) and integers (2); 0 = stop exactly at the low. Default 1% (×0.99 / ×1.01).',
+        honoredByExecutor: true,
+      },
+      {
+        name: 'maxStopDistancePct',
+        type: 'number',
+        default: 0,
+        description:
+          'Optional risk gate: if the resolved stop is further from entry than this percent, the trade is SKIPPED entirely (no entry). 0 / absent = gate disabled. Use to drop stale-anchor wide stops. NOTE: a backtest showed capping reduces returns on the live universe — the cap is best treated as an executability filter (the widest stop you would actually place), not a performance optimiser.',
+        honoredByExecutor: true,
       },
       {
         name: 'swingSource',
@@ -82,7 +90,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
       },
     ],
     notes:
-      'Post-PR#220 (2026-05-19), the swing-date filter uses `>` not `>=` so same-bar confirmations are no longer silently discarded — old SLs that resolved to deep historical lows are now correctly anchored to the most recent confirmed pivot.',
+      'Post-PR#220 (2026-05-19), the swing-date filter uses `>` not `>=` so same-bar confirmations are no longer silently discarded. bufferPct + maxStopDistancePct configurable since PR#225/#224.',
   },
   {
     nodeType: 'sl_below_recent_cycle_low',
@@ -104,12 +112,20 @@ export const STRATEGY_NODES: StrategyNode[] = [
         type: 'number',
         default: 1.0,
         description:
-          'Distance below the cycle low (above the cycle high for short) as a percent. Engine currently hard-codes this as ×0.99 / ×1.01.',
-        honoredByExecutor: false,
+          'Distance below the cycle low (above the cycle high for short) as a percent. Accepts fractions (0.5) and integers (2); 0 = stop exactly at the low. Default 1% (×0.99 / ×1.01).',
+        honoredByExecutor: true,
+      },
+      {
+        name: 'maxStopDistancePct',
+        type: 'number',
+        default: 0,
+        description:
+          'Optional risk gate: if the resolved stop is further from entry than this percent, the trade is SKIPPED entirely. 0 / absent = disabled. Catches absurdly deep cycle lows. See sl_below_recent_low note on treating this as an executability filter, not a performance optimiser.',
+        honoredByExecutor: true,
       },
     ],
     notes:
-      'Sibling to sl_below_recent_low. Use this when you specifically want DCL-anchored stops; the generic version uses bare swing lows which can include mid-cycle bounces.',
+      'Sibling to sl_below_recent_low. Use this when you specifically want DCL-anchored stops; the generic version uses bare swing lows which can include mid-cycle bounces. bufferPct + maxStopDistancePct configurable since PR#225/#224.',
   },
   {
     nodeType: 'sl_percentage',
@@ -205,6 +221,19 @@ export const STRATEGY_NODES: StrategyNode[] = [
     category: 'takeProfit',
     description: 'TP at 10× risk. Common for trend-following / DCL strategies aiming to ride breakouts.',
     params: [{ name: 'ratio', type: 'number', default: 10, description: 'R-multiple.', honoredByExecutor: true }],
+  },
+  {
+    nodeType: 'tp_r_multiple',
+    category: 'takeProfit',
+    description: 'TP at a CUSTOM R-multiple — set any risk:reward ratio instead of the fixed 1/2/3/5/10 presets. Use when you want e.g. 1.5R, 4R, 7R.',
+    params: [{
+      name: 'ratio',
+      type: 'number',
+      default: 3,
+      description: 'Risk:reward multiple. Accepts fractions (1.5) and integers (4). Defaults to 3R if missing/invalid.',
+      honoredByExecutor: true,
+    }],
+    notes: 'Engine computes TP identically to the presets (entry ± ratio × risk); only the ratio source differs (node param vs static). Keep the presets for one-click common ratios; reach for this when you need a non-standard R:R.',
   },
   {
     nodeType: 'tp_percentage',
