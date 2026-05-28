@@ -24,7 +24,7 @@ export function registerStrategyTools(
       'Use this to understand what an SL/TP/logic node will actually do at backtest/live time, ' +
       'including the engine defaults that are NOT visible in the visual graph today. ' +
       'Optional `nodeType` filters to a single node (e.g. `sl_below_recent_low`); optional `category` ' +
-      'filters to a class (`stopLoss` / `takeProfit` / `signal` / `logic` / `cancellation` / `exit`). ' +
+      'filters to a class (`stopLoss` / `takeProfit` / `signal` / `logic` / `cancellation` / `condition` / `exit`). ' +
       'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
       'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed.',
     {
@@ -33,7 +33,7 @@ export function registerStrategyTools(
         .optional()
         .describe('Return only this one node (e.g. `sl_below_recent_low`).'),
       category: z
-        .enum(['signal', 'stopLoss', 'takeProfit', 'logic', 'cancellation', 'exit'])
+        .enum(['signal', 'stopLoss', 'takeProfit', 'logic', 'cancellation', 'condition', 'exit'])
         .optional()
         .describe('Return only nodes in this category.'),
     },
