@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import axios from 'axios';
 import { normalizeSymbol } from '../client.js';
 export function registerBacktestTools(server, client) {
     // 1. Run a backtest
@@ -55,11 +56,36 @@ export function registerBacktestTools(server, client) {
         }
     });
     // 2. Get backtest results
-    server.tool('dwlf_get_backtest_results', 'Get results for a backtest by requestId. If status is not "complete", poll again shortly.', {
+    //
+    // Default `summary=true` because the full payload (per-symbol equity curves,
+    // per-bar trades, rejected signals) is 1-3 MB on a real multi-symbol multi-year
+    // run and torches context budget when an agent only wanted "did Sharpe go up?".
+    // Pass `summary: false` explicitly to pull the full S3-merged response —
+    // intended for chart rendering, deep dives, or saving to disk.
+    server.tool('dwlf_get_backtest_results', 'Get results for a backtest by requestId. If status is not "complete", poll again shortly. ' +
+        'DEFAULTS TO SUMMARY MODE: returns DDB-level per-symbol stats (totalReturn, totalTrades, ' +
+        'winningTrades, sharpe, maxDrawdown, finalEquity) and the portfolio-level aggregate metrics ' +
+        'object, with all bulky fields stripped (per-symbol trades, equityCurve, signals, ' +
+        'monthlyReturns; request-level portfolioEquityCurve, portfolioTrades, portfolioRejectedSignals). ' +
+        'Summary is ~1-3 KB vs ~1-3 MB full — use it for headline metric checks, leaderboard-style ' +
+        'comparisons, and "did it work" sanity passes. ' +
+        'Pass `summary: false` to get the full payload (per-trade rows, equity curves, signals) — ' +
+        'needed for plotting, per-trade analysis, or feeding into another tool. ' +
+        '⚠️ When summary=false, the MCP transport will dump the response to disk and ask you to extract ' +
+        'via subagent — budget for that. ' +
+        '📡 For background polling without burning context window: the REST URL is ' +
+        '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`.', {
         requestId: z.string().describe('Backtest request ID'),
-    }, async ({ requestId }) => {
+        summary: z
+            .boolean()
+            .optional()
+            .describe('Default true — return the lightweight summary view. Set false to pull the full S3-merged payload (~1-3 MB).'),
+    }, async ({ requestId, summary }) => {
         try {
-            const data = await client.get(`/backtests/${requestId}/results`);
+            // Default-on summary mode: explicit `summary: false` opts into the
+            // heavy full payload. Anything else (undefined, true) goes summary.
+            const wantSummary = summary !== false;
+            const data = await client.get(`/backtests/${requestId}/results`, wantSummary ? { summary: 'true' } : undefined);
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };
@@ -72,14 +98,94 @@ export function registerBacktestTools(server, client) {
         }
     });
     // 3. List backtests
-    server.tool('dwlf_list_backtests', 'List all backtests with their status and summary.', {}, async () => {
+    //
+    // Defaults to summary mode. Each backtest record embeds the full
+    // `strategyDefinition` (the visual-builder node graph) — typically the
+    // largest field — so an un-trimmed list of a few dozen runs is hundreds of
+    // KB and torches context when an agent only wanted "which backtests exist
+    // and what's their status?". Summary strips strategyDefinition while keeping
+    // every metadata field. Drill into a single run's strategy graph via the
+    // strategy endpoint, or its full results via dwlf_get_backtest_results.
+    server.tool('dwlf_list_backtests', 'List all backtests with their status and config. ' +
+        'DEFAULTS TO SUMMARY MODE: strips the bulky `strategyDefinition` (visual-builder node graph) ' +
+        'from each item while keeping all metadata (requestId, strategyId/Name, symbols, timeframe, ' +
+        'start/end dates, initialCapital, riskPerTrade, status, createdAt). The full strategyDefinition ' +
+        'on every item makes an un-trimmed list hundreds of KB. ' +
+        'Use the summary to pick a requestId, then drill in: dwlf_get_backtest_results for the run\'s ' +
+        'metrics/trades. Pass `summary: false` only if you specifically need each row\'s full strategy graph.', {
+        summary: z
+            .boolean()
+            .optional()
+            .describe('Default true — strip the per-item strategyDefinition graph. Set false to include the full visual-builder node graph on every backtest (much larger).'),
+    }, async ({ summary }) => {
         try {
-            const data = await client.get('/backtests');
+            // Default-on summary: explicit `summary: false` opts into the heavy
+            // full payload (strategyDefinition on every item).
+            const wantSummary = summary !== false;
+            const data = await client.get('/backtests', wantSummary ? { summary: 'true' } : undefined);
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };
         }
         catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 3b. Delete a backtest
+    server.tool('dwlf_delete_backtest', 'Permanently delete a backtest request and its associated result data by requestId. Use to clean up stale or invalid runs (e.g. results computed before an engine bug was fixed). Idempotent — deleting an already-deleted requestId returns success.', {
+        requestId: z.string().describe('Backtest request ID to delete'),
+    }, async ({ requestId }) => {
+        try {
+            const data = await client.delete(`/backtests/${requestId}`);
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 3c. Cancel a backtest — state transition, preserves the record.
+    //
+    // pending → clean cancel (worker checks status before running, skips).
+    // running → best-effort cancel (result marked cancelled; mid-run
+    //   computation isn't interrupted). Response carries bestEffort:true.
+    // terminal (completed / failed / cancelled) → 409 with actual status
+    //   so callers can branch without a follow-up GET.
+    //
+    // Use this rather than dwlf_delete_backtest when you want to halt
+    // without scrubbing the audit trail.
+    server.tool('dwlf_cancel_backtest', 'Cancel a queued or running backtest by requestId. Pending requests cancel cleanly (worker skips). Running requests get a best-effort cancel — result is marked cancelled but mid-run computation isn\'t interrupted; the response\'s `bestEffort: true` flag indicates this. Terminal states (completed / failed / already-cancelled) return 409 with the actual status. Use this rather than `dwlf_delete_backtest` when you want to halt without scrubbing the audit trail.', {
+        requestId: z.string().describe('Backtest request ID to cancel'),
+    }, async ({ requestId }) => {
+        try {
+            const data = await client.post(`/backtests/${requestId}/cancel`, {});
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            // Per bugbot PR#41: the tool description promises 409 surfaces
+            // the actual status so callers can branch without a follow-up
+            // GET. The default catch block above would just hand back
+            // axios's generic "Request failed with status code 409" and
+            // throw the response body away. Surface error.response.data
+            // when present (academy.ts uses the same pattern).
+            if (axios.isAxiosError(error) && error.response) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({
+                                error: error.response.data,
+                                statusCode: error.response.status,
+                            }, null, 2) }],
+                    isError: true,
+                };
+            }
             return {
                 content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
                 isError: true,
