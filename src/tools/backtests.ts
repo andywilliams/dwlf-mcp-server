@@ -107,13 +107,38 @@ export function registerBacktestTools(
   );
 
   // 3. List backtests
+  //
+  // Defaults to summary mode. Each backtest record embeds the full
+  // `strategyDefinition` (the visual-builder node graph) — typically the
+  // largest field — so an un-trimmed list of a few dozen runs is hundreds of
+  // KB and torches context when an agent only wanted "which backtests exist
+  // and what's their status?". Summary strips strategyDefinition while keeping
+  // every metadata field. Drill into a single run's strategy graph via the
+  // strategy endpoint, or its full results via dwlf_get_backtest_results.
   server.tool(
     'dwlf_list_backtests',
-    'List all backtests with their status and summary.',
-    {},
-    async () => {
+    'List all backtests with their status and config. ' +
+      'DEFAULTS TO SUMMARY MODE: strips the bulky `strategyDefinition` (visual-builder node graph) ' +
+      'from each item while keeping all metadata (requestId, strategyId/Name, symbols, timeframe, ' +
+      'start/end dates, initialCapital, riskPerTrade, status, createdAt). The full strategyDefinition ' +
+      'on every item makes an un-trimmed list hundreds of KB. ' +
+      'Use the summary to pick a requestId, then drill in: dwlf_get_backtest_results for the run\'s ' +
+      'metrics/trades. Pass `summary: false` only if you specifically need each row\'s full strategy graph.',
+    {
+      summary: z
+        .boolean()
+        .optional()
+        .describe('Default true — strip the per-item strategyDefinition graph. Set false to include the full visual-builder node graph on every backtest (much larger).'),
+    },
+    async ({ summary }) => {
       try {
-        const data = await client.get('/backtests');
+        // Default-on summary: explicit `summary: false` opts into the heavy
+        // full payload (strategyDefinition on every item).
+        const wantSummary = summary !== false;
+        const data = await client.get(
+          '/backtests',
+          wantSummary ? { summary: 'true' } : undefined
+        );
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
