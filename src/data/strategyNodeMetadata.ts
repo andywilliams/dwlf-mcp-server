@@ -192,35 +192,39 @@ export const STRATEGY_NODES: StrategyNode[] = [
   },
 
   // ── Take profit ────────────────────────────────────────────────────
+  // The 1R/2R/3R/5R/10R presets are FIXED by node type — the executor uses the
+  // preset ratio from its static node config and ignores any `ratio` override
+  // in the node's data (honoredByExecutor:false). To set a non-standard ratio
+  // (e.g. 1.5R, 7R), use tp_r_multiple, whose `ratio` param IS read from node data.
   {
     nodeType: 'tp_1r',
     category: 'takeProfit',
-    description: 'TP at 1× the risk distance (close + 1R for long). The R-multiple is the only param and IS read from the node name.',
-    params: [{ name: 'ratio', type: 'number', default: 1, description: 'R-multiple.', honoredByExecutor: true }],
+    description: 'TP at a fixed 1× the risk distance (close + 1R for long). Ratio is fixed by node type — not overridable; use tp_r_multiple for a custom ratio.',
+    params: [{ name: 'ratio', type: 'number', default: 1, description: 'R-multiple — fixed by node type, not overridable.', honoredByExecutor: false }],
   },
   {
     nodeType: 'tp_2r',
     category: 'takeProfit',
-    description: 'TP at 2× risk.',
-    params: [{ name: 'ratio', type: 'number', default: 2, description: 'R-multiple.', honoredByExecutor: true }],
+    description: 'TP at a fixed 2× risk. Ratio fixed by node type (not overridable — use tp_r_multiple for a custom ratio).',
+    params: [{ name: 'ratio', type: 'number', default: 2, description: 'R-multiple — fixed by node type, not overridable.', honoredByExecutor: false }],
   },
   {
     nodeType: 'tp_3r',
     category: 'takeProfit',
-    description: 'TP at 3× risk.',
-    params: [{ name: 'ratio', type: 'number', default: 3, description: 'R-multiple.', honoredByExecutor: true }],
+    description: 'TP at a fixed 3× risk. Ratio fixed by node type (not overridable — use tp_r_multiple for a custom ratio).',
+    params: [{ name: 'ratio', type: 'number', default: 3, description: 'R-multiple — fixed by node type, not overridable.', honoredByExecutor: false }],
   },
   {
     nodeType: 'tp_5r',
     category: 'takeProfit',
-    description: 'TP at 5× risk.',
-    params: [{ name: 'ratio', type: 'number', default: 5, description: 'R-multiple.', honoredByExecutor: true }],
+    description: 'TP at a fixed 5× risk. Ratio fixed by node type (not overridable — use tp_r_multiple for a custom ratio).',
+    params: [{ name: 'ratio', type: 'number', default: 5, description: 'R-multiple — fixed by node type, not overridable.', honoredByExecutor: false }],
   },
   {
     nodeType: 'tp_10r',
     category: 'takeProfit',
-    description: 'TP at 10× risk. Common for trend-following / DCL strategies aiming to ride breakouts.',
-    params: [{ name: 'ratio', type: 'number', default: 10, description: 'R-multiple.', honoredByExecutor: true }],
+    description: 'TP at a fixed 10× risk. Common for trend-following / DCL strategies aiming to ride breakouts. Ratio fixed by node type (not overridable — use tp_r_multiple for a custom ratio).',
+    params: [{ name: 'ratio', type: 'number', default: 10, description: 'R-multiple — fixed by node type, not overridable.', honoredByExecutor: false }],
   },
   {
     nodeType: 'tp_r_multiple',
