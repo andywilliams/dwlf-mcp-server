@@ -115,30 +115,56 @@ export function registerBacktestTools(
   // and what's their status?". Summary strips strategyDefinition while keeping
   // every metadata field. Drill into a single run's strategy graph via the
   // strategy endpoint, or its full results via dwlf_get_backtest_results.
+  //
+  // Even summarised, an account with many runs blows the MCP transport wall
+  // (50 trimmed records ≈ 63 KB). So we ALSO page: default `limit` is 15 (most
+  // recent first) and the backend returns a `cursor` for the next page. Raise
+  // `limit` or pass `cursor` to walk older runs; filter with `status`.
+  const DEFAULT_LIST_LIMIT = 15;
   server.tool(
     'dwlf_list_backtests',
-    'List all backtests with their status and config. ' +
+    'List your backtests (most recent first) with their status and config. ' +
       'DEFAULTS TO SUMMARY MODE: strips the bulky `strategyDefinition` (visual-builder node graph) ' +
       'from each item while keeping all metadata (requestId, strategyId/Name, symbols, timeframe, ' +
-      'start/end dates, initialCapital, riskPerTrade, status, createdAt). The full strategyDefinition ' +
-      'on every item makes an un-trimmed list hundreds of KB. ' +
+      'start/end dates, initialCapital, riskPerTrade, status, createdAt). ' +
+      `PAGED: returns the ${DEFAULT_LIST_LIMIT} most recent by default plus a \`cursor\`; even summarised, ` +
+      'a large account overflows in one shot. To see more: raise `limit`, pass the returned `cursor` for ' +
+      'the next page, or narrow with `status`. ' +
       'Use the summary to pick a requestId, then drill in: dwlf_get_backtest_results for the run\'s ' +
-      'metrics/trades. Pass `summary: false` only if you specifically need each row\'s full strategy graph.',
+      'metrics/trades. Pass `summary: false` only if you specifically need each row\'s full strategy graph ' +
+      '(keep `limit` small when you do — full records are ~8 KB each).',
     {
       summary: z
         .boolean()
         .optional()
         .describe('Default true — strip the per-item strategyDefinition graph. Set false to include the full visual-builder node graph on every backtest (much larger).'),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(`Max backtests to return, most recent first (default ${DEFAULT_LIST_LIMIT}). Raise to see more, but mind the context cost.`),
+      status: z
+        .enum(['pending', 'processing', 'completed', 'failed', 'cancelled'])
+        .optional()
+        .describe('Filter to a single request status (e.g. "completed").'),
+      cursor: z
+        .string()
+        .optional()
+        .describe('Opaque pagination cursor from a previous response\'s `cursor` field — pass it to fetch the next page of older runs.'),
     },
-    async ({ summary }) => {
+    async ({ summary, limit, status, cursor }) => {
       try {
         // Default-on summary: explicit `summary: false` opts into the heavy
         // full payload (strategyDefinition on every item).
         const wantSummary = summary !== false;
-        const data = await client.get(
-          '/backtests',
-          wantSummary ? { summary: 'true' } : undefined
-        );
+        const params: Record<string, string> = {};
+        if (wantSummary) params.summary = 'true';
+        // Page by default so even a large account fits in one tool result.
+        params.limit = String(limit ?? DEFAULT_LIST_LIMIT);
+        if (status) params.status = status;
+        if (cursor) params.cursor = cursor;
+        const data = await client.get('/backtests', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
