@@ -144,10 +144,19 @@ export function registerBacktestTools(
         .positive()
         .optional()
         .describe(`Max backtests to return, most recent first (default ${DEFAULT_LIST_LIMIT}). Raise to see more, but mind the context cost.`),
+      // Deliberately a free string, NOT a strict enum. The in-progress status
+      // is ambiguous across two writers that both feed this table:
+      // scheduled-jobs `processBacktestsHandler` writes 'processing', while
+      // SPT's `backtestingService` writes 'running'. A hard enum would either
+      // reject the valid value the caller saw in a prior list, or silently
+      // miss records stamped by the other pipeline. The backend just does an
+      // exact-match GSI query, so pass whatever status the records actually
+      // carry. Known values: pending, processing|running, completed, failed,
+      // cancelled.
       status: z
-        .enum(['pending', 'processing', 'completed', 'failed', 'cancelled'])
+        .string()
         .optional()
-        .describe('Filter to a single request status (e.g. "completed").'),
+        .describe('Filter to a single request status, matched exactly. Known values: pending, processing or running (in-progress — both occur, depending on which backtest worker ran), completed, failed, cancelled. Pass the status string exactly as it appears in a prior list response.'),
       cursor: z
         .string()
         .optional()
