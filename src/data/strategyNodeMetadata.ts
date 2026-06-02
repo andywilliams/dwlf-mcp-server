@@ -54,7 +54,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
     nodeType: 'sl_below_recent_low',
     category: 'stopLoss',
     description:
-      'Place SL below the most-recent confirmed swing low (long) or above the most-recent swing high (short). Reads the indicator pipeline\'s swingPoints (cycle.low.confirmed / cycle.high.confirmed) first; falls back to a 10-bar historical low if no swing data is available.',
+      'Place SL bufferPct below the most-recently-confirmed swing LOW (long) / above the most-recently-confirmed swing HIGH (short). Source is the generic swing detector (swingService.getSwings) — bare price swings, NOT cycle.low.confirmed / cycle.high.confirmed pivots. Each swing\'s confirmation date is computed as its bar index + a fixed lookback (5 bars daily, 3 weekly); only swings confirmed on or before the entry bar are eligible, and the most-recently-confirmed one is chosen. If none are eligible it falls back to the lowest low (long) / highest high (short) of the last 20 bars. CAVEAT: that 5-bar (daily) lag means a freshly-confirmed cycle low less than 5 bars old at entry is NOT yet eligible, so the stop anchors to an older, deeper swing — a wider stop than "just under the triggering DCL". For a stop under the most recent confirmed cycle pivot, use sl_below_recent_cycle_low.',
     params: [
       {
         name: 'bufferPct',
@@ -78,19 +78,19 @@ export const STRATEGY_NODES: StrategyNode[] = [
         enumValues: ['cycle_pivots', 'historical_low'],
         default: 'cycle_pivots',
         description:
-          'Where the recent low/high comes from. Engine prefers cycle pivots when contextData.swingPoints is populated; falls back to a 10-bar historical low otherwise.',
+          'INERT — not read by the executor. The engine always sources from the generic swing detector (swingService); when no eligible swing exists it falls back to a fixed 20-bar low/high. This param does not switch the source.',
         honoredByExecutor: false,
       },
       {
         name: 'lookbackBars',
         type: 'number',
         default: 10,
-        description: 'Bars to scan for the historical fallback. Only relevant when swingSource = historical_low.',
+        description: 'INERT — not read by the executor. The historical fallback is a fixed 20-bar low/high; this value is ignored.',
         honoredByExecutor: false,
       },
     ],
     notes:
-      'Post-PR#220 (2026-05-19), the swing-date filter uses `>` not `>=` so same-bar confirmations are no longer silently discarded. bufferPct + maxStopDistancePct configurable since PR#225/#224.',
+      'Confirmation date is computed as the swing bar + a fixed lookback (5 daily / 3 weekly), so even an indicator pivot that confirmed on the entry bar is not eligible until that lag elapses — which is why a same-day DCL still anchors to an older swing. PR#220 (2026-05-19) changed the date filter from `>=` to `>`, which only fixes the exact-equality edge (a swing whose computed confirm date equals the entry bar), not the multi-bar lag. Use sl_below_recent_cycle_low for DCL-anchored stops. bufferPct + maxStopDistancePct configurable since PR#225/#224.',
   },
   {
     nodeType: 'sl_below_recent_cycle_low',
