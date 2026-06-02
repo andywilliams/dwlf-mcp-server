@@ -68,12 +68,17 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 3. Get daily cross-asset briefing
   server.tool(
     'dwlf_get_daily_briefing',
-    'Get the cross-asset daily briefing. Returns per-symbol price + MA stack + ribbon, ' +
-      'regime FSM states, cycleAlignment composite (with failed_cycle / DSS / fresh-rising overlays), ' +
-      'recent cycle pivots (daily + weekly), keyLevels, trendlines + break events, fibLevels, ' +
-      'MA crossover events, active events (incl. cycle window-early), open trades, active signals, ' +
-      'and user-drawn long/short position annotations. Cross-asset: sectorSentiment + triggerThemes + ' +
-      'alignmentThemes (composite + family levels). Use `symbols` to extend coverage beyond the watchlist.',
+    'Get the cross-asset daily briefing. Returns a COMPACT SUMMARY by default: one digestible ' +
+      'object per symbol (price/%chg/ribbon, regime FSM trend+momentum+cycle, cycleAlignment, ' +
+      'cycle position, nearest support/resistance, daily+weekly trendline state, open trades, ' +
+      'active signals, a truncated event list, and notable `flags`) plus the full cross-asset block ' +
+      '(sectorSentiment + triggerThemes + alignmentThemes). The summary is LOSSY by design — full ' +
+      'per-symbol detail (full pivots, trendline touch-points, keyLevel history, fibLevels, MA-cross ' +
+      'events, annotations) is available: pass view:"full" (optionally scope with `symbols` to keep ' +
+      'it small), or drill in with dwlf_get_price_picture / dwlf_get_trendlines / ' +
+      'dwlf_get_support_resistance / dwlf_get_events. The response `drilldown.flaggedSymbols` and ' +
+      'per-symbol `flags` mark which symbols have notable structure worth fetching in full — pull ' +
+      'those proactively. Use `symbols` to extend coverage beyond your watchlist.',
     {
       symbols: z
         .array(z.string())
@@ -84,13 +89,25 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
             'want the full structural read on them. Each accepts BTC / BTC/USD / BTC-USD / stock-ticker ' +
             'shapes. Does NOT modify your stored watchlist.'
         ),
+      view: z
+        .enum(['summary', 'full'])
+        .optional()
+        .describe(
+          "'summary' (default) = compact, token-friendly projection with per-symbol `flags` and a " +
+            '`drilldown` block pointing to the detail. "full" = every per-symbol field (heavy — the ' +
+            'full watchlist can exceed response limits, so scope it with `symbols`). Drill into symbols ' +
+            'flagged in the summary using view:"full" or the per-symbol tools.'
+        ),
     },
-    async ({ symbols }) => {
+    async ({ symbols, view }) => {
       try {
         const params: Record<string, unknown> = {};
         if (symbols && symbols.length > 0) {
           params.symbols = symbols.map((s) => normalizeSymbol(s)).join(',');
         }
+        // Default to the compact summary so a normal watchlist doesn't blow the
+        // response size; callers opt into the heavy full view explicitly.
+        params.view = view === 'full' ? 'full' : 'summary';
         const data = await client.get('/briefing/daily', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
