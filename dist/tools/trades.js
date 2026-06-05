@@ -2,8 +2,14 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerTradeTools(server, client) {
     // 1. List trades
-    server.tool('dwlf_list_trades', 'List trades from the trade journal. Filter by status (open/closed) or symbol.', {
-        status: z.enum(['open', 'closed']).optional().describe('Filter by trade status'),
+    server.tool('dwlf_list_trades', 'List trades from the trade journal. Filter by status or symbol. Statuses: ' +
+        '`open` (live position), `closed` (exited, has P&L), `planned` (confirm-mode signal awaiting confirm/skip), ' +
+        '`skipped` (passed signal — carries skipReasons[]/skipNote). Omit `status` to get ALL statuses. ' +
+        'Use `status: "skipped"` to review the skip journal (which signals you passed and why).', {
+        status: z
+            .enum(['open', 'closed', 'planned', 'skipped'])
+            .optional()
+            .describe('Filter by trade status. Omit for all. planned/skipped are served from the base table (they lack entryAt so aren\'t in the StatusIndex GSI).'),
         symbol: z.string().optional().describe('Filter by symbol (e.g. BTC, TSLA)'),
     }, async ({ status, symbol }) => {
         try {
@@ -115,7 +121,12 @@ export function registerTradeTools(server, client) {
         content: z.string().describe('Note content'),
     }, async ({ tradeId, content }) => {
         try {
-            const data = await client.post(`/trades/${tradeId}/notes`, { content });
+            // Backend tradeNotesHandler.createNote requires `text` (see
+            // serverless-portfolio-tracker src/handlers/tradeNotesHandler.js).
+            // The MCP-facing parameter is `content` for consumer-friendliness
+            // (matches MCP convention for note bodies elsewhere); map on the
+            // wire to avoid breaking callers of this tool.
+            const data = await client.post(`/trades/${tradeId}/notes`, { text: content });
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };

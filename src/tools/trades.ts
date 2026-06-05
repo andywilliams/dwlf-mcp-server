@@ -9,9 +9,15 @@ export function registerTradeTools(
   // 1. List trades
   server.tool(
     'dwlf_list_trades',
-    'List trades from the trade journal. Filter by status (open/closed) or symbol.',
+    'List trades from the trade journal. Filter by status or symbol. Statuses: ' +
+      '`open` (live position), `closed` (exited, has P&L), `planned` (confirm-mode signal awaiting confirm/skip), ' +
+      '`skipped` (passed signal — carries skipReasons[]/skipNote). Omit `status` to get ALL statuses. ' +
+      'Use `status: "skipped"` to review the skip journal (which signals you passed and why).',
     {
-      status: z.enum(['open', 'closed']).optional().describe('Filter by trade status'),
+      status: z
+        .enum(['open', 'closed', 'planned', 'skipped'])
+        .optional()
+        .describe('Filter by trade status. Omit for all. planned/skipped are served from the base table (they lack entryAt so aren\'t in the StatusIndex GSI).'),
       symbol: z.string().optional().describe('Filter by symbol (e.g. BTC, TSLA)'),
     },
     async ({ status, symbol }) => {
