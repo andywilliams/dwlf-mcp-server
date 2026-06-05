@@ -52,6 +52,50 @@ export function registerMarketDataTools(
     }
   );
 
+  // 1b. Get last-price quote(s) — the lightweight alternative to candles.
+  //
+  // Unlike dwlf_get_market_data (raw OHLCV, JWT-only/403 for API keys), this
+  // returns ONLY the latest close + date and works for API-key callers on ANY
+  // tracked symbol — including ones off your watchlist. Use it to mark a
+  // position/skip to current price, or price a symbol the briefing doesn't
+  // cover, without raw candles or a full briefing call.
+  server.tool(
+    'dwlf_get_quote',
+    'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
+      'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
+      'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (JWT-only) ' +
+      'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
+      'an arbitrary symbol. Unknown symbols come back with found:false (not an error).',
+    {
+      symbols: z
+        .array(z.string())
+        .optional()
+        .describe('Symbols to quote, e.g. ["CAT","BTC-USD"]. Accepts BTC / BTC-USD / BTC/USD / stock-ticker shapes. Max 50.'),
+      symbol: z.string().optional().describe('Single-symbol shorthand. Use `symbols` for multiple.'),
+    },
+    async ({ symbols, symbol }) => {
+      try {
+        const list = (symbols && symbols.length ? symbols : (symbol ? [symbol] : []))
+          .map(normalizeSymbol);
+        if (!list.length) {
+          return {
+            content: [{ type: 'text', text: 'Error: provide `symbols` (array) or `symbol` (string).' }],
+            isError: true,
+          };
+        }
+        const data = await client.get('/quotes', { symbols: list.join(',') });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // 2. List all symbols
   server.tool(
     'dwlf_list_symbols',
@@ -358,7 +402,13 @@ export function registerMarketDataTools(
           'trendline_breach_bearish',
         ]);
 
-        const events: Array<Record<string, any>> = Array.isArray(data?.events) ? data.events : [];
+        // The /events endpoint normally returns `{ events: [...] }`, but defend
+        // against a bare-array payload too (bugbot PR#54) — otherwise a bare
+        // array would read `data.events` as undefined and yield an empty
+        // narrative even when events exist.
+        const events: Array<Record<string, any>> = Array.isArray(data)
+          ? (data as Array<Record<string, any>>)
+          : (Array.isArray(data?.events) ? data.events : []);
 
         // Stage 1: project each event into a comparable row shape with a parsed
         // MA length so we can group cross events that share date + family +
