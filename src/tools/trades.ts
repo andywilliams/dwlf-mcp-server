@@ -322,4 +322,74 @@ export function registerTradeTools(
       }
     }
   );
+
+  // 11. Confirm (take) a planned trade
+  server.tool(
+    'dwlf_confirm_trade',
+    'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
+      'Only trades with status "planned" can be confirmed. By default it opens at the ' +
+      'planned entryPrice / positionSize and stamps entryAt=now; override any of them to ' +
+      'reflect your actual fill. Pair with dwlf_skip_trade to pass instead. ' +
+      'Find planned trades via dwlf_list_trades(status: "planned").',
+    {
+      tradeId: z.string().describe('Planned trade ID to confirm/take'),
+      entryPrice: z.number().optional().describe('Actual entry/fill price (defaults to the planned entryPrice)'),
+      positionSize: z.number().optional().describe('Actual position size / quantity (defaults to the planned size)'),
+      entryAt: z.string().optional().describe('Entry timestamp, ISO 8601 (defaults to now)'),
+    },
+    async ({ tradeId, entryPrice, positionSize, entryAt }) => {
+      try {
+        const body: Record<string, unknown> = {};
+        if (entryPrice !== undefined) body.entryPrice = entryPrice;
+        if (positionSize !== undefined) body.positionSize = positionSize;
+        if (entryAt) body.entryAt = entryAt;
+
+        const data = await client.post(`/trades/${tradeId}/confirm`, body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 12. Skip (pass on) a planned trade
+  server.tool(
+    'dwlf_skip_trade',
+    'Skip (pass on) a confirm-mode PLANNED trade, recording WHY. Moves it to status ' +
+      '"skipped" with skipReasons[] + an optional skipNote — this feeds the skip journal / ' +
+      'scorecard (dwlf_list_trades(status: "skipped")). Only planned trades can be skipped. ' +
+      'Valid skipReasons: entry_extended_from_anchor, risk_reward_poor, thesis_already_played_out, ' +
+      'low_conviction_signal, regime_risk_off, correlated_exposure, account_drawdown_pause, ' +
+      'broker_access, other. skipNote is REQUIRED when a reason is "other". The first reason is ' +
+      'treated as primary. Pair with dwlf_confirm_trade to take it instead.',
+    {
+      tradeId: z.string().describe('Planned trade ID to skip'),
+      skipReasons: z
+        .array(z.string())
+        .min(1)
+        .describe('One or more skip reason codes (see tool description for the valid set). First = primary.'),
+      skipNote: z.string().optional().describe('Free-text rationale (max 500 chars). Required when a reason is "other".'),
+    },
+    async ({ tradeId, skipReasons, skipNote }) => {
+      try {
+        const body: Record<string, unknown> = { skipReasons };
+        if (skipNote) body.skipNote = skipNote;
+
+        const data = await client.post(`/trades/${tradeId}/skip`, body);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
 }
