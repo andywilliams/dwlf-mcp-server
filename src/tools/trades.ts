@@ -323,7 +323,37 @@ export function registerTradeTools(
     }
   );
 
-  // 11. Confirm (take) a planned trade
+  // 11. Counterfactual scorecard for skipped trades
+  server.tool(
+    'dwlf_get_skip_outcomes',
+    'The Counterfactual scorecard: what would have happened had each SKIPPED trade been ' +
+      'taken. Every skip is replayed against daily candles from its signal date using the ' +
+      'decision-time-frozen entry/SL/TP (pre-registered — no hindsight bias). Per outcome: ' +
+      'status (`would_be_stopped` capped at exactly -1R / `would_hit_target` / `running` = open ' +
+      'mark), `counterfactualR`, `savedR` (= -R: positive means the skip SAVED money), move %, ' +
+      'MFE/MAE in R, skip reasons + note. Aggregates: per-skip-reason and per-strategy rollups ' +
+      'plus the cumulative saved-R series ("is the discretionary overlay adding edge"). ' +
+      'Assumes MECHANICAL execution of the planned levels — no discretionary management; ' +
+      'same-bar stop+target counts the stop first (flagged `ambiguousBar`). ' +
+      'Pairs with dwlf_list_trades(status:"skipped") and dwlf_skip_trade. ' +
+      'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual',
+    {},
+    async () => {
+      try {
+        const data = await client.get('/trades/skip-outcomes');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 12. Confirm (take) a planned trade
   server.tool(
     'dwlf_confirm_trade',
     'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
@@ -357,7 +387,7 @@ export function registerTradeTools(
     }
   );
 
-  // 12. Skip (pass on) a planned trade
+  // 13. Skip (pass on) a planned trade
   server.tool(
     'dwlf_skip_trade',
     'Skip (pass on) a confirm-mode PLANNED trade, recording WHY. Moves it to status ' +
