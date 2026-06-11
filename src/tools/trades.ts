@@ -359,20 +359,33 @@ export function registerTradeTools(
     'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
       'Only trades with status "planned" can be confirmed. By default it opens at the ' +
       'planned entryPrice / positionSize and stamps entryAt=now; override any of them to ' +
-      'reflect your actual fill. Pair with dwlf_skip_trade to pass instead. ' +
-      'Find planned trades via dwlf_list_trades(status: "planned").',
+      'reflect your actual fill. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
+      'trade is being taken (the symmetric twin of skip reasons; feeds the Counterfactual ' +
+      'scorecard / 2x2 decision analytics). Valid confirmReasons: fresh_cycle_entry, ' +
+      'trendline_break_confirmed, cluster_confluence, regime_aligned, ' +
+      'risk_reward_attractive, adding_to_winner, other. confirmNote is required when a ' +
+      'reason is "other". Reasons are optional (untagged confirms still work) but every ' +
+      'untagged confirm is decision-analytics data lost. Pair with dwlf_skip_trade to ' +
+      'pass instead. Find planned trades via dwlf_list_trades(status: "planned").',
     {
       tradeId: z.string().describe('Planned trade ID to confirm/take'),
       entryPrice: z.number().optional().describe('Actual entry/fill price (defaults to the planned entryPrice)'),
       positionSize: z.number().optional().describe('Actual position size / quantity (defaults to the planned size)'),
       entryAt: z.string().optional().describe('Entry timestamp, ISO 8601 (defaults to now)'),
+      confirmReasons: z
+        .array(z.string())
+        .optional()
+        .describe('WHY the trade is taken (multi-select; see tool description for the valid set). First = primary.'),
+      confirmNote: z.string().optional().describe('Entry rationale note (max 500 chars). Required when a reason is "other".'),
     },
-    async ({ tradeId, entryPrice, positionSize, entryAt }) => {
+    async ({ tradeId, entryPrice, positionSize, entryAt, confirmReasons, confirmNote }) => {
       try {
         const body: Record<string, unknown> = {};
         if (entryPrice !== undefined) body.entryPrice = entryPrice;
         if (positionSize !== undefined) body.positionSize = positionSize;
         if (entryAt) body.entryAt = entryAt;
+        if (confirmReasons && confirmReasons.length) body.confirmReasons = confirmReasons;
+        if (confirmNote) body.confirmNote = confirmNote;
 
         const data = await client.post(`/trades/${tradeId}/confirm`, body);
         return {
