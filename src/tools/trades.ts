@@ -353,6 +353,36 @@ export function registerTradeTools(
     }
   );
 
+  // 12. Decision-quality ledger (takes + skips judged together)
+  server.tool(
+    'dwlf_get_decision_stats',
+    'The decision-quality ledger: TAKES (confirmed trades, judged by actual outcomes — ' +
+      'closed realized R, open marks vs initial risk) and SKIPS (judged by the counterfactual ' +
+      'replay) joined into one record. Returns: the 2x2 decision `matrix` (tookRight/tookWrong/' +
+      'skipRight/skipWrong, with open takes and running skips as unjudged open counts), ' +
+      '`byStrategy` records (W/L, net realized R, net open R, skips + saved R), and per-reason ' +
+      'hit rates for BOTH vocabularies (`byConfirmReason`, `bySkipReason`) — use these to tell ' +
+      'the user which of their stated reasons carry alpha (e.g. "your regime_risk_off skips ' +
+      'are 3-for-3, +3R saved"). Honesty: only resolved outcomes are judged; paper trades ' +
+      'excluded; legacy trades without a genuine numeric R are judged by P&L sign and counted ' +
+      'in `rUnknown` (they contribute no R magnitude). ' +
+      'UI equivalent: https://www.dwlf.co.uk/trades/decisions',
+    {},
+    async () => {
+      try {
+        const data = await client.get('/trades/decision-stats');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // 12. Confirm (take) a planned trade
   server.tool(
     'dwlf_confirm_trade',

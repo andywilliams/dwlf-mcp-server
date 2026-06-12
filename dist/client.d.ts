@@ -12,5 +12,6 @@ export declare class DWLFClient {
     post<T = unknown>(path: string, data?: Record<string, unknown>): Promise<T>;
     put<T = unknown>(path: string, data?: Record<string, unknown>): Promise<T>;
     delete<T = unknown>(path: string, params?: Record<string, unknown>): Promise<T>;
+    patch<T = unknown>(path: string, data?: Record<string, unknown>): Promise<T>;
 }
 //# sourceMappingURL=client.d.ts.map

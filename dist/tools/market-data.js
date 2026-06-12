@@ -465,5 +465,31 @@ export function registerMarketDataTools(server, client) {
             };
         }
     });
+    // Cycle Setup Screener — "where should I look today", as a tool.
+    server.tool('dwlf_get_cycle_setups', 'The Cycle Setup Screener: universe-wide cross-reference of the WEEKLY cycle timing ' +
+        'window with DAILY cycle confirmation, both sides, ranked best-first. Stages: ' +
+        '`confirmed_setup` (weekly window open AND daily pivot confirmed fresh <=15d — the ' +
+        'multi-timeframe trigger has fired), `awaiting_confirmation` (daily pivot provisional, ' +
+        'confidence % included), `window_open` (timing window open, no daily signal yet). ' +
+        'Each row: weekly window position (early/mid/late + days-since-pivot vs the symbol\'s ' +
+        'own median cycle length), daily pivot price/confidence/freshness, last close and ' +
+        '% from pivot (the entry-freshness number — fresher entries pay less confirmation tax). ' +
+        'Start daily market reviews here: the long/short counts alone summarise the universe ' +
+        'regime (e.g. 9 long vs 33 short = late-cycle topping). Reads the persistent cycle FSM ' +
+        'state — exactly what the cycle engine itself sees. ' +
+        'UI equivalent: https://www.dwlf.co.uk/screener', {}, async () => {
+        try {
+            const data = await client.get('/screener/cycle-setups');
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
 }
 //# sourceMappingURL=market-data.js.map
