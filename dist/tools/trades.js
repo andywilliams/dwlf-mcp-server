@@ -278,5 +278,132 @@ export function registerTradeTools(server, client) {
             };
         }
     });
+    // 11. Counterfactual scorecard for skipped trades
+    server.tool('dwlf_get_skip_outcomes', 'The Counterfactual scorecard: what would have happened had each SKIPPED trade been ' +
+        'taken. Every skip is replayed against daily candles from its signal date using the ' +
+        'decision-time-frozen entry/SL/TP (pre-registered — no hindsight bias). Per outcome: ' +
+        'status (`would_be_stopped` capped at exactly -1R / `would_hit_target` / `running` = open ' +
+        'mark), `counterfactualR`, `savedR` (= -R: positive means the skip SAVED money), move %, ' +
+        'MFE/MAE in R, skip reasons + note. Aggregates: per-skip-reason and per-strategy rollups ' +
+        'plus the cumulative saved-R series ("is the discretionary overlay adding edge"). ' +
+        'Assumes MECHANICAL execution of the planned levels — no discretionary management; ' +
+        'same-bar stop+target counts the stop first (flagged `ambiguousBar`). ' +
+        'Pairs with dwlf_list_trades(status:"skipped") and dwlf_skip_trade. ' +
+        'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual', {}, async () => {
+        try {
+            const data = await client.get('/trades/skip-outcomes');
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 12. Decision-quality ledger (takes + skips judged together)
+    server.tool('dwlf_get_decision_stats', 'The decision-quality ledger: TAKES (confirmed trades, judged by actual outcomes — ' +
+        'closed realized R, open marks vs initial risk) and SKIPS (judged by the counterfactual ' +
+        'replay) joined into one record. Returns: the 2x2 decision `matrix` (tookRight/tookWrong/' +
+        'skipRight/skipWrong, with open takes and running skips as unjudged open counts), ' +
+        '`byStrategy` records (W/L, net realized R, net open R, skips + saved R), and per-reason ' +
+        'hit rates for BOTH vocabularies (`byConfirmReason`, `bySkipReason`) — use these to tell ' +
+        'the user which of their stated reasons carry alpha (e.g. "your regime_risk_off skips ' +
+        'are 3-for-3, +3R saved"). Honesty: only resolved outcomes are judged; paper trades ' +
+        'excluded; legacy trades without a genuine numeric R are judged by P&L sign and counted ' +
+        'in `rUnknown` (they contribute no R magnitude). ' +
+        'UI equivalent: https://www.dwlf.co.uk/trades/decisions', {}, async () => {
+        try {
+            const data = await client.get('/trades/decision-stats');
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 12. Confirm (take) a planned trade
+    server.tool('dwlf_confirm_trade', 'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
+        'Only trades with status "planned" can be confirmed. By default it opens at the ' +
+        'planned entryPrice / positionSize and stamps entryAt=now; override any of them to ' +
+        'reflect your actual fill. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
+        'trade is being taken (the symmetric twin of skip reasons; feeds the Counterfactual ' +
+        'scorecard / 2x2 decision analytics). Valid confirmReasons: fresh_cycle_entry, ' +
+        'trendline_break_confirmed, cluster_confluence, regime_aligned, ' +
+        'risk_reward_attractive, adding_to_winner, other. confirmNote is required when a ' +
+        'reason is "other". Reasons are optional (untagged confirms still work) but every ' +
+        'untagged confirm is decision-analytics data lost. Pair with dwlf_skip_trade to ' +
+        'pass instead. Find planned trades via dwlf_list_trades(status: "planned").', {
+        tradeId: z.string().describe('Planned trade ID to confirm/take'),
+        entryPrice: z.number().optional().describe('Actual entry/fill price (defaults to the planned entryPrice)'),
+        positionSize: z.number().optional().describe('Actual position size / quantity (defaults to the planned size)'),
+        entryAt: z.string().optional().describe('Entry timestamp, ISO 8601 (defaults to now)'),
+        confirmReasons: z
+            .array(z.string())
+            .optional()
+            .describe('WHY the trade is taken (multi-select; see tool description for the valid set). First = primary.'),
+        confirmNote: z.string().optional().describe('Entry rationale note (max 500 chars). Required when a reason is "other".'),
+    }, async ({ tradeId, entryPrice, positionSize, entryAt, confirmReasons, confirmNote }) => {
+        try {
+            const body = {};
+            if (entryPrice !== undefined)
+                body.entryPrice = entryPrice;
+            if (positionSize !== undefined)
+                body.positionSize = positionSize;
+            if (entryAt)
+                body.entryAt = entryAt;
+            if (confirmReasons && confirmReasons.length)
+                body.confirmReasons = confirmReasons;
+            if (confirmNote)
+                body.confirmNote = confirmNote;
+            const data = await client.post(`/trades/${tradeId}/confirm`, body);
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
+    // 13. Skip (pass on) a planned trade
+    server.tool('dwlf_skip_trade', 'Skip (pass on) a confirm-mode PLANNED trade, recording WHY. Moves it to status ' +
+        '"skipped" with skipReasons[] + an optional skipNote — this feeds the skip journal / ' +
+        'scorecard (dwlf_list_trades(status: "skipped")). Only planned trades can be skipped. ' +
+        'Valid skipReasons: entry_extended_from_anchor, risk_reward_poor, thesis_already_played_out, ' +
+        'low_conviction_signal, regime_risk_off, correlated_exposure, account_drawdown_pause, ' +
+        'broker_access, other. skipNote is REQUIRED when a reason is "other". The first reason is ' +
+        'treated as primary. Pair with dwlf_confirm_trade to take it instead.', {
+        tradeId: z.string().describe('Planned trade ID to skip'),
+        skipReasons: z
+            .array(z.string())
+            .min(1)
+            .describe('One or more skip reason codes (see tool description for the valid set). First = primary.'),
+        skipNote: z.string().optional().describe('Free-text rationale (max 500 chars). Required when a reason is "other".'),
+    }, async ({ tradeId, skipReasons, skipNote }) => {
+        try {
+            const body = { skipReasons };
+            if (skipNote)
+                body.skipNote = skipNote;
+            const data = await client.post(`/trades/${tradeId}/skip`, body);
+            return {
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+            };
+        }
+        catch (error) {
+            return {
+                content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true,
+            };
+        }
+    });
 }
 //# sourceMappingURL=trades.js.map

@@ -99,5 +99,9 @@ export class DWLFClient {
         const response = await this.http.delete(path, this.buildParamsConfig(params));
         return response.data;
     }
+    async patch(path, data) {
+        const response = await this.http.patch(path, data);
+        return response.data;
+    }
 }
 //# sourceMappingURL=client.js.map
