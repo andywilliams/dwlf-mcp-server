@@ -158,6 +158,12 @@ export function registerMarketDataTools(
       'Filter by a single `symbol` or a `symbols` watchlist, by `type` (e.g. `cycle.low.confirmed`), ' +
       'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
       'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
+      '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
+      'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
+      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+      'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
+      'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
+      'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
       '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
       'cycle pivots, swing points, MA/EMA crosses, S&R level fires and trendline breaks each carry the price at the event date. ' +
       'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.',
@@ -219,8 +225,11 @@ export function registerMarketDataTools(
         .optional()
         .describe(
           'Filter to fires of a specific custom event by its event definition ID. ' +
-            'Only honoured when `type` is `custom_event`. Combine with `symbol` / `symbols` ' +
-            'to scope to a single asset, or omit to see fires across the watchlist.'
+            'Only honoured when `type` is `custom_event` (the tool defaults `type` to `custom_event` ' +
+            'when you set this and leave `type` unset). The tool auto-follows pagination for this scoped ' +
+            'query and returns the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
+            '`fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
+            'Combine with `symbol` / `symbols` to scope to a single asset, or omit to see fires across the watchlist.'
         ),
       eventName: z
         .string()
@@ -238,20 +247,66 @@ export function registerMarketDataTools(
             ? symbols.map((s) => normalizeSymbol(s)).join(',')
             : undefined;
 
-        const data = await client.get('/events', {
-          symbol: sym,
-          symbols: symsCsv,
-          type,
-          timeframe,
-          days,
-          fromDate,
-          toDate,
-          // Backend reads `uniquePerSymbol === 'true'`, so serialise to string.
-          uniquePerSymbol: uniquePerSymbol === undefined ? undefined : String(uniquePerSymbol),
-          limit,
-          customEventId,
-          eventName,
-        });
+        // A scoped query (a specific custom event by id/name) is a sparse
+        // match inside a paginated partition scan: each page returns up to
+        // `limit` SCANNED rows post-filtered + a `cursor`, so page 1 holds only
+        // the MOST RECENT matches. Reading one page silently undercounts the
+        // event's history (looks like "8 fires" when it fired every cycle for
+        // years). For scoped queries we auto-follow the cursor and return the
+        // COMPLETE set; other queries stay single-page (their `cursor` tells the
+        // caller to follow it). `customEventId`/`eventName` are only honoured for
+        // `type: 'custom_event'`, so default `type` to that when scoped and unset
+        // — otherwise the filter is ignored and we'd paginate ALL events.
+        const scoped = Boolean(customEventId || eventName);
+        const effectiveType = type ?? (scoped ? 'custom_event' : undefined);
+
+        const fetchPage = (cursor?: string) =>
+          client.get('/events', {
+            symbol: sym,
+            symbols: symsCsv,
+            type: effectiveType,
+            timeframe,
+            days,
+            fromDate,
+            toDate,
+            // Backend reads `uniquePerSymbol === 'true'`, so serialise to string.
+            uniquePerSymbol: uniquePerSymbol === undefined ? undefined : String(uniquePerSymbol),
+            // Scoped: request the backend max per page to minimise round-trips
+            // (matches are sparse). Otherwise honour the caller's limit.
+            limit: scoped ? 200 : limit,
+            customEventId,
+            eventName,
+            cursor,
+          });
+
+        let data = await fetchPage();
+        let autoPaginated = false;
+        let pagesFetched = 1;
+        let pageCapHit = false;
+
+        if (scoped && data && typeof data === 'object' && !Array.isArray(data)) {
+          const record = data as Record<string, unknown>;
+          const acc: unknown[] = Array.isArray(record.events) ? [...(record.events as unknown[])] : [];
+          let cursor = (record.cursor as string | null | undefined) ?? null;
+          const MAX_PAGES = 40; // backstop (~8k scanned rows); real events never approach this
+          while (cursor && pagesFetched < MAX_PAGES) {
+            // eslint-disable-next-line no-await-in-loop
+            const page = await fetchPage(cursor);
+            pagesFetched += 1;
+            autoPaginated = true;
+            if (page && typeof page === 'object' && !Array.isArray(page)) {
+              const pageRecord = page as Record<string, unknown>;
+              if (Array.isArray(pageRecord.events)) acc.push(...(pageRecord.events as unknown[]));
+              cursor = (pageRecord.cursor as string | null | undefined) ?? null;
+            } else {
+              cursor = null;
+            }
+          }
+          if (cursor) pageCapHit = true;
+          // Honour the caller's `limit` as a TOTAL cap when they set one.
+          const finalEvents = limit !== undefined ? acc.slice(0, limit) : acc;
+          data = { ...record, events: finalEvents, cursor: pageCapHit ? cursor : null };
+        }
 
         // Echo back the effective filter set so agents can see *what window
         // they actually got*. The 7-day default has bitten multiple sessions
@@ -263,7 +318,7 @@ export function registerMarketDataTools(
         const filtersApplied: Record<string, unknown> = {};
         if (sym) filtersApplied.symbol = sym;
         if (symsCsv) filtersApplied.symbols = symsCsv.split(',');
-        if (type) filtersApplied.type = type;
+        if (effectiveType) filtersApplied.type = effectiveType;
         if (timeframe) filtersApplied.timeframe = timeframe;
         if (days !== undefined) filtersApplied.days = days;
         if (fromDate) filtersApplied.fromDate = fromDate;
@@ -277,6 +332,17 @@ export function registerMarketDataTools(
         if (uniquePerSymbol !== undefined) filtersApplied.uniquePerSymbol = uniquePerSymbol;
         if (customEventId) filtersApplied.customEventId = customEventId;
         if (eventName) filtersApplied.eventName = eventName;
+        if (scoped) {
+          // Surface that the scoped query was auto-paginated to completeness,
+          // and flag if it stopped at the page cap (rare — narrow the window).
+          filtersApplied.autoPaginated = autoPaginated;
+          filtersApplied.pagesFetched = pagesFetched;
+          if (pageCapHit) {
+            filtersApplied.incomplete = true;
+            filtersApplied.paginationHint =
+              'Hit the auto-pagination page cap — results may be incomplete. Narrow with fromDate/toDate to fetch the rest.';
+          }
+        }
 
         // Preserve the backend's existing top-level shape; just splice
         // filtersApplied alongside it. Keeps existing parsers working.
