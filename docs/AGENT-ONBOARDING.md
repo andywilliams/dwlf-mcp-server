@@ -190,6 +190,12 @@ curl https://api.dwlf.co.uk/v2/account \
 
 This returns your account details including `accountId`.
 
+### "An event query returns fewer fires than expected (e.g. only the 2 most recent)"
+
+**Cause**: `/v2/events` (and the `dwlf_get_events` tool) is **paginated** and defaults to a **7-day** window. A response is a single page (up to `limit` rows) plus a `cursor`; when filtered by `customEventId`/`eventName`, the matches on page 1 are only the *most recent* — older fires sit on later pages. Reading one page silently undercounts an event's history (looks like "8 fires" when it fired every cycle for years).
+
+**Solution**: To get an event's full history, (a) widen the window — pass `days=2000` or explicit `fromDate`/`toDate`, not the 7-day default — **and** (b) follow the `cursor` until it's null (or use a tight date window). The `dwlf_get_events` MCP tool **auto-follows the cursor** for `customEventId`/`eventName`-scoped queries and returns the complete set (see `filtersApplied.autoPaginated`/`pagesFetched`), but you still must widen the window. Never infer a count or "oldest fire" date from a single un-paginated page.
+
 ## Example: Full Agent Setup Script
 
 ```bash
