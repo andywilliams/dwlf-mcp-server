@@ -78,6 +78,34 @@ export class DWLFClient {
       },
       timeout: 30000,
     });
+
+    // Surface the backend's error message, not just axios's bare "Request
+    // failed with status code N". Every request method goes through this.http,
+    // so enriching here makes ALL tools report the real reason (e.g. a 400's
+    // "skipNote exceeds max length of 500 characters") via their `error.message`
+    // catch — instead of an opaque status code the agent has to guess at.
+    this.http.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (axios.isAxiosError(error) && error.response) {
+          const { status, data } = error.response;
+          const body = data as unknown;
+          let detail: string | undefined;
+          if (body && typeof body === 'object') {
+            const obj = body as Record<string, any>;
+            detail =
+              obj.error?.message ||
+              obj.message ||
+              (typeof obj.error === 'string' ? obj.error : undefined) ||
+              JSON.stringify(obj).slice(0, 300);
+          } else if (typeof body === 'string' && body.trim()) {
+            detail = body.slice(0, 300);
+          }
+          error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   /**
