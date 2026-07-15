@@ -35,8 +35,11 @@ jobs:
       - name: Upgrade npm to a version that supports Trusted Publishing
         # OIDC trusted publishing requires npm >= 11.5.1. Node 20 ships
         # with npm 10.x which would silently fall back to expecting
-        # NODE_AUTH_TOKEN and 404 on publish.
-        run: npm install -g npm@latest
+        # NODE_AUTH_TOKEN and 404 on publish. Pin an EXACT version rather than
+        # @latest: npm@12 dropped Node 20 support, so once @latest advanced to 12
+        # this step broke with EBADENGINE. 11.5.1 is the trusted-publishing floor
+        # that still runs on the Node 20 this workflow uses.
+        run: npm install -g npm@11.5.1
 
       - name: Install dependencies
         run: npm ci
