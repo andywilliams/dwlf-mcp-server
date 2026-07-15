@@ -366,11 +366,31 @@ export function registerTradeTools(
       'are 3-for-3, +3R saved"). Honesty: only resolved outcomes are judged; paper trades ' +
       'excluded; legacy trades without a genuine numeric R are judged by P&L sign and counted ' +
       'in `rUnknown` (they contribute no R magnitude). ' +
-      'UI equivalent: https://www.dwlf.co.uk/trades/decisions',
-    {},
-    async () => {
+      'UI equivalent: https://www.dwlf.co.uk/trades/decisions. ' +
+      'Optional recent-window scope — `months` (last N months) or `fromDate` (YYYY-MM-DD); omit for all-time. ' +
+      'A growing skip history dilutes the current-form read, so scope to e.g. months=12 for "recent" decisions. ' +
+      '`meta.window` echoes the applied scope.',
+    {
+      months: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Scope the ledger to the last N months (recent-form read). Omit = all-time.'),
+      fromDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD')
+        .optional()
+        .describe('Scope to decisions on/after this date (YYYY-MM-DD). Takes precedence over months. Omit = all-time.'),
+    },
+    async ({ months, fromDate }) => {
       try {
-        const data = await client.get('/trades/decision-stats');
+        // Build params conditionally (matches dwlf_list_trades below) so the
+        // all-time default is self-evident, not reliant on the client dropping undefined.
+        const params: Record<string, unknown> = {};
+        if (months !== undefined) params.months = months;
+        if (fromDate) params.fromDate = fromDate;
+        const data = await client.get('/trades/decision-stats', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
