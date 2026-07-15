@@ -156,6 +156,17 @@ export class DWLFClient {
     return response.data;
   }
 
+  // DELETE with a request BODY (not query params). Some endpoints read the
+  // symbol/tag from the parsed JSON body (e.g. removeSymbolTag) rather than the
+  // query string, so `delete()`'s param-only form wouldn't reach them.
+  async deleteWithBody<T = unknown>(
+    path: string,
+    data?: Record<string, unknown>
+  ): Promise<T> {
+    const response = await this.http.delete<T>(path, { data });
+    return response.data;
+  }
+
   async patch<T = unknown>(
     path: string,
     data?: Record<string, unknown>
