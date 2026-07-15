@@ -379,12 +379,18 @@ export function registerTradeTools(
         .describe('Scope the ledger to the last N months (recent-form read). Omit = all-time.'),
       fromDate: z
         .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD')
         .optional()
         .describe('Scope to decisions on/after this date (YYYY-MM-DD). Takes precedence over months. Omit = all-time.'),
     },
     async ({ months, fromDate }) => {
       try {
-        const data = await client.get('/trades/decision-stats', { months, fromDate });
+        // Build params conditionally (matches dwlf_list_trades below) so the
+        // all-time default is self-evident, not reliant on the client dropping undefined.
+        const params: Record<string, unknown> = {};
+        if (months !== undefined) params.months = months;
+        if (fromDate) params.fromDate = fromDate;
+        const data = await client.get('/trades/decision-stats', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
