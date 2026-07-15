@@ -54,7 +54,7 @@ export function registerMarketDataTools(
 
   // 1b. Get last-price quote(s) — the lightweight alternative to candles.
   //
-  // Unlike dwlf_get_market_data (raw OHLCV, JWT-only/403 for API keys), this
+  // Unlike dwlf_get_market_data (raw OHLCV, owner-account only — 403 for other API keys), this
   // returns ONLY the latest close + date and works for API-key callers on ANY
   // tracked symbol — including ones off your watchlist. Use it to mark a
   // position/skip to current price, or price a symbol the briefing doesn't
@@ -63,7 +63,7 @@ export function registerMarketDataTools(
     'dwlf_get_quote',
     'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
       'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
-      'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (JWT-only) ' +
+      'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
       'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
       'an arbitrary symbol. Unknown symbols come back with found:false (not an error).',
     {
@@ -574,7 +574,7 @@ export function registerMarketDataTools(
                     interpretation:
                       'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
                     limitations:
-                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (JWT-only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
+                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
                   },
                 },
                 null,
