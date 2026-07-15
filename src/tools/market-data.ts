@@ -9,30 +9,30 @@ export function registerMarketDataTools(
   // 1. Get OHLCV candle data
   server.tool(
     'dwlf_get_market_data',
-    'Get OHLCV candle data for a trading symbol. Returns open, high, low, close, volume over time. ' +
-      '⚠️ Returns 403 for external API-key callers — raw candles are JWT-only (Twelve Data licensing). ' +
-      'If you hit a 403, use `dwlf_get_price_picture(symbol, days)` for a pivot-based price narrative, ' +
-      'or `dwlf_get_events(symbol, timeframe="1d", days=N)` filtered to cycle pivots / swing points / MA crosses / S&R levels — ' +
-      'each event carries the price at its date and together they reconstruct price action without raw bars. ' +
-      'Reach for this tool only when you genuinely need bar-by-bar resolution (e.g. "did price touch $X intra-day on date D").',
+    'Get OHLCV candle data (open, high, low, close, volume) for a trading symbol at a chosen timeframe. ' +
+      'Reach for this when you need ACTUAL BARS — sweeps, ranges, exact intraday highs/lows, ' +
+      '"did price touch $X on date D", the close on a specific bar — rather than the pivot-based reconstruction ' +
+      'from `dwlf_get_price_picture` / `dwlf_get_events`. ' +
+      'Timeframes: `daily`, `weekly`, `hourly` (hourly is available only for symbols that have 1h data). ' +
+      'Gated to the owner account; other API keys get a 403 with a pivot-based fallback hint.',
     {
       symbol: z
         .string()
         .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
-      interval: z
-        .enum(['1d', '4h', '1h'])
+      timeframe: z
+        .enum(['daily', 'weekly', 'hourly'])
         .optional()
-        .describe('Candle interval (default: 1d)'),
+        .describe('Candle timeframe (default: daily). Hourly is available only for symbols with 1h data.'),
       limit: z
         .number()
         .optional()
-        .describe('Number of candles to return (default: 50)'),
+        .describe('Number of most-recent candles to return (default: 50)'),
     },
-    async ({ symbol, interval, limit }) => {
+    async ({ symbol, timeframe, limit }) => {
       try {
         const sym = normalizeSymbol(symbol);
         const data = await client.get(`/market-data/${sym}`, {
-          interval,
+          timeframe,
           limit,
         });
         return {
