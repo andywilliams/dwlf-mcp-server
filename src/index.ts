@@ -7,6 +7,7 @@ import { registerMarketDataTools } from './tools/market-data.js';
 import { registerIndicatorTools } from './tools/indicators.js';
 import { registerSignalTools } from './tools/signals.js';
 import { registerWatchlistTools } from './tools/watchlist.js';
+import { registerSymbolTagTools } from './tools/symbol-tags.js';
 import { registerStrategyTools } from './tools/strategies.js';
 import { registerBacktestTools } from './tools/backtests.js';
 import { registerPortfolioTools } from './tools/portfolio.js';
@@ -35,6 +36,7 @@ registerMarketDataTools(server, client);
 registerIndicatorTools(server, client);
 registerSignalTools(server, client);
 registerWatchlistTools(server, client);
+registerSymbolTagTools(server, client);
 
 // Register all tools — Phase 2 (read + write)
 registerStrategyTools(server, client);
