@@ -43,9 +43,28 @@ export function registerRangeTools(server: McpServer, client: DWLFClient) {
     },
     async ({ symbol, timeframe, state }) => {
       try {
+        // Trim once so a blank/whitespace symbol deterministically means LIST
+        // mode (normalizeSymbol(' ') would otherwise produce a bare /ranges/).
+        const sym = symbol?.trim();
+        // timeframe/state are LIST-mode filters — reject rather than silently
+        // drop them in symbol mode, so an agent asking "is BTC near the floor?"
+        // gets an unmistakable signal instead of an unfiltered answer.
+        if (sym && (timeframe || state)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'The `timeframe` / `state` filters apply to LIST mode only. Call WITHOUT `symbol` to filter the '
+                  + "list, or WITHOUT those filters to get this symbol's daily + weekly ranges.",
+              },
+            ],
+            isError: true,
+          };
+        }
         let data: unknown;
-        if (symbol) {
-          data = await client.get(`/ranges/${normalizeSymbol(symbol)}`);
+        if (sym) {
+          data = await client.get(`/ranges/${normalizeSymbol(sym)}`);
         } else {
           const params: Record<string, string> = {};
           if (timeframe) params.timeframe = timeframe;
