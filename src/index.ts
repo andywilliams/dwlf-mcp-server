@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DWLFClient } from './client.js';
 import { registerMarketDataTools } from './tools/market-data.js';
+import { registerRangeTools } from './tools/ranges.js';
 import { registerIndicatorTools } from './tools/indicators.js';
 import { registerSignalTools } from './tools/signals.js';
 import { registerWatchlistTools } from './tools/watchlist.js';
@@ -33,6 +34,7 @@ const client = new DWLFClient();
 
 // Register all tools — Phase 1 (read)
 registerMarketDataTools(server, client);
+registerRangeTools(server, client);
 registerIndicatorTools(server, client);
 registerSignalTools(server, client);
 registerWatchlistTools(server, client);
