@@ -64,7 +64,16 @@ export function registerTradeTools(
   // 3. Create trade
   server.tool(
     'dwlf_create_trade',
-    'Log a new trade in the journal. Specify symbol, direction, entry price, and optional stop loss / take profit.',
+    'Log a new trade in the journal. Specify symbol, direction, entry price, and optional stop loss / take profit. ' +
+      'STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the trade is being taken, in the same ' +
+      'structured vocabulary dwlf_confirm_trade uses, so a directly-logged trade feeds the ' +
+      'byConfirmReason decision analytics exactly like a confirmed planned one. Valid ' +
+      'confirmReasons: fresh_cycle_entry, trendline_break_confirmed, cluster_confluence, ' +
+      'regime_aligned, risk_reward_attractive, adding_to_winner, other. confirmNote is required ' +
+      'when a reason is "other". Reasons are optional (untagged trades still log) but every ' +
+      'untagged entry is decision-analytics data lost — and unlike a skip, it cannot be ' +
+      'reconstructed later. reasonText is the free-text thesis and does NOT substitute: no ' +
+      'rollup can read it.',
     {
       symbol: z.string().describe('Trading symbol (e.g. BTC, TSLA, RIOT)'),
       direction: z.enum(['long', 'short']).describe('Trade direction'),
@@ -73,11 +82,22 @@ export function registerTradeTools(
       initialStop: z.number().optional().describe('Stop loss price'),
       initialTakeProfit: z.number().optional().describe('Take profit price'),
       timeframe: z.string().optional().describe('Timeframe (e.g. 1d, 4h, 1h)'),
-      reasonText: z.string().optional().describe('Trade reasoning / thesis'),
+      reasonText: z.string().optional().describe('Free-text trade reasoning / thesis. Not machine-readable — use confirmReasons for analytics.'),
+      confirmReasons: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'WHY this trade is being taken. Valid: fresh_cycle_entry, trendline_break_confirmed, ' +
+            'cluster_confluence, regime_aligned, risk_reward_attractive, adding_to_winner, other.'
+        ),
+      confirmNote: z
+        .string()
+        .optional()
+        .describe('Free-text detail on the entry rationale. REQUIRED when a reason is "other". Max 2000 chars.'),
       isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade (default: false)'),
       assetType: z.enum(['crypto', 'equity', 'forex']).optional().describe('Asset type'),
     },
-    async ({ symbol, direction, entryPrice, positionSize, initialStop, initialTakeProfit, timeframe, reasonText, isPaperTrade, assetType }) => {
+    async ({ symbol, direction, entryPrice, positionSize, initialStop, initialTakeProfit, timeframe, reasonText, confirmReasons, confirmNote, isPaperTrade, assetType }) => {
       try {
         const body: Record<string, unknown> = {
           assetSymbol: normalizeSymbol(symbol),
@@ -90,6 +110,11 @@ export function registerTradeTools(
         if (initialTakeProfit !== undefined) body.initialTakeProfit = initialTakeProfit;
         if (timeframe) body.timeframe = timeframe;
         if (reasonText) body.reasonText = reasonText;
+        // Sent only when non-empty so an untagged trade leaves the attributes
+        // absent rather than writing an empty array — "no reason recorded" and
+        // "recorded as none" stay distinguishable in the ledger.
+        if (confirmReasons?.length) body.confirmReasons = confirmReasons;
+        if (confirmNote) body.confirmNote = confirmNote;
         if (isPaperTrade !== undefined) body.isPaperTrade = isPaperTrade;
         if (assetType) body.assetType = assetType;
 
