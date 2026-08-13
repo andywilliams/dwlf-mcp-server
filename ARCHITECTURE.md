@@ -85,9 +85,8 @@ A reviewer should be able to test a diff against each of these:
    `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
-   URL against `api.dwlf.co.uk` *(inferred
-   from: `src/client.ts:77` is the only place `Authorization` is set — **verified 2026-08-13, one
-   occurrence in `src/`)*.
+   URL against `api.dwlf.co.uk` *(verified 2026-08-13: `src/client.ts:77` is the only place
+   `Authorization` is set — one occurrence in all of `src/`)*.
    ⚠️ **"`academy.ts` is the only tool importing axios" would be wrong** — `src/tools/backtests.ts`
    imports it too, but **only for `axios.isAxiosError()` when narrowing a 409**, never to make a
    request *(verified 2026-08-13)*. ⇒ **Importing axios is not the test; making a request is.** A
@@ -109,7 +108,12 @@ A reviewer should be able to test a diff against each of these:
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
    only; publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
-   `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment; `.gitignore` `.env*`)*.
+   `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
+   🛑 **The `.gitignore` env rules have a hole** *(verified 2026-08-13)*: they are `.env`, `.env.local`
+   and `.env.*.local` — **not** `.env*`. So `.env.production`, `.env.staging` or any `.env.<name>`
+   without a `.local` suffix is **not ignored** and would be committed by `git add -A`. In a **public**
+   repo. ⇒ Widening line 22 to `.env*` is a one-character-class fix; until then this invariant rests on
+   nobody having created the wrong filename.
    ⚠️ **Deliberately NOT phrased as "no credentials in the repo"** — that is a stronger claim than the
    evidence supports, and this repo commits 3,950 `node_modules` files nobody has scanned. The
    reviewable check is *does this diff read a secret from a file rather than the environment?*, which
@@ -166,7 +170,7 @@ decision means. Where an entry names its own fix, that fix is available to anyon
 - **`node_modules/` is committed** — 3,950 tracked files, present since the first commit `eeb388e`,
   despite `.gitignore` listing `node_modules/` *(inferred from: `git ls-tree -r HEAD | grep
   '^node_modules/'` = 3950)*.
-  🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **currently out of sync with `src/`** (15 modified in the working tree).
+  🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **was out of sync with `src/` when checked** (15 modified `dist/` files in the working tree on 2026-08-13) — a working-tree observation, not a durable property: the point is that nothing keeps them in sync, not that they are drifted right now.
   ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball — so this is hygiene, not a shipping defect. `git rm -r --cached` is the fix for both. ⚠️ **Say so when you do it**: the `bin` entry points at `./dist/index.js`, so anyone running from a clone rather than the published package needs a build afterwards, and "it broke when you deleted dist" is the predictable complaint.
 - *(`dist/` is covered by the `node_modules/` entry above — same cause, same fix, same caveat about `bin` pointing at `./dist/index.js`.)*
 - **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
@@ -181,8 +185,7 @@ decision means. Where an entry names its own fix, that fix is available to anyon
 *(These are NOT accepted debt. Each is a decision Andy has taken; reviews may raise them as
 work-in-progress, and a diff that moves toward them is conformant.)*
 
-- **Backend envelope variance is inherited, not normalised** (`data` / `results` / bare objects) —
-  unification deferred rather than papered over in this repo *(inferred from: pass-through pattern in
+- **Backend envelope variance — TO BE STANDARDISED UPSTREAM** *(decided 2026-08-13)*. Until it is, this repo inherits the variance (`data` / `results` / bare objects) rather than papering over it locally *(inferred from: pass-through pattern in
   `src/tools/*`; the handbook's response-wrapping audit, 87% already `data`)*.
   ⚠️ **`manifest` is deliberately excluded from that list**: it is the *Academy CDN's* shape, not the
   DWLF API's, and the two outbound paths must not be conflated. ⇒ **Standardising SPT's envelopes will
