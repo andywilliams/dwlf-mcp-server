@@ -81,9 +81,9 @@ A reviewer should be able to test a diff against each of these:
    across `src/`; `src/client.ts` docstring)*.
 2. **Responses are passed through, not re-enveloped.** Tools return `JSON.stringify(<backend data>)`;
    enrichment is *additive* alongside the backend shape (`agentHints`, `filtersApplied`), never a
-   ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop each handling the variance. ⇒ **A diff that centralises unwrapping is not violating this invariant — it is delivering the decision.** Until then, pass-through remains correct, because a partial normalisation is worse than none.
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
+   ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(inferred
    from: `src/client.ts` is the only place `Authorization` is set; `academy.ts` is the only tool file
@@ -121,10 +121,14 @@ A reviewer should be able to test a diff against each of these:
   trusted-publisher config on npmjs.com authorises this repo+workflow with a short-lived
   GitHub-issued token instead of a stored secret *(inferred from: `publish.yml` permissions comment;
   PR #32)*.
-- **2026-05-27 — ship a hand-maintained catalog of executor node semantics rather than deriving it**
-  — because "an agent (or a user) can ask 'what does this SL node actually do at runtime?' without
-  having to read engine code"; it is "INTENTIONALLY informational" and updated when the executor
-  changes *(inferred from: `src/data/strategyNodeMetadata.ts` header; PR #40)*.
+- ~~**2026-05-27 — ship a hand-maintained catalog of executor node semantics rather than deriving it**~~
+  🛑 **SUPERSEDED 2026-08-13 (Andy): the catalog becomes API-served — see *Outstanding decisions*.**
+  The original reasoning still stands and is worth keeping, because it says what the replacement must
+  preserve: "an agent (or a user) can ask 'what does this SL node actually do at runtime?' without
+  having to read engine code"; it was "INTENTIONALLY informational" and updated when the executor
+  changed *(inferred from: `src/data/strategyNodeMetadata.ts` header; PR #40)*.
+  ⇒ **What failed was not the idea but the mechanism**: "updated when the executor changes" is a
+  promise no code enforces, and five doc-drift PRs are the receipts.
 - **2026-05-27 → 2026-06 — heavy endpoints default to the light view** (`dwlf_get_backtest_results`
   `summary=true`, `dwlf_list_backtests` summary, daily briefing compact/overview) — because the full
   payload is "~1-3 MB" of per-symbol equity curves that "torches context budget when an agent only
@@ -144,9 +148,11 @@ A reviewer should be able to test a diff against each of these:
 
 ## Accepted debt
 
-*(Entries here are settled: reviews should stop raising them. **Decided-but-unbuilt work belongs under
-*Outstanding decisions* below, not here** — a charter that files pending work as "accepted" quietly
-licenses it forever, which is the opposite of what a decision means.)*
+*(Entries here are **tolerated**, not endorsed: reviews should stop *raising* them, and none blocks a
+diff. **Decided-but-unbuilt work belongs under *Outstanding decisions* below, not here** — a charter
+that files pending work as "accepted" quietly licenses it forever, which is the opposite of what a
+decision means. Where an entry names its own fix, that fix is available to anyone passing through;
+"accepted" means nobody is obliged to do it, not that doing it would be unwelcome.)*
 
 - **`node_modules/` is committed** — 3,950 tracked files, present since the first commit `eeb388e`,
   despite `.gitignore` listing `node_modules/` *(inferred from: `git ls-tree -r HEAD | grep
@@ -157,8 +163,6 @@ licenses it forever, which is the opposite of what a decision means.)*
 - **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
   `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
   vs `package.json`; `server.tool(` count)*.
-- **The strategy-node catalog can silently drift from the executor** — it is corrected by hand after
-  the fact *(inferred from: PRs #43, #44, #47, #48, #50, all titled as catalog/doc-drift fixes)*.
 - **Manual, one-bump-per-PR versioning** with no semantic-release; a missed bump merges but never
   ships *(inferred from: `publish.yml` skip-if-published; PR #46 "bump to 0.29.1 to publish annotation
   tool fix (#45)")*.
@@ -174,7 +178,6 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   🛑 **DECIDED 2026-08-13 (Andy): standardise the envelope, and review the API shape generally** — "I definitely would like to standardise the envelope… we probably need to do a review of the API shape in general".
   ⇒ **This is NOT this repo's debt to accept, and it supersedes a line in SPT's charter**, which currently records inconsistent envelopes as accepted debt under a *match-the-neighbouring-endpoint* rule. That rule was correct while nobody intended to fix it; it is now superseded by a decision to unify.
   ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
-  confirm the deferral target ("v3") is a real decision and not just an audit note.
 - ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
   curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
 
