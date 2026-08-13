@@ -69,7 +69,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   #47, #48, #50)*.
 - **npm + GitHub Actions OIDC** for release *(inferred from: `.github/workflows/publish.yml`)*.
 
-**The Academy CDN is a real SECOND outbound contract, and it bypasses `DWLFClient` entirely** *(verified 2026-08-13)*. `src/tools/academy.ts` imports `axios` directly and calls `https://academy.dwlf.co.uk/live` — hard-coded at `:5`, fetched at `:38` and `:99`, 404-checked inline at `:109` — so it carries **no API key, no auth, and none of the client's shared error/retry handling**. ⇒ **This repo has two outbound dependencies, not one**: the authenticated DWLF API via `DWLFClient`, and an unauthenticated public CDN. A reader assuming everything goes through `DWLFClient` is wrong about the whole academy tool surface. **DECIDED 2026-08-13 (Andy): it IS a contract.** The academy exists to teach a fresh agent what DWLF is and how to use it — "we just want to teach agents that come to DWLF fresh what DWLF is all about" — so it is a first-class dependency, not opportunistic reuse. `dwlf-academy-content` owns the schema.
+**DECIDED 2026-08-13 (Andy): the Academy CDN IS a contract**, not opportunistic reuse. The academy exists to teach a fresh agent what DWLF is and how to use it — "we just want to teach agents that come to DWLF fresh what DWLF is all about" — so it is a first-class dependency, not opportunistic reuse. `dwlf-academy-content` owns the schema *(Andy, 2026-08-13 — a statement of intent about another repo; **not verified in that repo**, which has not been chartered)*.
 ⚠️ **Recorded pushback, accepted by Andy: it does not yet LOOK like a contract.** A hardcoded URL fetched with bare `axios`, no auth, no shared retry and an inline 404 check means that if `academy.dwlf.co.uk/live` moved or changed shape, this repo would break at runtime with nothing declaring the relationship. ⇒ **Calling it a contract is the decision; making the code express one is outstanding work** — a named schema owner and a versioned or discoverable manifest, so a consumer can tell that content changed.
 
 ## Invariants
@@ -109,11 +109,13 @@ A reviewer should be able to test a diff against each of these:
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
    only; publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
-   🛑 **The `.gitignore` env rules have a hole** *(verified 2026-08-13)*: they are `.env`, `.env.local`
-   and `.env.*.local` — **not** `.env*`. So `.env.production`, `.env.staging` or any `.env.<name>`
-   without a `.local` suffix is **not ignored** and would be committed by `git add -A`. In a **public**
-   repo. ⇒ Widening line 22 to `.env*` is a one-character-class fix; until then this invariant rests on
-   nobody having created the wrong filename.
+   ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
+   `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any
+   `.env.<name>` without a `.local` suffix was **not ignored**, and `git add -A` would have committed
+   it to a **public** repo. Now `.env*` with `!.env.example` *(verified: `git check-ignore -v
+   .env.production` matches)*. ⇒ Fixed rather than filed, against this session's document-don't-fix
+   rule, because **documenting a credential-exposure hole while leaving it open is worse than not
+   finding it** when the fix is one character class.
    ⚠️ **Deliberately NOT phrased as "no credentials in the repo"** — that is a stronger claim than the
    evidence supports, and this repo commits 3,950 `node_modules` files nobody has scanned. The
    reviewable check is *does this diff read a secret from a file rather than the environment?*, which
@@ -172,7 +174,6 @@ decision means. Where an entry names its own fix, that fix is available to anyon
   '^node_modules/'` = 3950)*.
   🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **was out of sync with `src/` when checked** (15 modified `dist/` files in the working tree on 2026-08-13) — a working-tree observation, not a durable property: the point is that nothing keeps them in sync, not that they are drifted right now.
   ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball — so this is hygiene, not a shipping defect. `git rm -r --cached` is the fix for both. ⚠️ **Say so when you do it**: the `bin` entry points at `./dist/index.js`, so anyone running from a clone rather than the published package needs a build afterwards, and "it broke when you deleted dist" is the predictable complaint.
-- *(`dist/` is covered by the `node_modules/` entry above — same cause, same fix, same caveat about `bin` pointing at `./dist/index.js`.)*
 - **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
   `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
   vs `package.json`; `server.tool(` count)*.
