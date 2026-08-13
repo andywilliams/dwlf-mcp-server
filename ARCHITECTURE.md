@@ -85,8 +85,9 @@ A reviewer should be able to test a diff against each of these:
    `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
-   URL against `api.dwlf.co.uk` *(verified 2026-08-13: `src/client.ts:77` is the only place
-   `Authorization` is set — one occurrence in all of `src/`)*.
+   URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
+   the sole `Authorization` assignment in `src/`. The "no tool builds its own URL" half is
+   **not** mechanically verified — it is the rule this invariant asks a reviewer to apply.)*
    ⚠️ **"`academy.ts` is the only tool importing axios" would be wrong** — `src/tools/backtests.ts`
    imports it too, but **only for `axios.isAxiosError()` when narrowing a 409**, never to make a
    request *(verified 2026-08-13)*. ⇒ **Importing axios is not the test; making a request is.** A
@@ -187,13 +188,15 @@ decision means. Where an entry names its own fix, that fix is available to anyon
 work-in-progress, and a diff that moves toward them is conformant.)*
 
 - **Backend envelope variance — TO BE STANDARDISED UPSTREAM** *(decided 2026-08-13)*. Until it is, this repo inherits the variance (`data` / `results` / bare objects) rather than papering over it locally *(inferred from: pass-through pattern in
-  `src/tools/*`; the handbook's response-wrapping audit, 87% already `data`)*.
+  `src/tools/*`)*. *(from: the handbook's response-wrapping audit reports 87% of **SPT's own endpoints**
+  already using `data` — a figure about the producing repo, not about this one's tool returns, and
+  sourced outside this repo so it is the weakest grade here.)*
   ⚠️ **`manifest` is deliberately excluded from that list**: it is the *Academy CDN's* shape, not the
   DWLF API's, and the two outbound paths must not be conflated. ⇒ **Standardising SPT's envelopes will
   not touch the academy manifest** — that shape is `dwlf-academy-content`'s to own, and folding it into
   this decision would silently widen the work to a repo that has not agreed to it.
   🛑 **DECIDED 2026-08-13 (Andy): standardise the envelope, and review the API shape generally** — "I definitely would like to standardise the envelope… we probably need to do a review of the API shape in general".
-  ⇒ **This is NOT this repo's debt to accept, and it supersedes a line in SPT's charter**, which currently records inconsistent envelopes as accepted debt under a *match-the-neighbouring-endpoint* rule. That rule was correct while nobody intended to fix it; it is now superseded by a decision to unify.
+  ⇒ **This is NOT this repo's debt to accept, and it supersedes a line in SPT's charter** *(verified 2026-08-13: SPT's `ARCHITECTURE.md` records inconsistent envelopes as accepted debt; superseded there in SPT PR #581, so the two charters agree rather than conflict)*, which recorded them under a *match-the-neighbouring-endpoint* rule. That rule was correct while nobody intended to fix it; it is now superseded by a decision to unify.
   ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
 - ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
   curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
