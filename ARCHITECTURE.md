@@ -36,7 +36,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   a single `DWLFClient` is constructed at module load in `src/index.ts`)*.
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
-- **Hosting a remote/multi-user MCP endpoint** — stdio only today *(inferred from: `src/index.ts`
+- **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
   uses `StdioServerTransport`; no HTTP server code)*.
 
 ## Interfaces & dependencies
@@ -81,13 +81,15 @@ A reviewer should be able to test a diff against each of these:
    across `src/`; `src/client.ts` docstring)*.
 2. **Responses are passed through, not re-enveloped.** Tools return `JSON.stringify(<backend data>)`;
    enrichment is *additive* alongside the backend shape (`agentHints`, `filtersApplied`), never a
+   ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop each handling the variance. ⇒ **A diff that centralises unwrapping is not violating this invariant — it is delivering the decision.** Until then, pass-through remains correct, because a partial normalisation is worse than none.
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(inferred
    from: `src/client.ts` is the only place `Authorization` is set; `academy.ts` is the only tool file
    importing `axios`)*.
-   ⚠️ **The Academy CDN is NOT an exception to this — it is a second outbound path the invariant does not cover.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
+   ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
+   ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
    `isError: true` sites, one per tool)*.
@@ -151,9 +153,7 @@ licenses it forever, which is the opposite of what a decision means.)*
   '^node_modules/'` = 3950)*.
   🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **currently out of sync with `src/`** (15 modified in the working tree).
   ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball — so this is hygiene, not a shipping defect. `git rm -r --cached` is the fix for both. ⚠️ **Say so when you do it**: the `bin` entry points at `./dist/index.js`, so anyone running from a clone rather than the published package needs a build afterwards, and "it broke when you deleted dist" is the predictable complaint.
-- **`dist/` is committed** (60 files, also gitignored) and is currently out of sync with `src/`; the
-  published artifact is rebuilt by `prepublishOnly`/CI regardless *(inferred from: tracked `dist/*`;
-  working-tree shows modified `dist/` artifacts; `publish.yml` runs `npm run build`)*.
+- *(`dist/` is covered by the `node_modules/` entry above — same cause, same fix, same caveat about `bin` pointing at `./dist/index.js`.)*
 - **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
   `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
   vs `package.json`; `server.tool(` count)*.
