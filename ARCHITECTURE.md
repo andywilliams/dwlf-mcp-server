@@ -71,7 +71,6 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 
 **The Academy CDN is a real SECOND outbound contract, and it bypasses `DWLFClient` entirely** *(verified 2026-08-13)*. `src/tools/academy.ts` imports `axios` directly and calls `https://academy.dwlf.co.uk/live` — hard-coded at `:5`, fetched at `:38` and `:99`, 404-checked inline at `:109` — so it carries **no API key, no auth, and none of the client's shared error/retry handling**. ⇒ **This repo has two outbound dependencies, not one**: the authenticated DWLF API via `DWLFClient`, and an unauthenticated public CDN. A reader assuming everything goes through `DWLFClient` is wrong about the whole academy tool surface. **DECIDED 2026-08-13 (Andy): it IS a contract.** The academy exists to teach a fresh agent what DWLF is and how to use it — "we just want to teach agents that come to DWLF fresh what DWLF is all about" — so it is a first-class dependency, not opportunistic reuse. `dwlf-academy-content` owns the schema.
 ⚠️ **Recorded pushback, accepted by Andy: it does not yet LOOK like a contract.** A hardcoded URL fetched with bare `axios`, no auth, no shared retry and an inline 404 check means that if `academy.dwlf.co.uk/live` moved or changed shape, this repo would break at runtime with nothing declaring the relationship. ⇒ **Calling it a contract is the decision; making the code express one is outstanding work** — a named schema owner and a versioned or discoverable manifest, so a consumer can tell that content changed.
-> `dwlf-academy-content` owes us), or opportunistic reuse of a public URL?
 
 ## Invariants
 
@@ -85,9 +84,10 @@ A reviewer should be able to test a diff against each of these:
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
-   URL against `api.dwlf.co.uk`; the sole exception is the unauthenticated Academy CDN *(inferred
+   URL against `api.dwlf.co.uk` *(inferred
    from: `src/client.ts` is the only place `Authorization` is set; `academy.ts` is the only tool file
    importing `axios`)*.
+   ⚠️ **The Academy CDN is NOT an exception to this — it is a second outbound path the invariant does not cover.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
    `isError: true` sites, one per tool)*.
@@ -110,8 +110,6 @@ A reviewer should be able to test a diff against each of these:
   **Why it is right today:** two users, no multi-tenancy to build, no hosting to run, and the API key is simply an env var.
   🛑 **The trigger that ends it, stated so it is not rediscovered as a surprise: the moment a third-party agent should onboard without Andy in the loop, stdio is the blocker.** It sits in direct tension with this platform's agent-first onboarding goal (see SPT's charter): an agent can only reach the frictionless registration endpoint *after* installing a binary, setting an env var and editing a local MCP config — friction that no amount of smooth registration removes, because it happens first.
   ⇒ A hosted/remote MCP surface is what would make "arrive fresh and just use it" literally true, at the cost of transport, multi-tenant auth and hosting. **Not now; but when that trigger fires, this is a known decision being revisited, not a new question.**
-  confirm: no rationale is written anywhere in the repo; is stdio-only/one-account-per-process the
-  intended permanent posture? *(inferred from: `src/index.ts`, first commit `eeb388e`)*
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and
@@ -144,6 +142,10 @@ A reviewer should be able to test a diff against each of these:
 
 ## Accepted debt
 
+*(Entries here are settled: reviews should stop raising them. **Decided-but-unbuilt work belongs under
+*Outstanding decisions* below, not here** — a charter that files pending work as "accepted" quietly
+licenses it forever, which is the opposite of what a decision means.)*
+
 - **`node_modules/` is committed** — 3,950 tracked files, present since the first commit `eeb388e`,
   despite `.gitignore` listing `node_modules/` *(inferred from: `git ls-tree -r HEAD | grep
   '^node_modules/'` = 3950)*.
@@ -152,15 +154,6 @@ A reviewer should be able to test a diff against each of these:
 - **`dist/` is committed** (60 files, also gitignored) and is currently out of sync with `src/`; the
   published artifact is rebuilt by `prepublishOnly`/CI regardless *(inferred from: tracked `dist/*`;
   working-tree shows modified `dist/` artifacts; `publish.yml` runs `npm run build`)*.
-- ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
-  curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
-- **Backend envelope variance is inherited, not normalised** (`data` / `results` / `manifest` / bare
-  objects) — unification deferred rather than papered over in this repo *(inferred from: pass-through
-  pattern in `src/tools/*`; the handbook's response-wrapping audit, 87% already `data`)*.
-  🛑 **DECIDED 2026-08-13 (Andy): standardise the envelope, and review the API shape generally** — "I definitely would like to standardise the envelope… we probably need to do a review of the API shape in general".
-  ⇒ **This is NOT this repo's debt to accept, and it supersedes a line in SPT's charter**, which currently records inconsistent envelopes as accepted debt under a *match-the-neighbouring-endpoint* rule. That rule was correct while nobody intended to fix it; it is now superseded by a decision to unify.
-  ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
-  confirm the deferral target ("v3") is a real decision and not just an audit note.
 - **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
   `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
   vs `package.json`; `server.tool(` count)*.
@@ -169,6 +162,21 @@ A reviewer should be able to test a diff against each of these:
 - **Manual, one-bump-per-PR versioning** with no semantic-release; a missed bump merges but never
   ships *(inferred from: `publish.yml` skip-if-published; PR #46 "bump to 0.29.1 to publish annotation
   tool fix (#45)")*.
+
+## Outstanding decisions — decided 2026-08-13, not yet built
+
+*(These are NOT accepted debt. Each is a decision Andy has taken; reviews may raise them as
+work-in-progress, and a diff that moves toward them is conformant.)*
+
+- **Backend envelope variance is inherited, not normalised** (`data` / `results` / `manifest` / bare
+  objects) — unification deferred rather than papered over in this repo *(inferred from: pass-through
+  pattern in `src/tools/*`; the handbook's response-wrapping audit, 87% already `data`)*.
+  🛑 **DECIDED 2026-08-13 (Andy): standardise the envelope, and review the API shape generally** — "I definitely would like to standardise the envelope… we probably need to do a review of the API shape in general".
+  ⇒ **This is NOT this repo's debt to accept, and it supersedes a line in SPT's charter**, which currently records inconsistent envelopes as accepted debt under a *match-the-neighbouring-endpoint* rule. That rule was correct while nobody intended to fix it; it is now superseded by a decision to unify.
+  ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
+  confirm the deferral target ("v3") is a real decision and not just an audit note.
+- ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
+  curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
 
 ## Org context
 
@@ -188,5 +196,3 @@ A reviewer should be able to test a diff against each of these:
 ⭐ **The stronger case is `src/data/strategyNodeMetadata.ts` — 408 lines hand-mirroring `visualStrategyExecutor.js`'s `supportedNodes` in `dwlf-scheduled-jobs`, consumed by `src/tools/strategies.ts`. I could not cheaply verify it, and that IS the finding**: the two are structured differently (this file carries gates, signals and exits the executor handles outside `supportedNodes`) and the executor's block is not trivially delimited, so naive extraction yields garbage rather than an answer. ⇒ **A mirror whose correctness cannot be checked in one command will drift silently** — and five doc-drift PRs say it already has. That is an argument for an API-served catalog independent of anyone's view on duplication. **DECIDED 2026-08-13 (Andy): make it API-served — one source of truth** ("it sounds like we're repeating ourselves, and we want one source of truth if we can get it").
 ⚠️ **Scope it honestly: this is authoring, not wiring.** The executor knows *which* nodes exist and how to run them, but carries **no `description`, no `params` schema and no `notes`** — that prose exists only here. So API-serving means **moving that content upstream and building an endpoint**, not exposing something that already exists. It would also collapse a **fifth** description surface for node types, on top of the four-site registry SYSTEM.md already tracks.
 ⇒ **Cheap interim if the endpoint is deferred**: a test asserting every `nodeType` here exists in the executor's `supportedNodes`. That catches deletions and typos — not stale descriptions, which is the failure that has actually happened.
-> caps events client-side *(`src/tools/market-data.ts:540-580`)* — under API-first that logic arguably
-> belongs behind an endpoint so non-MCP clients get it too.
