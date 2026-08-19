@@ -231,30 +231,36 @@ export function registerTradeTools(
   // 7. Update trade
   server.tool(
     'dwlf_update_trade',
-    'Update an existing trade by ID. All fields except tradeId are optional (partial update).',
+    'Update an existing trade by ID. All fields except tradeId are optional (partial update). ' +
+      'symbol and tags are NOT editable — the backend has never accepted them, and offering them ' +
+      'meant a caller could set one and be told 200 while nothing changed. To change the levels on ' +
+      'an OPEN trade use this; to set them as the trade is taken, pass them to dwlf_confirm_trade ' +
+      'instead so it is one call.',
     {
       tradeId: z.string().describe('Trade ID'),
-      symbol: z.string().optional().describe('Trading symbol'),
       direction: z.enum(['long', 'short']).optional().describe('Trade direction'),
       entryPrice: z.number().optional().describe('Entry price'),
-      stopLoss: z.number().optional().describe('Stop loss price'),
-      takeProfit: z.number().optional().describe('Take profit price'),
-      quantity: z.number().optional().describe('Position size'),
+      stopLoss: z.number().optional().describe('Stop loss price (sent as initialStop)'),
+      takeProfit: z.number().optional().describe('Take profit price (sent as initialTakeProfit)'),
+      quantity: z.number().optional().describe('Position size (sent as positionSize)'),
       notes: z.string().optional().describe('Trade notes'),
-      tags: z.array(z.string()).optional().describe('Tags for the trade'),
       isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
     },
-    async ({ tradeId, symbol, direction, entryPrice, stopLoss, takeProfit, quantity, notes, tags, isPaperTrade }) => {
+    async ({ tradeId, direction, entryPrice, stopLoss, takeProfit, quantity, notes, isPaperTrade }) => {
       try {
+        // The friendly names above are the tool's INPUT vocabulary; the API's
+        // whitelist is initialStop / initialTakeProfit / positionSize. Sending
+        // the friendly names straight through is why stop edits silently did
+        // nothing for weeks — the backend dropped the unknown field and still
+        // returned 200. Map them here, at the boundary. dwlf_create_trade in
+        // this same file already uses the API names.
         const body: Record<string, unknown> = {};
-        if (symbol) body.symbol = normalizeSymbol(symbol);
         if (direction) body.direction = direction;
         if (entryPrice !== undefined) body.entryPrice = entryPrice;
-        if (stopLoss !== undefined) body.stopLoss = stopLoss;
-        if (takeProfit !== undefined) body.takeProfit = takeProfit;
-        if (quantity !== undefined) body.quantity = quantity;
+        if (stopLoss !== undefined) body.initialStop = stopLoss;
+        if (takeProfit !== undefined) body.initialTakeProfit = takeProfit;
+        if (quantity !== undefined) body.positionSize = quantity;
         if (notes) body.notes = notes;
-        if (tags) body.tags = tags;
         if (isPaperTrade !== undefined) body.isPaperTrade = isPaperTrade;
 
         const data = await client.put(`/trades/${tradeId}`, body);
@@ -433,8 +439,11 @@ export function registerTradeTools(
     'dwlf_confirm_trade',
     'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
       'Only trades with status "planned" can be confirmed. By default it opens at the ' +
-      'planned entryPrice / positionSize and stamps entryAt=now; override any of them to ' +
-      'reflect your actual fill. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
+      'planned entryPrice / positionSize / stop and stamps entryAt=now; override any of them to ' +
+      'reflect what you actually did. ⚠️ OVERRIDING THE STOP IS THE COMMON CASE, not an exception: the ' +
+      'engine derives its stop from regular-session candles, so it routinely sits inside the broker\'s ' +
+      'wider range and has to be moved before the take. Overriding initialStop does NOT re-derive ' +
+      'positionSize — pass both to keep risk constant. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
       'trade is being taken (the symmetric twin of skip reasons; feeds the Counterfactual ' +
       'scorecard / 2x2 decision analytics). Valid confirmReasons: fresh_cycle_entry, ' +
       'trendline_break_confirmed, cluster_confluence, regime_aligned, ' +
@@ -446,6 +455,18 @@ export function registerTradeTools(
       tradeId: z.string().describe('Planned trade ID to confirm/take'),
       entryPrice: z.number().optional().describe('Actual entry/fill price (defaults to the planned entryPrice)'),
       positionSize: z.number().optional().describe('Actual position size / quantity (defaults to the planned size)'),
+      initialStop: z
+        .number()
+        .optional()
+        .describe(
+          'Actual stop the trade opens with (defaults to the planned stop). ⚠️ Overriding this does NOT ' +
+            're-derive positionSize — the planned size was computed from the PLANNED stop, so a wider stop ' +
+            'means proportionally more money at risk. Pass positionSize in the same call to hold risk constant.'
+        ),
+      initialTakeProfit: z
+        .number()
+        .optional()
+        .describe('Actual take-profit the trade opens with (defaults to the planned target)'),
       entryAt: z.string().optional().describe('Entry timestamp, ISO 8601 (defaults to now)'),
       confirmReasons: z
         .array(z.string())
@@ -453,11 +474,13 @@ export function registerTradeTools(
         .describe('WHY the trade is taken (multi-select; see tool description for the valid set). First = primary.'),
       confirmNote: z.string().optional().describe('Entry rationale note (max 500 chars). Required when a reason is "other".'),
     },
-    async ({ tradeId, entryPrice, positionSize, entryAt, confirmReasons, confirmNote }) => {
+    async ({ tradeId, entryPrice, positionSize, initialStop, initialTakeProfit, entryAt, confirmReasons, confirmNote }) => {
       try {
         const body: Record<string, unknown> = {};
         if (entryPrice !== undefined) body.entryPrice = entryPrice;
         if (positionSize !== undefined) body.positionSize = positionSize;
+        if (initialStop !== undefined) body.initialStop = initialStop;
+        if (initialTakeProfit !== undefined) body.initialTakeProfit = initialTakeProfit;
         if (entryAt) body.entryAt = entryAt;
         if (confirmReasons && confirmReasons.length) body.confirmReasons = confirmReasons;
         if (confirmNote) body.confirmNote = confirmNote;
