@@ -264,8 +264,10 @@ export function registerTradeTools(
       stopLoss: z.unknown().optional().describe('DEPRECATED — renamed to initialStop. Rejected with an error.'),
       takeProfit: z.unknown().optional().describe('DEPRECATED — renamed to initialTakeProfit. Rejected with an error.'),
       quantity: z.unknown().optional().describe('DEPRECATED — renamed to positionSize. Rejected with an error.'),
+      symbol: z.unknown().optional().describe('REMOVED — not editable, the backend has never accepted it. Rejected with an error.'),
+      tags: z.unknown().optional().describe('REMOVED — not editable, the backend has never accepted it. Rejected with an error.'),
     },
-    async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade, stopLoss, takeProfit, quantity }) => {
+    async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade, stopLoss, takeProfit, quantity, symbol, tags }) => {
       try {
         // Fail LOUD on the legacy names rather than letting zod strip them: a
         // mixed call like { initialStop, quantity } would otherwise apply the
@@ -286,6 +288,25 @@ export function registerTradeTools(
               {
                 type: 'text',
                 text: `Error: renamed parameter(s) — ${used.map(([o, n]) => `${o} is now ${n}`).join(', ')}. Nothing was updated; re-issue the call with the new name(s).`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        // symbol/tags get the same loud treatment, with a different message:
+        // they are not renamed, they were never editable — a 0.41.0 caller
+        // (or a stale cached tool description) that sends one must hear that,
+        // not get a 200 with the field silently stripped by zod.
+        const removed = [
+          ['symbol', symbol],
+          ['tags', tags],
+        ].filter(([, value]) => value != null);
+        if (removed.length) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${removed.map(([name]) => name).join(' and ')} cannot be updated — the backend has never accepted ${removed.length > 1 ? 'them' : 'it'}. Nothing was updated.`,
               },
             ],
             isError: true,
@@ -539,12 +560,25 @@ export function registerTradeTools(
         // whenever the stop was passed; branch the wording. The handler cannot
         // know the planned stop without a second call, so both wordings stay
         // conditional. Additive enrichment per the charter (agentHints).
+        const dataObj =
+          typeof data === 'object' && data !== null && !Array.isArray(data)
+            ? (data as Record<string, unknown>)
+            : null;
+        const priorHints =
+          dataObj && typeof dataObj.agentHints === 'object' && dataObj.agentHints !== null && !Array.isArray(dataObj.agentHints)
+            ? (dataObj.agentHints as Record<string, unknown>)
+            : undefined;
         const payload =
-          initialStop !== undefined
+          initialStop !== undefined && dataObj
             ? {
-                ...(data as Record<string, unknown>),
+                ...dataObj,
+                // MERGE with any backend-supplied hints rather than replacing
+                // them; a backend workflowWarning is prepended, not clobbered.
                 agentHints: {
+                  ...priorHints,
                   workflowWarning:
+                    (priorHints?.workflowWarning ? String(priorHints.workflowWarning) + ' | ' : '') +
+                    (
                     positionSize === undefined
                       ? 'initialStop was passed without positionSize. If the stop you passed DIFFERS from the ' +
                         'planned stop, the planned size was computed from the PLANNED stop and risk on this ' +
@@ -554,7 +588,7 @@ export function registerTradeTools(
                       : 'initialStop and positionSize were both passed. Confirm positionSize was RECOMPUTED for ' +
                         'the stop actually used (dwlf_position_size), not echoed from the plan — the planned ' +
                         'size was computed from the PLANNED stop, so echoing it under a wider stop means more ' +
-                        'money at risk than planned. If it was recomputed, no action is needed.',
+                        'money at risk than planned. If it was recomputed, no action is needed.'),
                 },
               }
             : data;
