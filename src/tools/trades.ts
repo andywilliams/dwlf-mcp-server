@@ -256,9 +256,36 @@ export function registerTradeTools(
       positionSize: z.number().optional().describe('Position size / quantity (formerly quantity)'),
       notes: z.string().optional().describe('Trade notes'),
       isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
+      // Declared only so they can be rejected BY NAME: zod strips unknown
+      // keys, so an undeclared legacy field would be dropped in silence — the
+      // exact failure this rename fixes.
+      stopLoss: z.number().optional().describe('DEPRECATED — renamed to initialStop. Rejected with an error.'),
+      takeProfit: z.number().optional().describe('DEPRECATED — renamed to initialTakeProfit. Rejected with an error.'),
+      quantity: z.number().optional().describe('DEPRECATED — renamed to positionSize. Rejected with an error.'),
     },
-    async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade }) => {
+    async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade, stopLoss, takeProfit, quantity }) => {
       try {
+        // Fail LOUD on the legacy names rather than letting zod strip them: a
+        // mixed call like { initialStop, quantity } would otherwise apply the
+        // stop, drop the size edit, and return 200 — the silent-no-op class
+        // this tool's rename exists to kill.
+        const legacy: Array<[string, string, unknown]> = [
+          ['stopLoss', 'initialStop', stopLoss],
+          ['takeProfit', 'initialTakeProfit', takeProfit],
+          ['quantity', 'positionSize', quantity],
+        ];
+        const used = legacy.filter(([, , value]) => value !== undefined);
+        if (used.length) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: renamed parameter(s) — ${used.map(([o, n]) => `${o} is now ${n}`).join(', ')}. Nothing was updated; re-issue the call with the new name(s).`,
+              },
+            ],
+            isError: true,
+          };
+        }
         // Input names ARE the API's whitelist names (initialStop /
         // initialTakeProfit / positionSize), the same vocabulary as
         // dwlf_create_trade and dwlf_confirm_trade. This tool used to take
@@ -509,10 +536,11 @@ export function registerTradeTools(
                 ...(data as Record<string, unknown>),
                 agentHints: {
                   workflowWarning:
-                    'initialStop was overridden without positionSize — the planned size was computed ' +
-                    'from the PLANNED stop, so risk on this position is no longer the planned amount. ' +
-                    'Recompute with dwlf_position_size and correct via dwlf_update_trade if that was ' +
-                    'not intended.',
+                    'initialStop was passed without positionSize. If the stop you passed DIFFERS from the ' +
+                    'planned stop, the planned size was computed from the PLANNED stop and risk on this ' +
+                    'position is no longer the planned amount — recompute with dwlf_position_size and ' +
+                    'correct positionSize via dwlf_update_trade. If you re-sent the planned stop unchanged, ' +
+                    'nothing changed and no action is needed.',
                 },
               }
             : data;
