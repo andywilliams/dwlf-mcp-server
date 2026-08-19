@@ -240,7 +240,16 @@ export function registerTradeTools(
       tradeId: z.string().describe('Trade ID'),
       direction: z.enum(['long', 'short']).optional().describe('Trade direction'),
       entryPrice: z.number().optional().describe('Entry price'),
-      stopLoss: z.number().optional().describe('Stop loss price (sent as initialStop)'),
+      stopLoss: z
+        .number()
+        .optional()
+        .describe(
+          'Stop loss price (sent as initialStop). ⚠️ This rewrites the R BASELINE: every R-multiple ' +
+            'is computed from |entryPrice - initialStop|, and a numeric change also clears the ' +
+            'stopAnchor provenance. Correct when the stop was WRONG and is being fixed. NOT for ' +
+            'trailing a stop up behind price — that silently shrinks the R denominator and reports ' +
+            'an inflated R on a winner. Trailing needs a separate field, not this one.'
+        ),
       takeProfit: z.number().optional().describe('Take profit price (sent as initialTakeProfit)'),
       quantity: z.number().optional().describe('Position size (sent as positionSize)'),
       notes: z.string().optional().describe('Trade notes'),
