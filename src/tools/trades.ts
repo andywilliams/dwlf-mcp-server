@@ -258,10 +258,12 @@ export function registerTradeTools(
       isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
       // Declared only so they can be rejected BY NAME: zod strips unknown
       // keys, so an undeclared legacy field would be dropped in silence — the
-      // exact failure this rename fixes.
-      stopLoss: z.number().optional().describe('DEPRECATED — renamed to initialStop. Rejected with an error.'),
-      takeProfit: z.number().optional().describe('DEPRECATED — renamed to initialTakeProfit. Rejected with an error.'),
-      quantity: z.number().optional().describe('DEPRECATED — renamed to positionSize. Rejected with an error.'),
+      // exact failure this rename fixes. z.unknown(), not z.number(): a
+      // string-typed legacy value ("349.84") must reach the rename message,
+      // not die on a generic type error that never names the replacement.
+      stopLoss: z.unknown().optional().describe('DEPRECATED — renamed to initialStop. Rejected with an error.'),
+      takeProfit: z.unknown().optional().describe('DEPRECATED — renamed to initialTakeProfit. Rejected with an error.'),
+      quantity: z.unknown().optional().describe('DEPRECATED — renamed to positionSize. Rejected with an error.'),
     },
     async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade, stopLoss, takeProfit, quantity }) => {
       try {
@@ -274,7 +276,10 @@ export function registerTradeTools(
           ['takeProfit', 'initialTakeProfit', takeProfit],
           ['quantity', 'positionSize', quantity],
         ];
-        const used = legacy.filter(([, , value]) => value !== undefined);
+        // != null on purpose: some tool layers serialise absent optionals as
+        // JSON null (the API backend documents the same convention), and a
+        // null legacy field is "not set", not old-vocabulary usage.
+        const used = legacy.filter(([, , value]) => value != null);
         if (used.length) {
           return {
             content: [
@@ -527,20 +532,29 @@ export function registerTradeTools(
 
         const data = await client.post(`/trades/${tradeId}/confirm`, body);
         // The schema's money-at-risk warning, repeated where the agent
-        // definitely reads it: overriding the stop without re-sizing means the
-        // planned size no longer matches the actual risk. Additive enrichment
-        // alongside the backend shape, per the charter (agentHints pattern).
+        // definitely reads it: the planned size was computed from the PLANNED
+        // stop, so any stop override needs the size re-derived — and passing
+        // positionSize is no proof it WAS re-derived (echoing the planned size
+        // alongside a wider stop is the exact live failure this guards). Warn
+        // whenever the stop was passed; branch the wording. The handler cannot
+        // know the planned stop without a second call, so both wordings stay
+        // conditional. Additive enrichment per the charter (agentHints).
         const payload =
-          initialStop !== undefined && positionSize === undefined
+          initialStop !== undefined
             ? {
                 ...(data as Record<string, unknown>),
                 agentHints: {
                   workflowWarning:
-                    'initialStop was passed without positionSize. If the stop you passed DIFFERS from the ' +
-                    'planned stop, the planned size was computed from the PLANNED stop and risk on this ' +
-                    'position is no longer the planned amount — recompute with dwlf_position_size and ' +
-                    'correct positionSize via dwlf_update_trade. If you re-sent the planned stop unchanged, ' +
-                    'nothing changed and no action is needed.',
+                    positionSize === undefined
+                      ? 'initialStop was passed without positionSize. If the stop you passed DIFFERS from the ' +
+                        'planned stop, the planned size was computed from the PLANNED stop and risk on this ' +
+                        'position is no longer the planned amount — recompute with dwlf_position_size and ' +
+                        'correct positionSize via dwlf_update_trade. If you re-sent the planned stop unchanged, ' +
+                        'nothing changed and no action is needed.'
+                      : 'initialStop and positionSize were both passed. Confirm positionSize was RECOMPUTED for ' +
+                        'the stop actually used (dwlf_position_size), not echoed from the plan — the planned ' +
+                        'size was computed from the PLANNED stop, so echoing it under a wider stop means more ' +
+                        'money at risk than planned. If it was recomputed, no action is needed.',
                 },
               }
             : data;
