@@ -232,43 +232,47 @@ export function registerTradeTools(
   server.tool(
     'dwlf_update_trade',
     'Update an existing trade by ID. All fields except tradeId are optional (partial update). ' +
-      'symbol and tags are NOT editable — the backend has never accepted them, and offering them ' +
-      'meant a caller could set one and be told 200 while nothing changed. To change the levels on ' +
-      'an OPEN trade use this; to set them as the trade is taken, pass them to dwlf_confirm_trade ' +
-      'instead so it is one call.',
+      'Parameter names match dwlf_create_trade / dwlf_confirm_trade: initialStop / ' +
+      'initialTakeProfit / positionSize (formerly stopLoss / takeProfit / quantity — the old ' +
+      'names are no longer accepted). symbol and tags are NOT editable — the backend has never ' +
+      'accepted them, and offering them meant a caller could set one and be told 200 while ' +
+      'nothing changed. To change the levels on an OPEN trade use this; to set them as the ' +
+      'trade is taken, pass them to dwlf_confirm_trade instead so it is one call.',
     {
       tradeId: z.string().describe('Trade ID'),
       direction: z.enum(['long', 'short']).optional().describe('Trade direction'),
       entryPrice: z.number().optional().describe('Entry price'),
-      stopLoss: z
+      initialStop: z
         .number()
         .optional()
         .describe(
-          'Stop loss price (sent as initialStop). ⚠️ This rewrites the R BASELINE: every R-multiple ' +
+          'Stop loss price (formerly stopLoss). ⚠️ This rewrites the R BASELINE: every R-multiple ' +
             'is computed from |entryPrice - initialStop|, and a numeric change also clears the ' +
             'stopAnchor provenance. Correct when the stop was WRONG and is being fixed. NOT for ' +
             'trailing a stop up behind price — that silently shrinks the R denominator and reports ' +
             'an inflated R on a winner. Trailing needs a separate field, not this one.'
         ),
-      takeProfit: z.number().optional().describe('Take profit price (sent as initialTakeProfit)'),
-      quantity: z.number().optional().describe('Position size (sent as positionSize)'),
+      initialTakeProfit: z.number().optional().describe('Take profit price (formerly takeProfit)'),
+      positionSize: z.number().optional().describe('Position size / quantity (formerly quantity)'),
       notes: z.string().optional().describe('Trade notes'),
       isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
     },
-    async ({ tradeId, direction, entryPrice, stopLoss, takeProfit, quantity, notes, isPaperTrade }) => {
+    async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade }) => {
       try {
-        // The friendly names above are the tool's INPUT vocabulary; the API's
-        // whitelist is initialStop / initialTakeProfit / positionSize. Sending
-        // the friendly names straight through is why stop edits silently did
-        // nothing for weeks — the backend dropped the unknown field and still
-        // returned 200. Map them here, at the boundary. dwlf_create_trade in
-        // this same file already uses the API names.
+        // Input names ARE the API's whitelist names (initialStop /
+        // initialTakeProfit / positionSize), the same vocabulary as
+        // dwlf_create_trade and dwlf_confirm_trade. This tool used to take
+        // friendly names (stopLoss / takeProfit / quantity) and pass them
+        // straight through — the backend dropped the unknown fields and still
+        // returned 200, so stop edits silently did nothing for weeks. One
+        // vocabulary across the three tools means an agent cannot guess wrong
+        // between them.
         const body: Record<string, unknown> = {};
         if (direction) body.direction = direction;
         if (entryPrice !== undefined) body.entryPrice = entryPrice;
-        if (stopLoss !== undefined) body.initialStop = stopLoss;
-        if (takeProfit !== undefined) body.initialTakeProfit = takeProfit;
-        if (quantity !== undefined) body.positionSize = quantity;
+        if (initialStop !== undefined) body.initialStop = initialStop;
+        if (initialTakeProfit !== undefined) body.initialTakeProfit = initialTakeProfit;
+        if (positionSize !== undefined) body.positionSize = positionSize;
         if (notes) body.notes = notes;
         if (isPaperTrade !== undefined) body.isPaperTrade = isPaperTrade;
 
@@ -495,8 +499,25 @@ export function registerTradeTools(
         if (confirmNote) body.confirmNote = confirmNote;
 
         const data = await client.post(`/trades/${tradeId}/confirm`, body);
+        // The schema's money-at-risk warning, repeated where the agent
+        // definitely reads it: overriding the stop without re-sizing means the
+        // planned size no longer matches the actual risk. Additive enrichment
+        // alongside the backend shape, per the charter (agentHints pattern).
+        const payload =
+          initialStop !== undefined && positionSize === undefined
+            ? {
+                ...(data as Record<string, unknown>),
+                agentHints: {
+                  workflowWarning:
+                    'initialStop was overridden without positionSize — the planned size was computed ' +
+                    'from the PLANNED stop, so risk on this position is no longer the planned amount. ' +
+                    'Recompute with dwlf_position_size and correct via dwlf_update_trade if that was ' +
+                    'not intended.',
+                },
+              }
+            : data;
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         };
       } catch (error) {
         return {
