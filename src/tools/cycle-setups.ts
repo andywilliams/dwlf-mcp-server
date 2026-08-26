@@ -210,7 +210,14 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
 
         for (const { type, rows } of results) {
           for (const raw of rows) {
-            if (side && raw.side !== side) continue;
+            // `side` lives under `setup` — SPT's mapEventItem nests the
+            // screener snapshot there (the flat top-level fields the job
+            // writes are stripped by the mapper's allow-list). `seeded`
+            // stays top-level: it is row provenance, not part of the
+            // snapshot. Getting this wrong is silent in both directions —
+            // side filters everything out, or seed suppression no-ops.
+            const setup = (raw.setup ?? {}) as Record<string, unknown>;
+            if (side && setup.side !== side) continue;
             if (!includeSeeded && raw.seeded) {
               suppressedSeeded += 1;
               continue;
