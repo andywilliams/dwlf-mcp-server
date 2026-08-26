@@ -52,6 +52,19 @@ const asArray = (data: unknown): EventRow[] => {
   return [];
 };
 
+/** True when the payload is an object we do NOT recognise as an events envelope. */
+const isUnrecognised = (data: unknown): boolean =>
+  !Array.isArray(data) &&
+  !!data &&
+  typeof data === 'object' &&
+  !Array.isArray((data as Record<string, unknown>).events);
+
+const countTruncatedOf = (data: unknown): boolean =>
+  !Array.isArray(data) &&
+  !!data &&
+  typeof data === 'object' &&
+  (data as Record<string, unknown>).countTruncated === true;
+
 const cursorOf = (data: unknown): string | null => {
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const c = (data as Record<string, unknown>).cursor;
@@ -113,6 +126,8 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
     {
       days: z
         .number()
+        .int()
+        .positive()
         .optional()
         .describe(
           'Look-back window in days. Defaults to 7. The transitions job runs once daily, so `days: 1` ' +
@@ -128,6 +143,8 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
         .describe('Restrict to one side. Omit for both.'),
       maxRows: z
         .number()
+        .int()
+        .positive()
         .optional()
         .describe(
           'Max rows returned PER bucket (default 200). `counts` are always complete — this caps only ' +
@@ -163,6 +180,8 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
             let cursor: string | undefined;
             let pages = 0;
             let truncated = false;
+            let unrecognised = false;
+            let backendTruncated = false;
             do {
               const data = await client.get('/events', {
                 type,
@@ -171,6 +190,11 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
                 limit: 500,
                 cursor,
               });
+              // Fail LOUDLY on an unrecognised envelope. An empty array is
+              // indistinguishable from a genuinely quiet day, and today's
+              // whole bug class was exactly that kind of silence.
+              if (isUnrecognised(data)) unrecognised = true;
+              if (countTruncatedOf(data)) backendTruncated = true;
               rows.push(...asArray(data));
               cursor = cursorOf(data) ?? undefined;
               pages += 1;
@@ -179,7 +203,7 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
                 break;
               }
             } while (cursor);
-            return { type, rows, truncated, pages };
+            return { type, rows, truncated, pages, unrecognised, backendTruncated };
           })
         );
 
@@ -190,6 +214,8 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
             : []
         );
         const truncatedTypes = results.filter((r) => r.truncated).map((r) => r.type);
+        const unrecognisedTypes = results.filter((r) => r.unrecognised).map((r) => r.type);
+        const backendTruncatedTypes = results.filter((r) => r.backendTruncated).map((r) => r.type);
 
         const buckets: Record<string, Bucketed[]> = {
           entered: [],
@@ -217,7 +243,11 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
             // snapshot. Getting this wrong is silent in both directions —
             // side filters everything out, or seed suppression no-ops.
             const setup = (raw.setup ?? {}) as Record<string, unknown>;
-            if (side && setup.side !== side) continue;
+            // Prefer the nested placement (SPT#596) but tolerate a flat
+            // field — the mapper's shape is a cross-repo contract, and a
+            // silent all-rows-filtered-out is the worst way to learn it moved.
+            const rowSide = setup.side ?? raw.side;
+            if (side && rowSide !== side) continue;
             if (!includeSeeded && raw.seeded) {
               suppressedSeeded += 1;
               continue;
@@ -256,8 +286,22 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
                         rowsOmitted,
                         rowsOmittedHint:
                           `${rowsOmitted} row(s) beyond the ${cap}-per-bucket display cap were omitted ` +
-                          '(newest kept). `counts` are complete; raise `maxRows` or narrow the query.',
+                          '(newest kept). This cap affects RENDERED ROWS ONLY — `counts` reflect everything ' +
+                          'fetched. Note `counts` are themselves partial if `truncated` or `partial` is set. ' +
+                          'Raise `maxRows` or narrow the query.',
                       }
+                    : {}),
+                  ...(unrecognisedTypes.length > 0
+                    ? {
+                        unrecognisedShape: unrecognisedTypes,
+                        unrecognisedHint:
+                          'The /events envelope was not the expected { events, cursor } shape for: ' +
+                          `${unrecognisedTypes.join(', ')}. Rows may have been dropped — a zero count ` +
+                          'here is NOT evidence of a quiet day. Check the API contract.',
+                      }
+                    : {}),
+                  ...(backendTruncatedTypes.length > 0
+                    ? { backendCountTruncated: backendTruncatedTypes }
                     : {}),
                   ...(failedTypes.length > 0
                     ? {
@@ -274,7 +318,9 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
                         truncatedTypes,
                         truncatedHint:
                           `Hit the ${PAGE_CAP}-page cap on: ${truncatedTypes.join(', ')}. ` +
-                          'Counts are PARTIAL — narrow with a smaller `days` or a `symbol`.',
+                          'FETCHING stopped early, so `counts` for those types are PARTIAL (this is ' +
+                          'different from `rowsOmitted`, which only caps rendering). Narrow with a ' +
+                          'smaller `days` or a `symbol`.',
                       }
                     : {}),
                   ...(suppressedSeeded > 0
