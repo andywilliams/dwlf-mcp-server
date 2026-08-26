@@ -15,6 +15,17 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
  *
  * This tool is the thin wrapper: five parallel fetches, merged, pre-grouped
  * into entered / downgraded / left, newest first.
+ *
+ * ⚠️ CHARTER NOTE (invariant 2 — "responses are passed through, not
+ * re-enveloped"). Row-level, this complies: `project()` spreads the backend
+ * row and adds derived fields alongside, so a field the transitions job adds
+ * later reaches agents without an edit here.
+ *
+ * Top-level it necessarily does NOT: this call merges FIVE backend responses,
+ * so there is no single envelope to preserve — grouping them is the entire
+ * reason the tool exists. Recorded as a deliberate exception rather than
+ * drift. If a future backend endpoint returns all five types in one response,
+ * this wrapper should be deleted in favour of passing that through.
  */
 
 /** Stage-entry events, ranked best → worst (mirrors STAGE_RANK in the job). */
@@ -55,15 +66,22 @@ const cursorOf = (data: unknown): string | null => {
  * transitions job adds later reaches agents without an edit here.
  *
  * `date` is normalised because the two candidate fields carry DIFFERENT
- * formats — verified on live rows: `date: "2026-08-26"` vs
- * `eventTimestamp: "2026-08-26T06:00:00.000Z"`. Comparing them as strings
- * orders a same-day pair by presence-of-time rather than by time.
+ * precision — verified on live rows: `date: "2026-08-26"` (day) vs
+ * `eventTimestamp: "2026-08-26T06:00:00.000Z"` (instant).
+ *
+ * The SORT key prefers `eventTimestamp`, the display `date` prefers `date`.
+ * That asymmetry is deliberate: sorting on the day-precision field collapses
+ * every same-day row to midnight, so "newest first" stops ordering within a
+ * day — which is most of what this tool returns, since the job writes one
+ * batch per morning.
  */
 const project = (e: EventRow) => ({
   ...e,
   date: e.date ?? e.eventTimestamp,
-  _sortMs: toTime(e.date ?? e.eventTimestamp),
 });
+
+/** Kept OUT of `project` so it never reaches the agent-facing payload. */
+const sortKey = (e: EventRow): number => toTime(e.eventTimestamp ?? e.date);
 
 function toTime(v: unknown): number {
   if (typeof v === 'number') return v;
@@ -71,8 +89,8 @@ function toTime(v: unknown): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
-const newestFirst = (a: ReturnType<typeof project>, b: ReturnType<typeof project>) =>
-  b._sortMs - a._sortMs;
+type Bucketed = { row: ReturnType<typeof project>; ms: number };
+const newestFirst = (a: Bucketed, b: Bucketed) => b.ms - a.ms;
 
 export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
   server.tool(
@@ -108,6 +126,13 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
         .enum(['long', 'short'])
         .optional()
         .describe('Restrict to one side. Omit for both.'),
+      maxRows: z
+        .number()
+        .optional()
+        .describe(
+          'Max rows returned PER bucket (default 200). `counts` are always complete — this caps only ' +
+            'what is rendered, newest first, and reports `rowsOmitted`.'
+        ),
       includeSeeded: z
         .boolean()
         .optional()
@@ -116,7 +141,7 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
             'bookkeeping, not stage changes. Set true only to audit what the seed wrote.'
         ),
     },
-    async ({ days, symbol, side, includeSeeded }) => {
+    async ({ days, symbol, side, includeSeeded, maxRows }) => {
       try {
         const sym = symbol ? normalizeSymbol(symbol) : undefined;
         const effectiveDays = days ?? 7;
@@ -166,7 +191,7 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
         );
         const truncatedTypes = results.filter((r) => r.truncated).map((r) => r.type);
 
-        const buckets: Record<string, ReturnType<typeof project>[]> = {
+        const buckets: Record<string, Bucketed[]> = {
           entered: [],
           downgraded: [],
           left: [],
@@ -174,8 +199,11 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
         // Tallied in the SAME pass as the buckets — a second filtered pass
         // drifts from this one the moment the suppression rule changes, and
         // then byEventType silently stops summing to total.
-        const byEventType: Record<string, number> = Object.fromEntries(
-          ALL_TYPES.map((t) => [t, 0])
+        // A failed type must NOT read as "0 rows" — that is indistinguishable
+        // from a successful empty query. null says "unknown, this one failed".
+        const failedSet = new Set(failedTypes.map((f) => f.type));
+        const byEventType: Record<string, number | null> = Object.fromEntries(
+          ALL_TYPES.map((t) => [t, failedSet.has(t) ? null : 0])
         );
         let suppressedSeeded = 0;
         let total = 0;
@@ -188,13 +216,24 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
               continue;
             }
             total += 1;
-            byEventType[type] += 1;
+            byEventType[type] = (byEventType[type] ?? 0) + 1;
             const bucket =
               type === DOWNGRADED_TYPE ? 'downgraded' : type === LEFT_TYPE ? 'left' : 'entered';
-            buckets[bucket].push(project(raw));
+            buckets[bucket].push({ row: project(raw), ms: sortKey(raw) });
           }
         }
         for (const key of Object.keys(buckets)) buckets[key].sort(newestFirst);
+
+        // Context ceiling. 10 pages x 500 rows x 5 types could dump thousands
+        // of rows into an agent's context. `counts` are computed BEFORE this,
+        // so they stay truthful; only the returned rows are capped.
+        const cap = maxRows ?? 200;
+        let rowsOmitted = 0;
+        const output: Record<string, ReturnType<typeof project>[]> = {};
+        for (const [key, list] of Object.entries(buckets)) {
+          rowsOmitted += Math.max(0, list.length - cap);
+          output[key] = list.slice(0, cap).map((b) => b.row);
+        }
 
         return {
           content: [
@@ -202,9 +241,17 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
               type: 'text',
               text: JSON.stringify(
                 {
-                  transitions: buckets,
+                  transitions: output,
                   counts: { total, byEventType },
                   suppressedSeeded,
+                  ...(rowsOmitted > 0
+                    ? {
+                        rowsOmitted,
+                        rowsOmittedHint:
+                          `${rowsOmitted} row(s) beyond the ${cap}-per-bucket display cap were omitted ` +
+                          '(newest kept). `counts` are complete; raise `maxRows` or narrow the query.',
+                      }
+                    : {}),
                   ...(failedTypes.length > 0
                     ? {
                         failedTypes,
@@ -236,6 +283,7 @@ export function registerCycleSetupTools(server: McpServer, client: DWLFClient) {
                     ...(sym ? { symbol: sym } : {}),
                     ...(side ? { side } : {}),
                     includeSeeded: Boolean(includeSeeded),
+                    maxRows: cap,
                     types: ALL_TYPES,
                   },
                 },
