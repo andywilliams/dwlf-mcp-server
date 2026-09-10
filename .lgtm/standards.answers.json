@@ -1,0 +1,15 @@
+{
+  "profile": "lib",
+  "FUN-1": "balanced",
+  "COM-1": "why",
+  "FMT-2": "threshold",
+  "MOD-4": "balanced",
+  "G5": "rule-of-three",
+  "fnWarn": 100,
+  "fnMax": 130,
+  "fileWarn": 640,
+  "fileMax": 1040,
+  "houseRules": [
+    "A comment states a constraint the code cannot show — the rule that holds NOW, what breaks if the line changes. Three kinds are banned however accurate on the day they were written: (1) HISTORY — \"an earlier version did X\", \"review round N found Y\", rationale-by-history; git, the PR body and the ticket own that (C1). (2) DATED SNAPSHOTS — measurements, counts and trace records (\"261 orphans as of 1-Sep\", \"all readers checked 30-Aug\"); a frozen fact is stale within days and every later review round pays to re-read it. The number goes on the ticket; the code keeps the constraint that outlives it, plus the DWLF-N pointer. (3) REVIEWER DIALOGUE — pre-rebuttals of alternatives and correctness assertions (\"nothing downstream mis-reads this\"); that is the PR body talking to a reviewer, and left in source it anchors the next AI review toward trusting prose over verifying code — then misleads with authority the day it drifts. This targets KIND, not length: a long comment stating a live invariant earns its place (COM-1). Evidence: DWLF-127 ran 28 lgtm rounds and 22 of 109 findings were comments gone stale or contradictory; DWLF-104 (SPT #599) and DWLF-123 (jobs #354) shipped production files 64–85% comment lines, the bulk kinds 2–3."
+  ]
+}
