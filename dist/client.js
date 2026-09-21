@@ -66,6 +66,31 @@ export class DWLFClient {
             },
             timeout: 30000,
         });
+        // Surface the backend's error message, not just axios's bare "Request
+        // failed with status code N". Every request method goes through this.http,
+        // so enriching here makes ALL tools report the real reason (e.g. a 400's
+        // "skipNote exceeds max length of 500 characters") via their `error.message`
+        // catch — instead of an opaque status code the agent has to guess at.
+        this.http.interceptors.response.use((response) => response, (error) => {
+            if (axios.isAxiosError(error) && error.response) {
+                const { status, data } = error.response;
+                const body = data;
+                let detail;
+                if (body && typeof body === 'object') {
+                    const obj = body;
+                    detail =
+                        obj.error?.message ||
+                            obj.message ||
+                            (typeof obj.error === 'string' ? obj.error : undefined) ||
+                            JSON.stringify(obj).slice(0, 300);
+                }
+                else if (typeof body === 'string' && body.trim()) {
+                    detail = body.slice(0, 300);
+                }
+                error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+            }
+            return Promise.reject(error);
+        });
     }
     /**
      * Build an Axios request config that strips `undefined` values from query
@@ -97,6 +122,13 @@ export class DWLFClient {
     }
     async delete(path, params) {
         const response = await this.http.delete(path, this.buildParamsConfig(params));
+        return response.data;
+    }
+    // DELETE with a request BODY (not query params). Some endpoints read the
+    // symbol/tag from the parsed JSON body (e.g. removeSymbolTag) rather than the
+    // query string, so `delete()`'s param-only form wouldn't reach them.
+    async deleteWithBody(path, data) {
+        const response = await this.http.delete(path, { data });
         return response.data;
     }
     async patch(path, data) {

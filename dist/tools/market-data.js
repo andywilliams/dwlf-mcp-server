@@ -2,28 +2,28 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerMarketDataTools(server, client) {
     // 1. Get OHLCV candle data
-    server.tool('dwlf_get_market_data', 'Get OHLCV candle data for a trading symbol. Returns open, high, low, close, volume over time. ' +
-        '⚠️ Returns 403 for external API-key callers — raw candles are JWT-only (Twelve Data licensing). ' +
-        'If you hit a 403, use `dwlf_get_price_picture(symbol, days)` for a pivot-based price narrative, ' +
-        'or `dwlf_get_events(symbol, timeframe="1d", days=N)` filtered to cycle pivots / swing points / MA crosses / S&R levels — ' +
-        'each event carries the price at its date and together they reconstruct price action without raw bars. ' +
-        'Reach for this tool only when you genuinely need bar-by-bar resolution (e.g. "did price touch $X intra-day on date D").', {
+    server.tool('dwlf_get_market_data', 'Get OHLCV candle data (open, high, low, close, volume) for a trading symbol at a chosen timeframe. ' +
+        'Reach for this when you need ACTUAL BARS — sweeps, ranges, exact intraday highs/lows, ' +
+        '"did price touch $X on date D", the close on a specific bar — rather than the pivot-based reconstruction ' +
+        'from `dwlf_get_price_picture` / `dwlf_get_events`. ' +
+        'Timeframes: `daily`, `weekly`, `hourly` (hourly is available only for symbols that have 1h data). ' +
+        'Gated to the owner account; other API keys get a 403 with a pivot-based fallback hint.', {
         symbol: z
             .string()
             .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
-        interval: z
-            .enum(['1d', '4h', '1h'])
+        timeframe: z
+            .enum(['daily', 'weekly', 'hourly'])
             .optional()
-            .describe('Candle interval (default: 1d)'),
+            .describe('Candle timeframe (default: daily). Hourly is available only for symbols with 1h data.'),
         limit: z
             .number()
             .optional()
-            .describe('Number of candles to return (default: 50)'),
-    }, async ({ symbol, interval, limit }) => {
+            .describe('Number of most-recent candles to return (default: 50)'),
+    }, async ({ symbol, timeframe, limit }) => {
         try {
             const sym = normalizeSymbol(symbol);
             const data = await client.get(`/market-data/${sym}`, {
-                interval,
+                timeframe,
                 limit,
             });
             return {
@@ -44,14 +44,14 @@ export function registerMarketDataTools(server, client) {
     });
     // 1b. Get last-price quote(s) — the lightweight alternative to candles.
     //
-    // Unlike dwlf_get_market_data (raw OHLCV, JWT-only/403 for API keys), this
+    // Unlike dwlf_get_market_data (raw OHLCV, owner-account only — 403 for other API keys), this
     // returns ONLY the latest close + date and works for API-key callers on ANY
     // tracked symbol — including ones off your watchlist. Use it to mark a
     // position/skip to current price, or price a symbol the briefing doesn't
     // cover, without raw candles or a full briefing call.
     server.tool('dwlf_get_quote', 'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
         'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
-        'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (JWT-only) ' +
+        'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
         'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
         'an arbitrary symbol. Unknown symbols come back with found:false (not an error).', {
         symbols: z
@@ -131,6 +131,12 @@ export function registerMarketDataTools(server, client) {
         'Filter by a single `symbol` or a `symbols` watchlist, by `type` (e.g. `cycle.low.confirmed`), ' +
         'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
         'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
+        '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
+        'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
+        '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+        'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
+        'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
+        'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
         '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
         'cycle pivots, swing points, MA/EMA crosses, S&R level fires and trendline breaks each carry the price at the event date. ' +
         'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.', {
@@ -182,8 +188,11 @@ export function registerMarketDataTools(server, client) {
             .string()
             .optional()
             .describe('Filter to fires of a specific custom event by its event definition ID. ' +
-            'Only honoured when `type` is `custom_event`. Combine with `symbol` / `symbols` ' +
-            'to scope to a single asset, or omit to see fires across the watchlist.'),
+            'Only honoured when `type` is `custom_event` (the tool defaults `type` to `custom_event` ' +
+            'when you set this and leave `type` unset). The tool auto-follows pagination for this scoped ' +
+            'query and returns the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
+            '`fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
+            'Combine with `symbol` / `symbols` to scope to a single asset, or omit to see fires across the watchlist.'),
         eventName: z
             .string()
             .optional()
@@ -195,20 +204,65 @@ export function registerMarketDataTools(server, client) {
             const symsCsv = symbols && symbols.length > 0
                 ? symbols.map((s) => normalizeSymbol(s)).join(',')
                 : undefined;
-            const data = await client.get('/events', {
+            // A scoped query (a specific custom event by id/name) is a sparse
+            // match inside a paginated partition scan: each page returns up to
+            // `limit` SCANNED rows post-filtered + a `cursor`, so page 1 holds only
+            // the MOST RECENT matches. Reading one page silently undercounts the
+            // event's history (looks like "8 fires" when it fired every cycle for
+            // years). For scoped queries we auto-follow the cursor and return the
+            // COMPLETE set; other queries stay single-page (their `cursor` tells the
+            // caller to follow it). `customEventId`/`eventName` are only honoured for
+            // `type: 'custom_event'`, so default `type` to that when scoped and unset
+            // — otherwise the filter is ignored and we'd paginate ALL events.
+            const scoped = Boolean(customEventId || eventName);
+            const effectiveType = type ?? (scoped ? 'custom_event' : undefined);
+            const fetchPage = (cursor) => client.get('/events', {
                 symbol: sym,
                 symbols: symsCsv,
-                type,
+                type: effectiveType,
                 timeframe,
                 days,
                 fromDate,
                 toDate,
                 // Backend reads `uniquePerSymbol === 'true'`, so serialise to string.
                 uniquePerSymbol: uniquePerSymbol === undefined ? undefined : String(uniquePerSymbol),
-                limit,
+                // Scoped: request the backend max per page to minimise round-trips
+                // (matches are sparse). Otherwise honour the caller's limit.
+                limit: scoped ? 200 : limit,
                 customEventId,
                 eventName,
+                cursor,
             });
+            let data = await fetchPage();
+            let autoPaginated = false;
+            let pagesFetched = 1;
+            let pageCapHit = false;
+            if (scoped && data && typeof data === 'object' && !Array.isArray(data)) {
+                const record = data;
+                const acc = Array.isArray(record.events) ? [...record.events] : [];
+                let cursor = record.cursor ?? null;
+                const MAX_PAGES = 40; // backstop (~8k scanned rows); real events never approach this
+                while (cursor && pagesFetched < MAX_PAGES) {
+                    // eslint-disable-next-line no-await-in-loop
+                    const page = await fetchPage(cursor);
+                    pagesFetched += 1;
+                    autoPaginated = true;
+                    if (page && typeof page === 'object' && !Array.isArray(page)) {
+                        const pageRecord = page;
+                        if (Array.isArray(pageRecord.events))
+                            acc.push(...pageRecord.events);
+                        cursor = pageRecord.cursor ?? null;
+                    }
+                    else {
+                        cursor = null;
+                    }
+                }
+                if (cursor)
+                    pageCapHit = true;
+                // Honour the caller's `limit` as a TOTAL cap when they set one.
+                const finalEvents = limit !== undefined ? acc.slice(0, limit) : acc;
+                data = { ...record, events: finalEvents, cursor: pageCapHit ? cursor : null };
+            }
             // Echo back the effective filter set so agents can see *what window
             // they actually got*. The 7-day default has bitten multiple sessions
             // ("where did that old fire go?") — surfacing it inline is cheaper
@@ -221,8 +275,8 @@ export function registerMarketDataTools(server, client) {
                 filtersApplied.symbol = sym;
             if (symsCsv)
                 filtersApplied.symbols = symsCsv.split(',');
-            if (type)
-                filtersApplied.type = type;
+            if (effectiveType)
+                filtersApplied.type = effectiveType;
             if (timeframe)
                 filtersApplied.timeframe = timeframe;
             if (days !== undefined)
@@ -244,6 +298,17 @@ export function registerMarketDataTools(server, client) {
                 filtersApplied.customEventId = customEventId;
             if (eventName)
                 filtersApplied.eventName = eventName;
+            if (scoped) {
+                // Surface that the scoped query was auto-paginated to completeness,
+                // and flag if it stopped at the page cap (rare — narrow the window).
+                filtersApplied.autoPaginated = autoPaginated;
+                filtersApplied.pagesFetched = pagesFetched;
+                if (pageCapHit) {
+                    filtersApplied.incomplete = true;
+                    filtersApplied.paginationHint =
+                        'Hit the auto-pagination page cap — results may be incomplete. Narrow with fromDate/toDate to fetch the rest.';
+                }
+            }
             // Preserve the backend's existing top-level shape; just splice
             // filtersApplied alongside it. Keeps existing parsers working.
             //
@@ -446,7 +511,7 @@ export function registerMarketDataTools(server, client) {
                             narrative,
                             agentHints: {
                                 interpretation: 'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
-                                limitations: 'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (JWT-only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
+                                limitations: 'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
                             },
                         }, null, 2),
                     },
@@ -471,12 +536,17 @@ export function registerMarketDataTools(server, client) {
         '`confirmed_setup` (weekly window open AND daily pivot confirmed fresh <=15d — the ' +
         'multi-timeframe trigger has fired), `awaiting_confirmation` (daily pivot provisional, ' +
         'confidence % included), `window_open` (timing window open, no daily signal yet). ' +
-        'Each row: weekly window position (early/mid/late + days-since-pivot vs the symbol\'s ' +
-        'own median cycle length), daily pivot price/confidence/freshness, last close and ' +
+        'Each row: weekly window position (early/mid/late + days-since-pivot) and `weekly.timing`, ' +
+        'the STORED weekly window — the same edges the chart draws (earliest › opens – closes › ' +
+        'hardMax as dates, phase upcoming/open/overdue/missed, n gaps, calibration, ' +
+        '`verification: unverified` while the detection gate stands failed, rulerAgreesWithState, ' +
+        'generation + projectionHash) or null when the store holds none; daily pivot ' +
+        'price/confidence/freshness, last close and ' +
         '% from pivot (the entry-freshness number — fresher entries pay less confirmation tax). ' +
         'Start daily market reviews here: the long/short counts alone summarise the universe ' +
         'regime (e.g. 9 long vs 33 short = late-cycle topping). Reads the persistent cycle FSM ' +
-        'state — exactly what the cycle engine itself sees. ' +
+        'state — exactly what the cycle engine itself sees — and the window store for timing; ' +
+        'no window is computed here (DWLF-113 ③; `medianCycleDays` is gone). ' +
         'UI equivalent: https://www.dwlf.co.uk/screener', {}, async () => {
         try {
             const data = await client.get('/screener/cycle-setups');
