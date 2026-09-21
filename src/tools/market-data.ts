@@ -605,17 +605,17 @@ export function registerMarketDataTools(
       '`confirmed_setup` (weekly window open AND daily pivot confirmed fresh <=15d — the ' +
       'multi-timeframe trigger has fired), `awaiting_confirmation` (daily pivot provisional, ' +
       'confidence % included), `window_open` (timing window open, no daily signal yet). ' +
-      'Each row: weekly window position (early/mid/late + days-since-pivot) and `weekly.timing`, ' +
-      'the STORED weekly window — the same edges the chart draws (earliest › opens – closes › ' +
-      'hardMax as dates, phase upcoming/open/overdue/missed, n gaps, calibration, ' +
-      '`verification: unverified` while the detection gate stands failed, rulerAgreesWithState, ' +
-      'generation + projectionHash) or null when the store holds none; daily pivot ' +
-      'price/confidence/freshness, last close and ' +
+      'Each row: weekly window position (early/mid/late + days-since-pivot), `weekly.timing`, ' +
+      'daily pivot price/confidence/freshness, last close and ' +
       '% from pivot (the entry-freshness number — fresher entries pay less confirmation tax). ' +
       'Start daily market reviews here: the long/short counts alone summarise the universe ' +
-      'regime (e.g. 9 long vs 33 short = late-cycle topping). Reads the persistent cycle FSM ' +
-      'state — exactly what the cycle engine itself sees — and the window store for timing; ' +
-      'no window is computed here (DWLF-113 ③; `medianCycleDays` is gone). ' +
+      'regime (e.g. 9 long vs 33 short = late-cycle topping). `weekly.timing` is the STORED ' +
+      'weekly window, the same edges the chart draws: `earliest`, `opens`, `closes`, `hardMax` ' +
+      '(dated edges), `phase` (upcoming | open | overdue | missed), `n` (gaps behind the edges), ' +
+      '`calibration`, `verification` (always `unverified` while the detection gate stands failed), ' +
+      '`rulerAgreesWithState`, `generation` and `projectionHash`; null when the store holds no ' +
+      'window for the series. Reads the persistent cycle FSM state — exactly what the cycle ' +
+      'engine itself sees — and the window store for timing; no window is computed here. ' +
       'UI equivalent: https://www.dwlf.co.uk/screener',
     {},
     async () => {
