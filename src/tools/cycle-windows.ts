@@ -30,8 +30,8 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'edges mean something new. Closed windows in `history` carry an `outcome` — where the pivot actually ' +
       'landed (`landedInside`, `daysFromOpen`, …) — which is how to judge how reliable THIS symbol\'s windows ' +
       'have been.\n\n' +
-      '⚠️ Every window is `verification: unverified` (the detection gate failed): treat the edges as rough ' +
-      'timing, not a forecast. ⚠️ The store covers WEEKLY today; `timeframe: "1d"` / `"1h"` answer with ' +
+      '⚠️ Read `verification`: while it says `unverified` (it does for every window as long as the detection ' +
+      'gate stands failed), treat the edges as rough timing, not a forecast. ⚠️ The store covers WEEKLY today; `timeframe: "1d"` / `"1h"` answer with ' +
       'null sides rather than a computed substitute.',
     {
       symbol: z
