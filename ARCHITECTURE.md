@@ -45,7 +45,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 18`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 20 modules under `src/tools/` (market-data, ranges, indicators,
+- **~100 `dwlf_*` tools** grouped in 22 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
   subscriptions), each wired in `src/index.ts` via a `register*Tools(server, client)` call

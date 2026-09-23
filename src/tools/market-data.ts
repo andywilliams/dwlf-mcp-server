@@ -616,6 +616,8 @@ export function registerMarketDataTools(
       '`rulerAgreesWithState`, `generation` and `projectionHash`; null when the store holds no ' +
       'window for the series. Reads the persistent cycle FSM state — exactly what the cycle ' +
       'engine itself sees — and the window store for timing; no window is computed here. ' +
+      '⚠️ A symbol whose weekly window is not yet open is ABSENT from every list, not ' +
+      'suppressed — for its window dates call `dwlf_get_cycle_windows`. ' +
       'UI equivalent: https://www.dwlf.co.uk/screener',
     {},
     async () => {
