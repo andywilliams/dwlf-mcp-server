@@ -20,7 +20,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'SHAPE: `{ symbol, timeframe, generation, generationSource, verification, low, high }`. Each side is ' +
       '`null` when the store holds nothing for it, otherwise `{ symbolUsed, current, retiredAbove, history }`. ' +
       '`current` is the live window: `ruler` (the confirmed pivot the window counts from — `pivotDate`, ' +
-      '`price`); dated edges in order `earliest` (weekly only — daily windows have none) → `opens` (early ' +
+      '`price`); dated edges in order `earliest` (the shortest gap on record; weekly only — daily windows have none) → `opens` (early ' +
       'bound) → `centre` (typical) → `closes` (late bound) → `hardMax` (the last bar by which the pivot must ' +
       'arrive or the window is a miss), each with `bars` counted from the ruler and `extrapolated: true` when it ' +
       'lies beyond the last candle; `gaps` (the gap statistics the band was drawn from, incl. `used` = the ' +
@@ -32,7 +32,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'have been.\n\n' +
       '⚠️ Read `verification`: while it says `unverified` (it does for every window as long as the detection ' +
       'gate stands failed), treat the edges as rough timing, not a forecast. ⚠️ The store covers WEEKLY and DAILY ' +
-      '(daily since 24-Sep-2026, folded from the ledger\'s daily lows/highs); `timeframe: "1h"` answers with ' +
+      '(daily folded from the ledger\'s daily lows/highs); `timeframe: "1h"` answers with ' +
       'null sides rather than a computed substitute. On daily, `bars` are trading candles, and an extrapolated ' +
       'edge\'s date is an estimate from average bar spacing (it can fall on a non-trading day until real bars exist).',
     {
