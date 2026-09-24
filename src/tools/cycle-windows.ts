@@ -12,15 +12,15 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
     'dwlf_get_cycle_windows',
     'When is this symbol\'s next cycle LOW (or HIGH) due? Returns the STORED cycle timing window per side — ' +
       'the same edges the chart draws and the screener reads — for ONE symbol, whether or not the window is ' +
-      'open yet. Use it for "when does X\'s next weekly-low window open?" and "how many weeks since X\'s last ' +
-      'weekly low, against its usual gap?". Unlike `dwlf_get_cycle_setups`, which only lists symbols whose ' +
+      'open yet. Use it for "when does X\'s next weekly-low window open?", "when is X\'s next DAILY low due?" and ' +
+      '"how many weeks since X\'s last weekly low, against its usual gap?". Unlike `dwlf_get_cycle_setups`, which only lists symbols whose ' +
       'weekly window is already open (and adds `phase` / early-mid-late for them), this answers for any symbol ' +
       'but carries NO phase: to say whether a window is open, overdue or missed, compare today with the dated ' +
       'edges below.\n\n' +
       'SHAPE: `{ symbol, timeframe, generation, generationSource, verification, low, high }`. Each side is ' +
       '`null` when the store holds nothing for it, otherwise `{ symbolUsed, current, retiredAbove, history }`. ' +
       '`current` is the live window: `ruler` (the confirmed pivot the window counts from — `pivotDate`, ' +
-      '`price`); dated edges in order `earliest` (weekly only, the shortest gap on record) → `opens` (early ' +
+      '`price`); dated edges in order `earliest` (weekly only — daily windows have none) → `opens` (early ' +
       'bound) → `centre` (typical) → `closes` (late bound) → `hardMax` (the last bar by which the pivot must ' +
       'arrive or the window is a miss), each with `bars` counted from the ruler and `extrapolated: true` when it ' +
       'lies beyond the last candle; `gaps` (the gap statistics the band was drawn from, incl. `used` = the ' +
@@ -31,8 +31,10 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'landed (`landedInside`, `daysFromOpen`, …) — which is how to judge how reliable THIS symbol\'s windows ' +
       'have been.\n\n' +
       '⚠️ Read `verification`: while it says `unverified` (it does for every window as long as the detection ' +
-      'gate stands failed), treat the edges as rough timing, not a forecast. ⚠️ The store covers WEEKLY today; `timeframe: "1d"` / `"1h"` answer with ' +
-      'null sides rather than a computed substitute.',
+      'gate stands failed), treat the edges as rough timing, not a forecast. ⚠️ The store covers WEEKLY and DAILY ' +
+      '(daily since 24-Sep-2026, folded from the ledger\'s daily lows/highs); `timeframe: "1h"` answers with ' +
+      'null sides rather than a computed substitute. On daily, `bars` are trading candles, and an extrapolated ' +
+      'edge\'s date is an estimate from average bar spacing (it can fall on a non-trading day until real bars exist).',
     {
       symbol: z
         .string()
@@ -41,7 +43,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       timeframe: z
         .enum(['1w', '1d', '1h'])
         .optional()
-        .describe('Cycle timeframe (default 1w). Only weekly windows are stored today.'),
+        .describe('Cycle timeframe (default 1w). Weekly and daily windows are stored; hourly is not.'),
       side: z
         .enum(['low', 'high'])
         .optional()

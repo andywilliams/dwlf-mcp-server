@@ -3,9 +3,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DWLFClient } from './client.js';
 import { registerMarketDataTools } from './tools/market-data.js';
+import { registerRangeTools } from './tools/ranges.js';
+import { registerCycleSetupTools } from './tools/cycle-setups.js';
+import { registerCycleWindowTools } from './tools/cycle-windows.js';
 import { registerIndicatorTools } from './tools/indicators.js';
 import { registerSignalTools } from './tools/signals.js';
 import { registerWatchlistTools } from './tools/watchlist.js';
+import { registerSymbolTagTools } from './tools/symbol-tags.js';
 import { registerStrategyTools } from './tools/strategies.js';
 import { registerBacktestTools } from './tools/backtests.js';
 import { registerPortfolioTools } from './tools/portfolio.js';
@@ -28,9 +32,13 @@ const server = new McpServer({
 const client = new DWLFClient();
 // Register all tools — Phase 1 (read)
 registerMarketDataTools(server, client);
+registerRangeTools(server, client);
+registerCycleSetupTools(server, client);
+registerCycleWindowTools(server, client);
 registerIndicatorTools(server, client);
 registerSignalTools(server, client);
 registerWatchlistTools(server, client);
+registerSymbolTagTools(server, client);
 // Register all tools — Phase 2 (read + write)
 registerStrategyTools(server, client);
 registerBacktestTools(server, client);
