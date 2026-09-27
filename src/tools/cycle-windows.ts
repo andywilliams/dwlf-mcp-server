@@ -20,7 +20,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'SHAPE: `{ symbol, timeframe, generation, generationSource, verification, low, high }`. Each side is ' +
       '`null` when the store holds nothing for it, otherwise `{ symbolUsed, current, retiredAbove, history }`. ' +
       '`current` is the live window: `ruler` (the confirmed pivot the window counts from — `pivotDate`, ' +
-      '`price`); dated edges in order `earliest` (the shortest gap on record; weekly only — daily windows have none) → `opens` (early ' +
+      '`price`); dated edges in order `earliest` (the shortest gap on record; weekly and daily — a daily one is always an estimate, `extrapolated: true`; null when there is none) → `opens` (early ' +
       'bound) → `centre` (typical) → `closes` (late bound) → `hardMax` (the last bar by which the pivot must ' +
       'arrive or the window is a miss), each with `bars` counted from the ruler and `extrapolated: true` when it ' +
       'lies beyond the last candle; `gaps` (the gap statistics the band was drawn from, incl. `used` = the ' +
