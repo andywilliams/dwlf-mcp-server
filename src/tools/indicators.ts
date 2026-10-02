@@ -54,7 +54,7 @@ export function registerIndicatorTools(
       'with `latest` and `missing` added. ' +
       'This is the only indicator data stored as values: there is no RSI, MACD or Bollinger value series, and ' +
       'there is no 4h/1h data. For momentum, band and cross signals use dwlf_get_events (e.g. `dss.cross.*`, ' +
-      '`bollinger.break.*`, `ema.cross.*`), or dwlf_get_regime for the trend/momentum/volatility read.',
+      '`bollinger.break.*`, `ema.cross.*`, `atr.regime.*` for volatility expansion/contraction), or dwlf_get_regime for the trend/momentum/volatility read.',
     {
       symbol: z
         .string()
