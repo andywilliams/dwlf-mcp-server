@@ -50,7 +50,7 @@ export function registerIndicatorTools(
     'Get the stored DAILY moving averages for a symbol: SMA and EMA at 10, 20, 50, 100 and 200 periods ' +
       '(computed nightly from daily closes). `latest` holds the most recent value of each, with its date; ' +
       '`missing` lists any average with no stored value. ' +
-      'The backend response (`indicators`: one row per average with its daily `data` points) is returned as is, ' +
+      'The backend response (`indicators`: rows grouped by average, each with its daily `data` points) is returned as is, ' +
       'with `latest` and `missing` added. ' +
       'This is the only indicator data stored as values: there is no RSI, MACD or Bollinger value series, and ' +
       'there is no 4h/1h data. For momentum, band and cross signals use dwlf_get_events (e.g. `dss.cross.*`, ' +

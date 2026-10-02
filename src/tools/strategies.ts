@@ -28,7 +28,7 @@ export function registerStrategyTools(
       'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
       'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
       'Indicator/event condition nodes (cycle, swing, EMA/SMA, DSS, Bollinger, SMC, VWAP, trendline, fib) are not all ' +
-      'listed here; use their event ids as they appear in dwlf_get_events.',
+      'listed here.',
     {
       nodeType: z
         .string()

@@ -165,7 +165,7 @@ export function registerMarketDataTools(
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
       '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
-      'cycle pivots, swing points, MA/EMA crosses, S&R level fires and trendline breaks each carry the price at the event date. ' +
+      'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date. ' +
       'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.',
     {
       symbol: z
