@@ -7,18 +7,33 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 1. Get market regime classification
   server.tool(
     'dwlf_get_regime',
-    'Get current market regime classification for a symbol — trend, cycle, momentum, volatility, and confidence score. Optionally retrieve full regime history.',
+    'Get the market regime classification for a symbol on one timeframe (daily by default) — trend, cycle, ' +
+      'momentum, volatility and a confidence score. With `history`, returns a dated regime series, newest first.',
     {
       symbol: z.string().describe('Symbol to query (e.g. BTC, ETH, AAPL)'),
+      timeframe: z
+        .enum(['daily', 'weekly', 'hourly'])
+        .optional()
+        .describe('Candle timeframe to classify (default: daily). Hourly only for symbols with 1h data.'),
       history: z
         .boolean()
         .optional()
-        .describe('If true, return full regime history instead of just current'),
+        .describe('If true, return the dated regime series (newest first) instead of just the current regime'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(500)
+        .optional()
+        .describe('History entries to return when `history` is true (default 90).'),
     },
-    async ({ symbol, history }) => {
+    async ({ symbol, timeframe, history, limit }) => {
       try {
         const normalized = normalizeSymbol(symbol);
-        const params = history ? { history: true } : {};
+        const params: Record<string, string | number | boolean> = {};
+        if (timeframe) params.timeframe = timeframe;
+        if (history) params.history = true;
+        if (history && limit) params.limit = limit;
         const data = await client.get(`/regime/${normalized}`, params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],

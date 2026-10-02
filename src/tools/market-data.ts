@@ -165,7 +165,7 @@ export function registerMarketDataTools(
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
       '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
-      'cycle pivots, swing points, MA/EMA crosses, S&R level fires and trendline breaks each carry the price at the event date. ' +
+      'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date. ' +
       'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.',
     {
       symbol: z
@@ -391,7 +391,9 @@ export function registerMarketDataTools(
   server.tool(
     'dwlf_get_price_picture',
     'Aggregate the price-meaningful indicator events for a symbol into a chronological narrative — ' +
-      'cycle pivots, swing points, MA/EMA crosses, S&R level fires, trendline breaks, bollinger breaks. ' +
+      'cycle pivots, swing points (HH/HL/LH/LL, breaks, sweeps), MA/EMA crosses, trendline breaks and breaches, ' +
+      'bollinger breaks. Support/resistance levels are not included (use dwlf_get_support_resistance), nor SMC, ' +
+      'VWAP, fib or DSS events (use dwlf_get_events). ' +
       'Each row carries date + price (or level) + a human-readable label. ' +
       'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
       'or when you want a clean one-call summary instead of stitching together multiple `dwlf_get_events` queries. ' +
@@ -407,7 +409,8 @@ export function registerMarketDataTools(
       timeframe: z
         .enum(['1w', '1d', '4h', '1h'])
         .optional()
-        .describe('Timeframe of events to include (default: 1d). Use 1w for weekly structural pivots only.'),
+        .describe('Timeframe of events to include (default: 1d). 1d carries every type listed; 1w carries cycle ' +
+          'pivots and trendline breaks; 1h carries cycle events only; 4h has no events today.'),
       limit: z
         .number()
         .optional()
