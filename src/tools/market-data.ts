@@ -410,7 +410,7 @@ export function registerMarketDataTools(
         .enum(['1w', '1d', '4h', '1h'])
         .optional()
         .describe('Timeframe of events to include (default: 1d). 1d carries every type listed; 1w carries cycle ' +
-          'pivots, trendline breaks and weekly SMC; 1h carries cycle events only; 4h has no events today.'),
+          'pivots and trendline breaks; 1h carries cycle events only; 4h has no events today.'),
       limit: z
         .number()
         .optional()

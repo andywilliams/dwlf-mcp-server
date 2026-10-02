@@ -18,12 +18,14 @@ Full technical breakdown for a trading symbol — from raw candles to a synthesi
    → Quick overview: price, change, key indicators, S/R, recent events
 
 2. dwlf_get_market_data
-   symbol: "BTC", interval: "1d", limit: 30
+   symbol: "BTC", timeframe: "daily", limit: 30
    → 30 daily candles for trend context
 
 3. dwlf_get_indicators
-   symbol: "BTC", interval: "4h"
-   → RSI, MACD, EMA alignment, Bollinger Bands, DSS on the 4h
+   symbol: "BTC"
+   → latest daily SMA/EMA 10/20/50/100/200 (moving averages only; DSS and
+     Bollinger signals come from dwlf_get_events, the trend/momentum read from
+     dwlf_get_regime)
 
 4. dwlf_get_support_resistance
    symbol: "BTC"
@@ -45,7 +47,7 @@ Full technical breakdown for a trading symbol — from raw candles to a synthesi
 
 The AI now has everything to produce a market view:
 - **Trend:** Multi-timeframe direction from candles + trendlines
-- **Momentum:** RSI, MACD, DSS state (overbought/oversold, crossing)
+- **Momentum:** DSS crosses and overbought/oversold events, plus the regime's momentum read
 - **Structure:** Where price sits relative to S/R levels
 - **Events:** What's happened recently (breakouts, divergences)
 - **Signals:** Whether any strategies are positioning

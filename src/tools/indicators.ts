@@ -7,33 +7,35 @@ export const MA_TYPES = [10, 20, 50, 100, 200].flatMap((p) => [`sma${p}`, `ema${
 
 type MaPoint = { date: string; value: number };
 
-// Shapes /chart-indicators?combine=true into `latest` per average plus an
-// optional newest-first series, dropping storage fields agents don't need.
-export function summariseMovingAverages(data: any, days: number) {
-  const rows: any[] = Array.isArray(data?.indicators) ? data.indicators : [];
-  const byType = new Map<string, MaPoint[]>();
-  for (const row of rows) {
-    const points: MaPoint[] = (Array.isArray(row?.data) ? row.data : [])
-      .filter((p: any) => p && typeof p.date === 'string' && Number.isFinite(p.value));
-    byType.set(row.type, [...(byType.get(row.type) ?? []), ...points]);
+const isMaPoint = (p: unknown): p is MaPoint =>
+  typeof p === 'object' && p !== null
+  && typeof (p as MaPoint).date === 'string' && Number.isFinite((p as MaPoint).value);
+
+// Adds `latest` (newest value per average) and `missing` alongside the backend's
+// /chart-indicators?combine=true response, which passes through unchanged.
+// Throws on a response without an `indicators` array, so an unexpected shape is
+// an error rather than "no stored averages".
+export function withLatestMovingAverages(data: unknown) {
+  const rows = (data as { indicators?: unknown })?.indicators;
+  if (!Array.isArray(rows)) {
+    throw new Error('unexpected /chart-indicators response: no indicators array');
   }
   const latest: Record<string, MaPoint> = {};
-  const series: Record<string, MaPoint[]> = {};
-  for (const type of MA_TYPES) {
-    const points = (byType.get(type) ?? []).sort((a, b) => b.date.localeCompare(a.date)).slice(0, days);
-    if (points.length === 0) {
+  for (const row of rows) {
+    const type = (row as { type?: unknown })?.type;
+    const points = (row as { data?: unknown })?.data;
+    if (typeof type !== 'string' || !Array.isArray(points)) {
       continue;
     }
-    latest[type] = points[0];
-    if (days > 1) {
-      series[type] = points;
+    for (const p of points.filter(isMaPoint)) {
+      if (!latest[type] || p.date > latest[type].date) {
+        latest[type] = p;
+      }
     }
   }
   return {
-    symbol: data?.symbol,
-    timeframe: '1d',
+    ...(data as object),
     latest,
-    ...(days > 1 ? { series } : {}),
     missing: MA_TYPES.filter((t) => !latest[t]),
   };
 }
@@ -46,8 +48,10 @@ export function registerIndicatorTools(
   server.tool(
     'dwlf_get_indicators',
     'Get the stored DAILY moving averages for a symbol: SMA and EMA at 10, 20, 50, 100 and 200 periods ' +
-      '(computed nightly from daily closes). Returns `latest` (the most recent value of each, with its date) and, ' +
-      'when `days` > 1, a `series` of recent values per average, newest first. ' +
+      '(computed nightly from daily closes). `latest` holds the most recent value of each, with its date; ' +
+      '`missing` lists any average with no stored value. ' +
+      'The backend response (`indicators`: one row per average with its daily `data` points) is returned as is, ' +
+      'with `latest` and `missing` added. ' +
       'This is the only indicator data stored as values: there is no RSI, MACD or Bollinger value series, and ' +
       'there is no 4h/1h data. For momentum, band and cross signals use dwlf_get_events (e.g. `dss.cross.*`, ' +
       '`bollinger.break.*`, `ema.cross.*`), or dwlf_get_regime for the trend/momentum/volatility read.',
@@ -61,19 +65,18 @@ export function registerIndicatorTools(
         .min(1)
         .max(250)
         .optional()
-        .describe('Daily values to return per average, newest first (default 1 = latest only; max 250).'),
+        .describe('Daily values to return per average (default 1 = latest only; max 250).'),
     },
     async ({ symbol, days }) => {
       try {
         const sym = normalizeSymbol(symbol);
-        const perType = days ?? 1;
-        const data: any = await client.get(`/chart-indicators/${sym}`, {
+        const data = await client.get(`/chart-indicators/${sym}`, {
           types: MA_TYPES.join(','),
-          limit: perType,
+          limit: days ?? 1,
           combine: 'true',
         });
         return {
-          content: [{ type: 'text', text: JSON.stringify(summariseMovingAverages(data, perType), null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(withLatestMovingAverages(data), null, 2) }],
         };
       } catch (error) {
         return {

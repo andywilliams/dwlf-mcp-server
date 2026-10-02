@@ -119,7 +119,7 @@ Returns an API key immediately. Use this key for both REST API and MCP to ensure
 Get OHLCV candles, list symbols, support/resistance levels, and indicator events (crossovers, breakouts, divergences, candlestick patterns).
 
 ### Technical Indicators
-RSI, MACD, EMA, Bollinger Bands, DSS, Ichimoku, trendlines, and more.
+Daily SMA/EMA values (10–200), trendlines (daily, weekly, hourly), market regime, and indicator events: DSS, Bollinger, EMA/SMA crosses, swing structure, SMC, VWAP, cycle pivots.
 
 ### Trade Signals
 Active signals, signal history with P&L, and performance stats (win rate, avg return).
@@ -149,7 +149,7 @@ Browse educational tracks, read lessons, and search academy content.
 
 ```
 "How's BTC looking right now?"
-"Show me RSI and MACD for AAPL on the 4h chart"
+"Where is AAPL relative to its 50 and 200 day moving averages?"
 "What active trade signals do we have?"
 "Create a Golden Cross strategy using EMA 50/200"
 "Backtest my strategy on NVDA over the last year"
