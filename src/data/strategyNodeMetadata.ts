@@ -312,7 +312,15 @@ export const STRATEGY_NODES: StrategyNode[] = [
     nodeType: 'then_gate',
     category: 'logic',
     description: 'Sequential gate — input B must fire AFTER input A. Alias: sequence_gate.',
-    params: [],
+    params: [
+      {
+        name: 'maxGapDays',
+        type: 'number',
+        default: null,
+        description: 'Max calendar days between A and B. Unset = no limit.',
+        honoredByExecutor: true,
+      },
+    ],
   },
 
   // ── Cancellation ───────────────────────────────────────────────────
