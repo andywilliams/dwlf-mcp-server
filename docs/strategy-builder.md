@@ -190,6 +190,16 @@ All use `backgroundColor: "#4a5568"`, `borderColor: "#2d3748"`.
 |----------|-------|
 | `bollinger.break.belowLower` | Close Broke Below Lower Band |
 
+#### ATR Volatility Regime Events
+Daily events. ATR as a percent of close is ranked against its last 100 bars (Wilder ATR 14). Each event fires once, when an episode **starts**, and cannot fire again until the rank returns past the median.
+
+| nodeType | Label | Fires when |
+|----------|-------|------------|
+| `atr.regime.expansion` | ATR Volatility Expansion | the rank reaches the top 20% |
+| `atr.regime.contraction` | ATR Volatility Contraction | the rank reaches the bottom 20% |
+
+Not the same as `atr_expansion` / `atr_contraction` below, which are computed per bar (ATR rising or falling over the last 5 bars).
+
 #### Price / Trend Conditions
 | nodeType | Label |
 |----------|-------|
