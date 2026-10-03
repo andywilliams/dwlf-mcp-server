@@ -124,7 +124,11 @@ export function registerMarketDataTools(
   // 3. Get support/resistance levels
   server.tool(
     'dwlf_get_support_resistance',
-    'Get support and resistance levels for a trading symbol. These are key price levels where buying/selling pressure is expected.',
+    'Get the current key levels (support and resistance) for a trading symbol, from daily candles, recomputed nightly. ' +
+      'Each level is a zone (`zone.lower`/`zone.upper`, ATR-wide) built from confirmed cycle pivots (daily and weekly) and the previous week, month and year high/low and year open; ' +
+      'round numbers only add confluence. `sources` lists what built it, `score`/`scoreParts` rank it (touches × reaction × recency × timeframe × confluence), ' +
+      '`distanceAtr` is how far it sits from the close, and `id` is stable across nights. Up to 5 per side, nearest first. ' +
+      'Interactions with these levels are daily events: dwlf_get_events with type `keyLevel.<kind>` (formed, approached, tested, rejected, broken, retested, flipped, reclaimed, expired), each with a `keyLevel` block (levelId, kind, direction, role, levelPrice, zone edges).',
     {
       symbol: z
         .string()
@@ -392,7 +396,7 @@ export function registerMarketDataTools(
     'dwlf_get_price_picture',
     'Aggregate the price-meaningful indicator events for a symbol into a chronological narrative — ' +
       'cycle pivots, swing points (HH/HL/LH/LL, breaks, sweeps), MA/EMA crosses, trendline breaks and breaches, ' +
-      'bollinger breaks. Support/resistance levels are not included (use dwlf_get_support_resistance), nor SMC, ' +
+      'bollinger breaks, key level breaks / flips / reclaims. The levels themselves are not included (use dwlf_get_support_resistance), nor SMC, ' +
       'VWAP, fib or DSS events (use dwlf_get_events). ' +
       'Each row carries date + price (or level) + a human-readable label. ' +
       'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
@@ -459,16 +463,19 @@ export function registerMarketDataTools(
           // Bollinger band breaks
           'bollinger.break.aboveUpper',
           'bollinger.break.belowLower',
-          // NB: supportResistance.{support,resistance}.level events are intentionally
-          // EXCLUDED here. They re-fire every cron run with the same level value, so
-          // a 60-day window dumps ~120 duplicate rows that crowd out the actually
-          // narrative-worthy events (cycle pivots, swing breaks, etc.) under the
-          // limit cap. Use dwlf_get_support_resistance for current S&R levels.
+          // NB: S/R levels themselves are not events here; use
+          // dwlf_get_support_resistance for current levels (keyLevel.* events
+          // cover interactions with them).
           // Trendline breaks
           'trendline_break_bullish',
           'trendline_break_bearish',
           'trendline_breach_bullish',
           'trendline_breach_bearish',
+          // Key level breaks and their outcomes (DWLF-333). Approached / tested /
+          // rejected fire far more often and stay out, like the levels themselves.
+          'keyLevel.broken',
+          'keyLevel.flipped',
+          'keyLevel.reclaimed',
         ]);
 
         // The /events endpoint normally returns `{ events: [...] }`, but defend
@@ -497,7 +504,7 @@ export function registerMarketDataTools(
           .filter((e) => PRICE_MEANINGFUL_TYPES.has(String(e.eventType ?? '')))
           .map((e) => {
             const eventType = String(e.eventType ?? '');
-            const price = e.price ?? e.level ?? null;
+            const price = e.price ?? e.level ?? (e.keyLevel as { levelPrice?: number } | undefined)?.levelPrice ?? null;
             let label = eventType;
             let maGroupKey: string | undefined;
             let maLength: number | undefined;
@@ -514,6 +521,9 @@ export function registerMarketDataTools(
               // verbose rows. Cuts the same-day MA noise that was crowding out
               // older structural events under the limit cap.
               maGroupKey = `${e.date ?? ''}#${eventType}`;
+            } else if (eventType.startsWith('keyLevel.')) {
+              const keyLevel = (e.keyLevel ?? {}) as { direction?: string; role?: string };
+              label = keyLevel.direction ? `${eventType} (${keyLevel.direction})` : eventType;
             } else if (eventType.startsWith('swing_')) {
               label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
             }
@@ -575,9 +585,9 @@ export function registerMarketDataTools(
                   narrative,
                   agentHints: {
                     interpretation:
-                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
+                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection. keyLevel.broken / flipped / reclaimed rows are breaks of a key level (price = the level), suffixed (bullish|bearish).',
                     limitations:
-                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
+                      'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current key levels are not included (only breaks of them) — call dwlf_get_support_resistance for the levels themselves.',
                   },
                 },
                 null,
