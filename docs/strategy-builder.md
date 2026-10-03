@@ -200,6 +200,21 @@ Daily events. ATR as a percent of close is ranked against its last 100 bars (Wil
 
 Not the same as `atr_expansion` / `atr_contraction` below, which are computed per bar (ATR rising or falling over the last 5 bars).
 
+#### Key Level Events
+Daily events on the nightly key levels (see `dwlf_get_support_resistance`). Each event carries a `keyLevel` block (`levelId`, `kind`, `direction`, `role`, `levelPrice`, zone `upper`/`lower`). Rejected, broken, flipped and reclaimed fire in either direction and take a `direction` param (`bullish` / `bearish`).
+
+| nodeType | Fires when |
+|----------|------------|
+| `keyLevel.formed` | the level became known |
+| `keyLevel.approached` | price closed near the level from its expected side |
+| `keyLevel.tested` | price reached the level |
+| `keyLevel.rejected` | price left the level on its expected side: the level held |
+| `keyLevel.broken` | price closed beyond the level by the break buffer |
+| `keyLevel.retested` | price returned to a broken level from the other side |
+| `keyLevel.flipped` | a broken level held from the other side: its role reversed |
+| `keyLevel.reclaimed` | price closed back through soon after a break: the break failed |
+| `keyLevel.expired` | the level ended, or went untouched for the expiry period |
+
 #### Price / Trend Conditions
 | nodeType | Label |
 |----------|-------|

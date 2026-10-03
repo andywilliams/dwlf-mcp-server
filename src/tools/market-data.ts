@@ -124,7 +124,11 @@ export function registerMarketDataTools(
   // 3. Get support/resistance levels
   server.tool(
     'dwlf_get_support_resistance',
-    'Get support and resistance levels for a trading symbol. These are key price levels where buying/selling pressure is expected.',
+    'Get the current key levels (support and resistance) for a trading symbol, from daily candles, recomputed nightly. ' +
+      'Each level is a zone (`zone.lower`/`zone.upper`, ATR-wide) built from confirmed cycle pivots (daily and weekly) and the previous week, month and year high/low and year open; ' +
+      'round numbers only add confluence. `sources` lists what built it, `score`/`scoreParts` rank it (touches × reaction × recency × timeframe × confluence), ' +
+      '`distanceAtr` is how far it sits from the close, and `id` is stable across nights. Up to 5 per side, nearest first. ' +
+      'Interactions with these levels are daily events: dwlf_get_events with type `keyLevel.<kind>` (formed, approached, tested, rejected, broken, retested, flipped, reclaimed, expired), each with a `keyLevel` block (levelId, kind, direction, role, levelPrice, zone edges).',
     {
       symbol: z
         .string()
@@ -459,11 +463,9 @@ export function registerMarketDataTools(
           // Bollinger band breaks
           'bollinger.break.aboveUpper',
           'bollinger.break.belowLower',
-          // NB: supportResistance.{support,resistance}.level events are intentionally
-          // EXCLUDED here. They re-fire every cron run with the same level value, so
-          // a 60-day window dumps ~120 duplicate rows that crowd out the actually
-          // narrative-worthy events (cycle pivots, swing breaks, etc.) under the
-          // limit cap. Use dwlf_get_support_resistance for current S&R levels.
+          // NB: S/R levels themselves are not events here; use
+          // dwlf_get_support_resistance for current levels (keyLevel.* events
+          // cover interactions with them).
           // Trendline breaks
           'trendline_break_bullish',
           'trendline_break_bearish',
