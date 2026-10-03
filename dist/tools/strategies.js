@@ -13,9 +13,7 @@ export function registerStrategyTools(server, client) {
         'Optional `nodeType` filters to a single node (e.g. `sl_below_recent_low`); optional `category` ' +
         'filters to a class (`stopLoss` / `takeProfit` / `signal` / `logic` / `cancellation` / `condition` / `exit`). ' +
         'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
-        'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
-        'Indicator/event condition nodes (cycle, swing, EMA/SMA, DSS, Bollinger, SMC, VWAP, trendline, fib) are not all ' +
-        'listed here.', {
+        'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed.', {
         nodeType: z
             .string()
             .optional()

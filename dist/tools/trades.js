@@ -48,16 +48,7 @@ export function registerTradeTools(server, client) {
         }
     });
     // 3. Create trade
-    server.tool('dwlf_create_trade', 'Log a new trade in the journal. Specify symbol, direction, entry price, and optional stop loss / take profit. ' +
-        'STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the trade is being taken, in the same ' +
-        'structured vocabulary dwlf_confirm_trade uses, so a directly-logged trade feeds the ' +
-        'byConfirmReason decision analytics exactly like a confirmed planned one. Valid ' +
-        'confirmReasons: fresh_cycle_entry, trendline_break_confirmed, cluster_confluence, ' +
-        'regime_aligned, risk_reward_attractive, adding_to_winner, other. confirmNote is required ' +
-        'when a reason is "other". Reasons are optional (untagged trades still log) but every ' +
-        'untagged entry is decision-analytics data lost — and unlike a skip, it cannot be ' +
-        'reconstructed later. reasonText is the free-text thesis and does NOT substitute: no ' +
-        'rollup can read it.', {
+    server.tool('dwlf_create_trade', 'Log a new trade in the journal. Specify symbol, direction, entry price, and optional stop loss / take profit.', {
         symbol: z.string().describe('Trading symbol (e.g. BTC, TSLA, RIOT)'),
         direction: z.enum(['long', 'short']).describe('Trade direction'),
         entryPrice: z.number().describe('Entry price'),
@@ -65,19 +56,10 @@ export function registerTradeTools(server, client) {
         initialStop: z.number().optional().describe('Stop loss price'),
         initialTakeProfit: z.number().optional().describe('Take profit price'),
         timeframe: z.string().optional().describe('Timeframe (e.g. 1d, 4h, 1h)'),
-        reasonText: z.string().optional().describe('Free-text trade reasoning / thesis. Not machine-readable — use confirmReasons for analytics.'),
-        confirmReasons: z
-            .array(z.string())
-            .optional()
-            .describe('WHY this trade is being taken. Valid: fresh_cycle_entry, trendline_break_confirmed, ' +
-            'cluster_confluence, regime_aligned, risk_reward_attractive, adding_to_winner, other.'),
-        confirmNote: z
-            .string()
-            .optional()
-            .describe('Free-text detail on the entry rationale. REQUIRED when a reason is "other". Max 2000 chars.'),
+        reasonText: z.string().optional().describe('Trade reasoning / thesis'),
         isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade (default: false)'),
         assetType: z.enum(['crypto', 'equity', 'forex']).optional().describe('Asset type'),
-    }, async ({ symbol, direction, entryPrice, positionSize, initialStop, initialTakeProfit, timeframe, reasonText, confirmReasons, confirmNote, isPaperTrade, assetType }) => {
+    }, async ({ symbol, direction, entryPrice, positionSize, initialStop, initialTakeProfit, timeframe, reasonText, isPaperTrade, assetType }) => {
         try {
             const body = {
                 assetSymbol: normalizeSymbol(symbol),
@@ -95,13 +77,6 @@ export function registerTradeTools(server, client) {
                 body.timeframe = timeframe;
             if (reasonText)
                 body.reasonText = reasonText;
-            // Sent only when non-empty so an untagged trade leaves the attributes
-            // absent rather than writing an empty array — "no reason recorded" and
-            // "recorded as none" stay distinguishable in the ledger.
-            if (confirmReasons?.length)
-                body.confirmReasons = confirmReasons;
-            if (confirmNote)
-                body.confirmNote = confirmNote;
             if (isPaperTrade !== undefined)
                 body.isPaperTrade = isPaperTrade;
             if (assetType)
@@ -196,104 +171,36 @@ export function registerTradeTools(server, client) {
         }
     });
     // 7. Update trade
-    server.tool('dwlf_update_trade', 'Update an existing trade by ID. All fields except tradeId are optional (partial update). ' +
-        'Parameter names match dwlf_create_trade / dwlf_confirm_trade: initialStop / ' +
-        'initialTakeProfit / positionSize (formerly stopLoss / takeProfit / quantity — the old ' +
-        'names are no longer accepted). symbol and tags are NOT editable — the backend has never ' +
-        'accepted them, and offering them meant a caller could set one and be told 200 while ' +
-        'nothing changed. To change the levels on an OPEN trade use this; to set them as the ' +
-        'trade is taken, pass them to dwlf_confirm_trade instead so it is one call.', {
+    server.tool('dwlf_update_trade', 'Update an existing trade by ID. All fields except tradeId are optional (partial update).', {
         tradeId: z.string().describe('Trade ID'),
+        symbol: z.string().optional().describe('Trading symbol'),
         direction: z.enum(['long', 'short']).optional().describe('Trade direction'),
         entryPrice: z.number().optional().describe('Entry price'),
-        initialStop: z
-            .number()
-            .optional()
-            .describe('Stop loss price (formerly stopLoss). ⚠️ This rewrites the R BASELINE: every R-multiple ' +
-            'is computed from |entryPrice - initialStop|, and a numeric change also clears the ' +
-            'stopAnchor provenance. Correct when the stop was WRONG and is being fixed. NOT for ' +
-            'trailing a stop up behind price — that silently shrinks the R denominator and reports ' +
-            'an inflated R on a winner. Trailing needs a separate field, not this one.'),
-        initialTakeProfit: z.number().optional().describe('Take profit price (formerly takeProfit)'),
-        positionSize: z.number().optional().describe('Position size / quantity (formerly quantity)'),
+        stopLoss: z.number().optional().describe('Stop loss price'),
+        takeProfit: z.number().optional().describe('Take profit price'),
+        quantity: z.number().optional().describe('Position size'),
         notes: z.string().optional().describe('Trade notes'),
+        tags: z.array(z.string()).optional().describe('Tags for the trade'),
         isPaperTrade: z.boolean().optional().describe('Whether this is a paper trade'),
-        // Declared only so they can be rejected BY NAME: zod strips unknown
-        // keys, so an undeclared legacy field would be dropped in silence — the
-        // exact failure this rename fixes. z.unknown(), not z.number(): a
-        // string-typed legacy value ("349.84") must reach the rename message,
-        // not die on a generic type error that never names the replacement.
-        stopLoss: z.unknown().optional().describe('DEPRECATED — renamed to initialStop. Rejected with an error.'),
-        takeProfit: z.unknown().optional().describe('DEPRECATED — renamed to initialTakeProfit. Rejected with an error.'),
-        quantity: z.unknown().optional().describe('DEPRECATED — renamed to positionSize. Rejected with an error.'),
-        symbol: z.unknown().optional().describe('REMOVED — not editable, the backend has never accepted it. Rejected with an error.'),
-        tags: z.unknown().optional().describe('REMOVED — not editable, the backend has never accepted it. Rejected with an error.'),
-    }, async ({ tradeId, direction, entryPrice, initialStop, initialTakeProfit, positionSize, notes, isPaperTrade, stopLoss, takeProfit, quantity, symbol, tags }) => {
+    }, async ({ tradeId, symbol, direction, entryPrice, stopLoss, takeProfit, quantity, notes, tags, isPaperTrade }) => {
         try {
-            // Fail LOUD on the legacy names rather than letting zod strip them: a
-            // mixed call like { initialStop, quantity } would otherwise apply the
-            // stop, drop the size edit, and return 200 — the silent-no-op class
-            // this tool's rename exists to kill.
-            const legacy = [
-                ['stopLoss', 'initialStop', stopLoss],
-                ['takeProfit', 'initialTakeProfit', takeProfit],
-                ['quantity', 'positionSize', quantity],
-            ];
-            // != null on purpose: some tool layers serialise absent optionals as
-            // JSON null (the API backend documents the same convention), and a
-            // null legacy field is "not set", not old-vocabulary usage.
-            const used = legacy.filter(([, , value]) => value != null);
-            if (used.length) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Error: renamed parameter(s) — ${used.map(([o, n]) => `${o} is now ${n}`).join(', ')}. Nothing was updated; re-issue the call with the new name(s).`,
-                        },
-                    ],
-                    isError: true,
-                };
-            }
-            // symbol/tags get the same loud treatment, with a different message:
-            // they are not renamed, they were never editable — a 0.41.0 caller
-            // (or a stale cached tool description) that sends one must hear that,
-            // not get a 200 with the field silently stripped by zod.
-            const removed = [
-                ['symbol', symbol],
-                ['tags', tags],
-            ].filter(([, value]) => value != null);
-            if (removed.length) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Error: ${removed.map(([name]) => name).join(' and ')} cannot be updated — the backend has never accepted ${removed.length > 1 ? 'them' : 'it'}. Nothing was updated.`,
-                        },
-                    ],
-                    isError: true,
-                };
-            }
-            // Input names ARE the API's whitelist names (initialStop /
-            // initialTakeProfit / positionSize), the same vocabulary as
-            // dwlf_create_trade and dwlf_confirm_trade. This tool used to take
-            // friendly names (stopLoss / takeProfit / quantity) and pass them
-            // straight through — the backend dropped the unknown fields and still
-            // returned 200, so stop edits silently did nothing for weeks. One
-            // vocabulary across the three tools means an agent cannot guess wrong
-            // between them.
             const body = {};
+            if (symbol)
+                body.symbol = normalizeSymbol(symbol);
             if (direction)
                 body.direction = direction;
             if (entryPrice !== undefined)
                 body.entryPrice = entryPrice;
-            if (initialStop !== undefined)
-                body.initialStop = initialStop;
-            if (initialTakeProfit !== undefined)
-                body.initialTakeProfit = initialTakeProfit;
-            if (positionSize !== undefined)
-                body.positionSize = positionSize;
+            if (stopLoss !== undefined)
+                body.stopLoss = stopLoss;
+            if (takeProfit !== undefined)
+                body.takeProfit = takeProfit;
+            if (quantity !== undefined)
+                body.quantity = quantity;
             if (notes)
                 body.notes = notes;
+            if (tags)
+                body.tags = tags;
             if (isPaperTrade !== undefined)
                 body.isPaperTrade = isPaperTrade;
             const data = await client.put(`/trades/${tradeId}`, body);
@@ -407,31 +314,9 @@ export function registerTradeTools(server, client) {
         'are 3-for-3, +3R saved"). Honesty: only resolved outcomes are judged; paper trades ' +
         'excluded; legacy trades without a genuine numeric R are judged by P&L sign and counted ' +
         'in `rUnknown` (they contribute no R magnitude). ' +
-        'UI equivalent: https://www.dwlf.co.uk/trades/decisions. ' +
-        'Optional recent-window scope — `months` (last N months) or `fromDate` (YYYY-MM-DD); omit for all-time. ' +
-        'A growing skip history dilutes the current-form read, so scope to e.g. months=12 for "recent" decisions. ' +
-        '`meta.window` echoes the applied scope.', {
-        months: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe('Scope the ledger to the last N months (recent-form read). Omit = all-time.'),
-        fromDate: z
-            .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD')
-            .optional()
-            .describe('Scope to decisions on/after this date (YYYY-MM-DD). Takes precedence over months. Omit = all-time.'),
-    }, async ({ months, fromDate }) => {
+        'UI equivalent: https://www.dwlf.co.uk/trades/decisions', {}, async () => {
         try {
-            // Build params conditionally (matches dwlf_list_trades below) so the
-            // all-time default is self-evident, not reliant on the client dropping undefined.
-            const params = {};
-            if (months !== undefined)
-                params.months = months;
-            if (fromDate)
-                params.fromDate = fromDate;
-            const data = await client.get('/trades/decision-stats', params);
+            const data = await client.get('/trades/decision-stats');
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };
@@ -446,11 +331,8 @@ export function registerTradeTools(server, client) {
     // 12. Confirm (take) a planned trade
     server.tool('dwlf_confirm_trade', 'Confirm (take) a confirm-mode PLANNED trade — turns it into an OPEN position. ' +
         'Only trades with status "planned" can be confirmed. By default it opens at the ' +
-        'planned entryPrice / positionSize / stop and stamps entryAt=now; override any of them to ' +
-        'reflect what you actually did. ⚠️ OVERRIDING THE STOP IS THE COMMON CASE, not an exception: the ' +
-        'engine derives its stop from regular-session candles, so it routinely sits inside the broker\'s ' +
-        'wider range and has to be moved before the take. Overriding initialStop does NOT re-derive ' +
-        'positionSize — pass both to keep risk constant. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
+        'planned entryPrice / positionSize and stamps entryAt=now; override any of them to ' +
+        'reflect your actual fill. STRONGLY RECOMMENDED: pass confirmReasons[] — WHY the ' +
         'trade is being taken (the symmetric twin of skip reasons; feeds the Counterfactual ' +
         'scorecard / 2x2 decision analytics). Valid confirmReasons: fresh_cycle_entry, ' +
         'trendline_break_confirmed, cluster_confluence, regime_aligned, ' +
@@ -461,33 +343,19 @@ export function registerTradeTools(server, client) {
         tradeId: z.string().describe('Planned trade ID to confirm/take'),
         entryPrice: z.number().optional().describe('Actual entry/fill price (defaults to the planned entryPrice)'),
         positionSize: z.number().optional().describe('Actual position size / quantity (defaults to the planned size)'),
-        initialStop: z
-            .number()
-            .optional()
-            .describe('Actual stop the trade opens with (defaults to the planned stop). ⚠️ Overriding this does NOT ' +
-            're-derive positionSize — the planned size was computed from the PLANNED stop, so a wider stop ' +
-            'means proportionally more money at risk. Pass positionSize in the same call to hold risk constant.'),
-        initialTakeProfit: z
-            .number()
-            .optional()
-            .describe('Actual take-profit the trade opens with (defaults to the planned target)'),
         entryAt: z.string().optional().describe('Entry timestamp, ISO 8601 (defaults to now)'),
         confirmReasons: z
             .array(z.string())
             .optional()
             .describe('WHY the trade is taken (multi-select; see tool description for the valid set). First = primary.'),
         confirmNote: z.string().optional().describe('Entry rationale note (max 500 chars). Required when a reason is "other".'),
-    }, async ({ tradeId, entryPrice, positionSize, initialStop, initialTakeProfit, entryAt, confirmReasons, confirmNote }) => {
+    }, async ({ tradeId, entryPrice, positionSize, entryAt, confirmReasons, confirmNote }) => {
         try {
             const body = {};
             if (entryPrice !== undefined)
                 body.entryPrice = entryPrice;
             if (positionSize !== undefined)
                 body.positionSize = positionSize;
-            if (initialStop !== undefined)
-                body.initialStop = initialStop;
-            if (initialTakeProfit !== undefined)
-                body.initialTakeProfit = initialTakeProfit;
             if (entryAt)
                 body.entryAt = entryAt;
             if (confirmReasons && confirmReasons.length)
@@ -495,43 +363,8 @@ export function registerTradeTools(server, client) {
             if (confirmNote)
                 body.confirmNote = confirmNote;
             const data = await client.post(`/trades/${tradeId}/confirm`, body);
-            // The schema's money-at-risk warning, repeated where the agent
-            // definitely reads it: the planned size was computed from the PLANNED
-            // stop, so any stop override needs the size re-derived — and passing
-            // positionSize is no proof it WAS re-derived (echoing the planned size
-            // alongside a wider stop is the exact live failure this guards). Warn
-            // whenever the stop was passed; branch the wording. The handler cannot
-            // know the planned stop without a second call, so both wordings stay
-            // conditional. Additive enrichment per the charter (agentHints).
-            const dataObj = typeof data === 'object' && data !== null && !Array.isArray(data)
-                ? data
-                : null;
-            const priorHints = dataObj && typeof dataObj.agentHints === 'object' && dataObj.agentHints !== null && !Array.isArray(dataObj.agentHints)
-                ? dataObj.agentHints
-                : undefined;
-            const payload = initialStop !== undefined && dataObj
-                ? {
-                    ...dataObj,
-                    // MERGE with any backend-supplied hints rather than replacing
-                    // them; a backend workflowWarning is prepended, not clobbered.
-                    agentHints: {
-                        ...priorHints,
-                        workflowWarning: (priorHints?.workflowWarning ? String(priorHints.workflowWarning) + ' | ' : '') +
-                            (positionSize === undefined
-                                ? 'initialStop was passed without positionSize. If the stop you passed DIFFERS from the ' +
-                                    'planned stop, the planned size was computed from the PLANNED stop and risk on this ' +
-                                    'position is no longer the planned amount — recompute with dwlf_position_size and ' +
-                                    'correct positionSize via dwlf_update_trade. If you re-sent the planned stop unchanged, ' +
-                                    'nothing changed and no action is needed.'
-                                : 'initialStop and positionSize were both passed. Confirm positionSize was RECOMPUTED for ' +
-                                    'the stop actually used (dwlf_position_size), not echoed from the plan — the planned ' +
-                                    'size was computed from the PLANNED stop, so echoing it under a wider stop means more ' +
-                                    'money at risk than planned. If it was recomputed, no action is needed.'),
-                    },
-                }
-                : data;
             return {
-                content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+                content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
             };
         }
         catch (error) {

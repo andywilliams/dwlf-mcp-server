@@ -396,7 +396,7 @@ export function registerMarketDataTools(
     'dwlf_get_price_picture',
     'Aggregate the price-meaningful indicator events for a symbol into a chronological narrative — ' +
       'cycle pivots, swing points (HH/HL/LH/LL, breaks, sweeps), MA/EMA crosses, trendline breaks and breaches, ' +
-      'bollinger breaks. Support/resistance levels are not included (use dwlf_get_support_resistance), nor SMC, ' +
+      'bollinger breaks, key level breaks / flips / reclaims. The levels themselves are not included (use dwlf_get_support_resistance), nor SMC, ' +
       'VWAP, fib or DSS events (use dwlf_get_events). ' +
       'Each row carries date + price (or level) + a human-readable label. ' +
       'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
@@ -471,6 +471,11 @@ export function registerMarketDataTools(
           'trendline_break_bearish',
           'trendline_breach_bullish',
           'trendline_breach_bearish',
+          // Key level breaks and their outcomes (DWLF-333). Approached / tested /
+          // rejected fire far more often and stay out, like the levels themselves.
+          'keyLevel.broken',
+          'keyLevel.flipped',
+          'keyLevel.reclaimed',
         ]);
 
         // The /events endpoint normally returns `{ events: [...] }`, but defend
@@ -516,6 +521,9 @@ export function registerMarketDataTools(
               // verbose rows. Cuts the same-day MA noise that was crowding out
               // older structural events under the limit cap.
               maGroupKey = `${e.date ?? ''}#${eventType}`;
+            } else if (eventType.startsWith('keyLevel.')) {
+              const keyLevel = (e.keyLevel ?? {}) as { direction?: string; role?: string };
+              label = keyLevel.direction ? `${eventType} (${keyLevel.direction})` : eventType;
             } else if (eventType.startsWith('swing_')) {
               label = e.swingType ? `${eventType} (${e.swingType})` : eventType;
             }

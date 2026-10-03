@@ -201,7 +201,7 @@ Daily events. ATR as a percent of close is ranked against its last 100 bars (Wil
 Not the same as `atr_expansion` / `atr_contraction` below, which are computed per bar (ATR rising or falling over the last 5 bars).
 
 #### Key Level Events
-Daily events on the nightly key levels (see `dwlf_get_support_resistance`). Each event carries a `keyLevel` block (`levelId`, `kind`, `direction`, `role`, `levelPrice`, zone `upper`/`lower`). Rejected, broken, flipped and reclaimed fire in either direction and take a `direction` param (`bullish` / `bearish`).
+Daily events on the nightly key levels (see `dwlf_get_support_resistance`). Each event carries a `keyLevel` block (`levelId`, `kind`, `direction`, `role`, `levelPrice`, zone `upper`/`lower`). Rejected, broken, flipped and reclaimed fire in either direction: set `data.direction` on the node to `bullish` or `bearish` to take one (omitted or `any` matches both).
 
 | nodeType | Fires when |
 |----------|------------|
