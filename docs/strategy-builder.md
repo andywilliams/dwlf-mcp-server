@@ -82,7 +82,8 @@ Every node must have:
     "pipeline": "entry",
     "label": "Human-readable label",
     "timeframe": "daily",
-    "params": {}
+    "params": {},
+    "parameters": {}
   },
   "style": {
     "backgroundColor": "#4a5568",
@@ -100,6 +101,8 @@ Every node must have:
   }
 }
 ```
+
+Stop-loss nodes read their options (`bufferPct`, `maxStopDistancePct`, `atrMethod`) from `data.parameters`; other nodes use `data.params` or top-level `data` fields as their rows say.
 
 **Important:** Both `nodeType` (top-level) AND `data.nodeType` should be set to the same value for compatibility.
 
@@ -198,7 +201,7 @@ Daily events. ATR as a percent of close is ranked against its last 100 bars (Wil
 | `atr.regime.expansion` | ATR Volatility Expansion | the rank reaches the top 20% |
 | `atr.regime.contraction` | ATR Volatility Contraction | the rank reaches the bottom 20% |
 
-Not the same as `atr_expansion` / `atr_contraction` below, which are computed per bar (ATR rising or falling over the last 5 bars).
+Not the same as `atr_expansion` / `atr_contraction` below (labelled *ATR Rising / Falling (5 bars)*), which are computed per bar from the executor's EMA ATR: true when ATR rose (fell) on each step across the last 5 values.
 
 #### Key Level Events
 Daily events on the nightly key levels (see `dwlf_get_support_resistance`). Each event carries a `keyLevel` block (`levelId`, `kind`, `direction`, `role`, `levelPrice`, zone `upper`/`lower`). Rejected, broken, flipped and reclaimed fire in either direction: set `data.direction` on the node to `bullish` or `bearish` to take one (omitted or `any` matches both).
@@ -225,17 +228,12 @@ Daily events on the nightly key levels (see `dwlf_get_support_resistance`). Each
 | `trendline_breach_bullish` | Trendline Breach (Bullish) |
 | `trendline_breach_bearish` | Trendline Breach (Bearish) |
 
-#### Volume Conditions
+#### Volatility / Volume Conditions
 | nodeType | Label |
 |----------|-------|
-| `atr_expansion` | ATR Expansion |
-| `atr_contraction` | ATR Contraction |
+| `atr_expansion` | ATR Rising (5 bars) |
+| `atr_contraction` | ATR Falling (5 bars) |
 | `volume_spike` | Volume Spike |
-
-#### S/R Conditions
-| nodeType | Label |
-|----------|-------|
-| `price.near.support` | Price Near Support |
 
 #### Custom Event Reference
 | nodeType | Label | Params |
@@ -267,7 +265,7 @@ Logic gates accept `data.maxGapDays` (for AND/THEN) to control the time window.
 |----------|-------------------|-------------|
 | `long_signal` | `#4caf50` / `#388e3c` | Generate long (buy) signal |
 | `signal` | `#3b82f6` / `#2563eb` | Generic signal (set `data.signalType`) |
-| `sl_atr` | `#ff8a65` / `#ff7043` | Stop loss based on ATR |
+| `sl_atr` | `#ff8a65` / `#ff7043` | Stop at close ∓ 2 × ATR(14). Set `data.parameters.atrMethod: "wilder"` (note: `parameters`, not `params` — stop-loss options such as `bufferPct`, `maxStopDistancePct` and `atrMethod` are read from `data.parameters`) for the shared Wilder ATR (what the builder seeds on new nodes); absent = the executor's legacy EMA ATR. An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target the engine uses when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice. |
 | `sl_below_recent_low` | `#ff8a65` / `#ff7043` | Stop loss below recent swing low |
 | `tp_2r` | `#388e3c` / `#2e7d32` | Take profit at 2:1 R/R |
 | `tp_3r` | `#388e3c` / `#2e7d32` | Take profit at 3:1 R/R |
@@ -374,7 +372,7 @@ Or with logic gates:
       {
         "id": "node-6", "type": "outputNode", "nodeType": "sl_atr",
         "label": "SL ATR Based", "position": {"x": 200, "y": 510},
-        "data": {"nodeType": "sl_atr", "pipeline": "entry", "label": "SL ATR Based"},
+        "data": {"nodeType": "sl_atr", "pipeline": "entry", "label": "SL ATR Based", "parameters": {"atrMethod": "wilder"}},
         "style": {"backgroundColor": "#ff8a65", "borderColor": "#ff7043", "borderRadius": "8px", "borderStyle": "solid", "borderWidth": "2px", "boxShadow": "0 2px 8px rgba(0,0,0,0.15)", "color": "white", "fontSize": "14px", "fontWeight": "500", "minWidth": "140px", "padding": "12px 16px", "textAlign": "center"}
       },
       {
