@@ -445,7 +445,7 @@ export function registerMarketDataTools(server, client) {
                 .filter((e) => PRICE_MEANINGFUL_TYPES.has(String(e.eventType ?? '')))
                 .map((e) => {
                 const eventType = String(e.eventType ?? '');
-                const price = e.price ?? e.level ?? null;
+                const price = e.price ?? e.level ?? e.keyLevel?.levelPrice ?? null;
                 let label = eventType;
                 let maGroupKey;
                 let maLength;
@@ -524,8 +524,8 @@ export function registerMarketDataTools(server, client) {
                             count: narrative.length,
                             narrative,
                             agentHints: {
-                                interpretation: 'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection.',
-                                limitations: 'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current support/resistance levels are also not included — call dwlf_get_support_resistance separately if you need them; including them here drowned out the structural events because the indicator re-emits the level every day.',
+                                interpretation: 'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection. keyLevel.broken / flipped / reclaimed rows are breaks of a key level (price = the level), suffixed (bullish|bearish).',
+                                limitations: 'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current key levels are not included (only breaks of them) — call dwlf_get_support_resistance for the levels themselves.',
                             },
                         }, null, 2),
                     },

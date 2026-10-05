@@ -147,6 +147,14 @@ export const STRATEGY_NODES: StrategyNode[] = [
     description: 'Place SL at N × ATR below entry (long) / above (short). Uses ATR-14 daily.',
     params: [
       {
+        name: 'atrMethod',
+        type: 'string',
+        default: 'ema',
+        description:
+          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback follow the same choice.",
+        honoredByExecutor: true,
+      },
+      {
         name: 'multiplier',
         type: 'number',
         default: 2,
