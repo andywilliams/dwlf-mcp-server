@@ -144,11 +144,12 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'sl_atr',
     category: 'stopLoss',
-    description: 'Place SL at N × ATR below entry (long) / above (short). Uses ATR-14 daily.',
+    description: 'Place SL at 2 × ATR(14) below the signal close (long) / above (short). The ATR is chosen by atrMethod (in data.parameters).',
     params: [
       {
         name: 'atrMethod',
-        type: 'string',
+        type: 'enum',
+        enumValues: ['wilder', 'ema'],
         default: 'ema',
         description:
           "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback follow the same choice.",
@@ -165,7 +166,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         name: 'atrPeriod',
         type: 'number',
         default: 14,
-        description: 'ATR lookback period. Engine reads from contextData.indicators.atr_14 — period is fixed.',
+        description: 'ATR lookback period — fixed at 14 in the engine, whichever atrMethod is chosen.',
         honoredByExecutor: false,
       },
     ],
@@ -264,7 +265,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'tp_atr',
     category: 'takeProfit',
-    description: 'TP at N × ATR above entry (long) / below (short). Uses ATR-14 daily.',
+    description: 'TP at N × ATR(14) above entry (long) / below (short). Uses the ATR the strategy\'s SL node chose: Wilder when an sl_atr node sets atrMethod \'wilder\', otherwise the legacy EMA ATR.',
     params: [
       {
         name: 'multiplier',
