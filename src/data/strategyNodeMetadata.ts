@@ -152,7 +152,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         enumValues: ['wilder', 'ema'],
         default: 'ema',
         description:
-          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback follow the same choice.",
+          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target used when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice.",
         honoredByExecutor: true,
       },
       {

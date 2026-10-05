@@ -82,7 +82,8 @@ Every node must have:
     "pipeline": "entry",
     "label": "Human-readable label",
     "timeframe": "daily",
-    "params": {}
+    "params": {},
+    "parameters": {}
   },
   "style": {
     "backgroundColor": "#4a5568",
@@ -100,6 +101,8 @@ Every node must have:
   }
 }
 ```
+
+Stop-loss nodes read their options (`bufferPct`, `maxStopDistancePct`, `atrMethod`) from `data.parameters`; other nodes use `data.params` or top-level `data` fields as their rows say.
 
 **Important:** Both `nodeType` (top-level) AND `data.nodeType` should be set to the same value for compatibility.
 
@@ -262,7 +265,7 @@ Logic gates accept `data.maxGapDays` (for AND/THEN) to control the time window.
 |----------|-------------------|-------------|
 | `long_signal` | `#4caf50` / `#388e3c` | Generate long (buy) signal |
 | `signal` | `#3b82f6` / `#2563eb` | Generic signal (set `data.signalType`) |
-| `sl_atr` | `#ff8a65` / `#ff7043` | Stop at close ∓ 2 × ATR(14). Set `data.parameters.atrMethod: "wilder"` (note: `parameters`, not `params` — stop-loss options such as `bufferPct`, `maxStopDistancePct` and `atrMethod` are read from `data.parameters`) for the shared Wilder ATR (what the builder seeds on new nodes); absent = the executor's legacy EMA ATR. An ATR take-profit and the ATR fallback follow the same choice. |
+| `sl_atr` | `#ff8a65` / `#ff7043` | Stop at close ∓ 2 × ATR(14). Set `data.parameters.atrMethod: "wilder"` (note: `parameters`, not `params` — stop-loss options such as `bufferPct`, `maxStopDistancePct` and `atrMethod` are read from `data.parameters`) for the shared Wilder ATR (what the builder seeds on new nodes); absent = the executor's legacy EMA ATR. An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target the engine uses when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice. |
 | `sl_below_recent_low` | `#ff8a65` / `#ff7043` | Stop loss below recent swing low |
 | `tp_2r` | `#388e3c` / `#2e7d32` | Take profit at 2:1 R/R |
 | `tp_3r` | `#388e3c` / `#2e7d32` | Take profit at 3:1 R/R |
