@@ -18,7 +18,7 @@ test('sl_chandelier: a stop-loss node whose multiplier (default 3) is honoured',
   assert.equal(node.params.find((p) => p.name === 'atrPeriod').honoredByExecutor, false);
 });
 
-// DWLF-347: the AND gap is honoured; the temporal NOT is flagged unusable.
+// DWLF-347 / DWLF-364: the AND gap and the NOT lookback are honoured.
 test('and_gate advertises an honoured maxGapDays; not_gate its lookback (DWLF-364)', () => {
   const gap = getStrategyNodeByType('and_gate').params.find((p) => p.name === 'maxGapDays');
   assert.equal(gap?.honoredByExecutor, true);
