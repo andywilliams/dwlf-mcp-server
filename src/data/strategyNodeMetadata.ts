@@ -325,7 +325,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'and_gate',
     category: 'logic',
-    description: 'Conditions joined with AND — all inputs must be true.',
+    description: 'Conditions joined with AND — every input must have fired (each within its own lookback window), optionally no more than maxGapDays apart.',
     params: [
       {
         name: 'maxGapDays',
@@ -359,7 +359,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         name: 'maxGapDays',
         type: 'number',
         default: null,
-        description: 'Max calendar days between A and B. Unset = no limit.',
+        description: "Max calendar days between A and B. Unset = no limit. When this THEN feeds an AND, it compiles to 'A, then all of the AND's other inputs', and this is the A → others gap.",
         honoredByExecutor: true,
       },
     ],
