@@ -152,7 +152,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         enumValues: ['wilder', 'ema'],
         default: 'ema',
         description:
-          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target used when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice.",
+          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target used when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice. Exception: a strategy whose stop is sl_chandelier gets no fallback target.",
         honoredByExecutor: true,
       },
       {
@@ -170,6 +170,29 @@ export const STRATEGY_NODES: StrategyNode[] = [
         honoredByExecutor: false,
       },
     ],
+  },
+  {
+    nodeType: 'sl_chandelier',
+    category: 'stopLoss',
+    description:
+      'Chandelier (trailing ATR) stop: starts at the signal close ∓ multiplier × Wilder ATR(14), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. Each bar is checked against the stop built from earlier bars. With no take-profit node it is the only exit (no fallback target). Backtests and live signals trail it the same way; a trailed exit is reported as exitReason "trailing_stop" at its real R.',
+    params: [
+      {
+        name: 'multiplier',
+        type: 'number',
+        default: 3,
+        description: 'How many ATRs the stop sits from the best price since entry (in data.parameters). Missing or non-positive = 3.',
+        honoredByExecutor: true,
+      },
+      {
+        name: 'atrPeriod',
+        type: 'number',
+        default: 14,
+        description: 'ATR lookback period — fixed at 14 (Wilder) in the engine.',
+        honoredByExecutor: false,
+      },
+    ],
+    notes: 'Always Wilder ATR(14); there is no atrMethod option. Live signals publish the stop in force as currentStopLevel; stopLossLevel stays the initial stop that R is measured from.',
   },
   {
     nodeType: 'sl_fixed_amount',
@@ -295,7 +318,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
     description:
       '⚠️ Currently a placeholder (5% above entry for long, -5% for short). Full trailing-stop logic isn\'t wired — treat as not yet implemented.',
     params: [],
-    notes: 'Engine returns a static 5% target instead of trailing the live high. Don\'t use this for real trades until the trailing logic is wired.',
+    notes: 'Engine returns a static 5% target instead of trailing the live high. For a real trailing stop use the sl_chandelier stop-loss node.',
   },
 
   // ── Logic gates ────────────────────────────────────────────────────
