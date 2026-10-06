@@ -346,9 +346,26 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'not_gate',
     category: 'logic',
-    description: 'Inverts its single input, on the current bar only.',
-    params: [],
-    notes: 'A "not within the last N days" form (lookbackValue / lookbackUnit) compiles but is not evaluated yet, so it would act as always-true: do not use it (DWLF-364).',
+    description:
+      'Inverts its single input. Without a lookback, on the current bar. With one ("not within the last N"), every event inside it looks back over the window: it fires when none of the events fired in it (OR) or they did not all fire in it (AND); a computed condition inside is checked on each bar of the window.',
+    params: [
+      {
+        name: 'lookbackValue',
+        type: 'number',
+        default: null,
+        description: 'Length of the "not within" window. Unset or 0 = a plain NOT on the current bar.',
+        honoredByExecutor: true,
+      },
+      {
+        name: 'lookbackUnit',
+        type: 'enum',
+        enumValues: ['candles', 'days'],
+        default: 'candles',
+        description: "Unit of lookbackValue: candles of the strategy's or custom event's own timeframe, or calendar days (use days when the inner condition is on another timeframe).",
+        honoredByExecutor: true,
+      },
+    ],
+    notes: 'A custom event with a lookback NOT runs on the async evaluation path (the fast path cannot read the window).',
   },
   {
     nodeType: 'then_gate',
