@@ -172,6 +172,22 @@ export const STRATEGY_NODES: StrategyNode[] = [
     ],
   },
   {
+    nodeType: 'sl_chandelier',
+    category: 'stopLoss',
+    description:
+      'Chandelier (trailing ATR) stop: starts at the signal close ∓ multiplier × Wilder ATR(14), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. Each bar is checked against the stop built from earlier bars. With no take-profit node it is the only exit (no fallback target). Backtests and live signals trail it the same way; a trailed exit is reported as exitReason "trailing_stop" at its real R.',
+    params: [
+      {
+        name: 'multiplier',
+        type: 'number',
+        default: 3,
+        description: 'How many ATRs the stop sits from the best price since entry (in data.parameters). Missing or non-positive = 3.',
+        honoredByExecutor: true,
+      },
+    ],
+    notes: 'Always Wilder ATR(14); there is no atrMethod option. Live signals publish the stop in force as currentStopLevel; stopLossLevel stays the initial stop that R is measured from.',
+  },
+  {
     nodeType: 'sl_fixed_amount',
     category: 'stopLoss',
     description: 'Place SL at a fixed dollar amount below entry (long) / above (short).',
@@ -295,7 +311,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
     description:
       '⚠️ Currently a placeholder (5% above entry for long, -5% for short). Full trailing-stop logic isn\'t wired — treat as not yet implemented.',
     params: [],
-    notes: 'Engine returns a static 5% target instead of trailing the live high. Don\'t use this for real trades until the trailing logic is wired.',
+    notes: 'Engine returns a static 5% target instead of trailing the live high. For a real trailing stop use the sl_chandelier stop-loss node.',
   },
 
   // ── Logic gates ────────────────────────────────────────────────────
