@@ -325,8 +325,17 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'and_gate',
     category: 'logic',
-    description: 'Conditions joined with AND — all inputs must be true.',
-    params: [],
+    description: 'Conditions joined with AND — every input must have fired (each within its own lookback window), optionally no more than maxGapDays apart.',
+    params: [
+      {
+        name: 'maxGapDays',
+        type: 'number',
+        default: null,
+        description:
+          "Max calendar days between the earliest and the latest of the inputs' events. Unset = no limit; 0 = all on the same day. When a THEN gate feeds this AND, the pair compiles to 'A, then all of the others': this gap then applies only among the others (not at all if there is just one), so set the THEN gate's maxGapDays for the A → others gap.",
+        honoredByExecutor: true,
+      },
+    ],
   },
   {
     nodeType: 'or_gate',
@@ -337,8 +346,9 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'not_gate',
     category: 'logic',
-    description: 'Inverts its single input.',
+    description: 'Inverts its single input, on the current bar only.',
     params: [],
+    notes: 'A "not within the last N days" form (lookbackValue / lookbackUnit) compiles but is not evaluated yet, so it would act as always-true: do not use it (DWLF-364).',
   },
   {
     nodeType: 'then_gate',
@@ -349,7 +359,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         name: 'maxGapDays',
         type: 'number',
         default: null,
-        description: 'Max calendar days between A and B. Unset = no limit.',
+        description: "Max calendar days between A and B. Unset = no limit. When this THEN feeds an AND, it compiles to 'A, then all of the AND's other inputs', and this is the A → others gap.",
         honoredByExecutor: true,
       },
     ],
