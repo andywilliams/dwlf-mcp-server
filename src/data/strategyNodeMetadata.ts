@@ -152,7 +152,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
         enumValues: ['wilder', 'ema'],
         default: 'ema',
         description:
-          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target used when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice.",
+          "Which ATR sizes the stop: 'wilder' (the shared Wilder ATR the rest of DWLF uses; set this on new strategies) or absent / 'ema' (the executor's legacy EMA ATR, kept so saved strategies' stops do not move). An ATR take-profit and the ATR fallback (the 2 × ATR stop / 3 × ATR target used when a strategy has no SL or TP node, or its SL finds no anchor) follow the same choice. Exception: a strategy whose stop is sl_chandelier gets no fallback target.",
         honoredByExecutor: true,
       },
       {
@@ -183,6 +183,13 @@ export const STRATEGY_NODES: StrategyNode[] = [
         default: 3,
         description: 'How many ATRs the stop sits from the best price since entry (in data.parameters). Missing or non-positive = 3.',
         honoredByExecutor: true,
+      },
+      {
+        name: 'atrPeriod',
+        type: 'number',
+        default: 14,
+        description: 'ATR lookback period — fixed at 14 (Wilder) in the engine.',
+        honoredByExecutor: false,
       },
     ],
     notes: 'Always Wilder ATR(14); there is no atrMethod option. Live signals publish the stop in force as currentStopLevel; stopLossLevel stays the initial stop that R is measured from.',
