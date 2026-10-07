@@ -288,7 +288,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
   {
     nodeType: 'tp_atr',
     category: 'takeProfit',
-    description: 'TP at N × ATR(14) above entry (long) / below (short). Uses the ATR the strategy\'s SL node chose: Wilder when an sl_atr node sets atrMethod \'wilder\', otherwise the legacy EMA ATR.',
+    description: 'TP at N × ATR(14) above entry (long) / below (short). Uses the ATR the strategy\'s SL node chose: Wilder when an sl_atr node sets atrMethod \'wilder\' or the stop is sl_chandelier, otherwise the legacy EMA ATR.',
     params: [
       {
         name: 'multiplier',
