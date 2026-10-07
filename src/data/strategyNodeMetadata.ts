@@ -175,7 +175,7 @@ export const STRATEGY_NODES: StrategyNode[] = [
     nodeType: 'sl_chandelier',
     category: 'stopLoss',
     description:
-      'Chandelier (trailing ATR) stop: starts at the signal close ∓ multiplier × Wilder ATR(14), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. Each bar is checked against the stop built from earlier bars. With no take-profit node it is the only exit (no fallback target). Backtests and live signals trail it the same way; a trailed exit is reported as exitReason "trailing_stop" at its real R.',
+      'Chandelier (trailing ATR) stop: starts at the signal close ∓ multiplier × Wilder ATR(14), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. Each bar is checked against the stop built from earlier bars. With no take-profit node it is the only exit (no fallback target); a tp_atr take-profit paired with it uses Wilder ATR too. Backtests and live signals trail it the same way; a trailed exit is reported as exitReason "trailing_stop" at its real R.',
     params: [
       {
         name: 'multiplier',

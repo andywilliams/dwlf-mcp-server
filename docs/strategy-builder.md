@@ -271,7 +271,7 @@ Logic gates accept `data.maxGapDays` (for AND/THEN) to control the time window.
 | `tp_3r` | `#388e3c` / `#2e7d32` | Take profit at 3:1 R/R |
 | `tp_5r` | `#388e3c` / `#2e7d32` | Take profit at 5:1 R/R |
 | `tp_10r` | `#388e3c` / `#2e7d32` | Take profit at 10:1 R/R |
-| `sl_chandelier` | `#ff8a65` / `#ff7043` | Chandelier (trailing ATR) stop: starts at close ∓ `multiplier` × Wilder ATR(14) (`data.parameters.multiplier`, default 3), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. With no take-profit node it is the only exit. A trailed exit is `exitReason: "trailing_stop"`; live signals show the stop in force as `currentStopLevel`. |
+| `sl_chandelier` | `#ff8a65` / `#ff7043` | Chandelier (trailing ATR) stop: starts at close ∓ `multiplier` × Wilder ATR(14) (`data.parameters.multiplier`, default 3), then trails the highest high since entry (lowest low for shorts) by the same distance and never loosens. With no take-profit node it is the only exit; a `tp_atr` take-profit paired with it uses Wilder ATR too. Live stop-outs and each whole R the stop locks in are alerted through the strategy's exit subscription. A trailed exit is `exitReason: "trailing_stop"`; live signals show the stop in force as `currentStopLevel`. |
 
 ### Exit Nodes
 
