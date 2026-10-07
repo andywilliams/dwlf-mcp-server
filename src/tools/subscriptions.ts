@@ -8,13 +8,17 @@ import { DWLFClient } from '../client.js';
 // principle. These tools close that gap.
 //
 // A subscription connects an event source (a custom event, a built-in indicator
-// event like cycle.low.confirmed, or a strategy.entry.triggered) to one or more
-// delivery channels (currently Telegram). When the source fires for a watched
-// symbol the dispatcher creates a planned Trade and sends the channel message.
+// event like cycle.low.confirmed, or a strategy's entries or exits) to one or
+// more delivery channels (currently Telegram). When the source fires for a
+// watched symbol the dispatcher sends the channel message; for a strategy entry
+// it also creates a planned Trade.
 //
-// Three subscription shapes are supported, distinguished by eventTypeId:
+// Four subscription shapes are supported, distinguished by eventTypeId:
 //   - `strategy.entry.triggered` — fires when a visual strategy's entry
 //     conditions match (requires strategyId). Mode `confirm` or `auto`.
+//   - `strategy.exit.triggered` — fires when its exit graph matches, and also
+//     delivers its stop alerts: live stop-outs and trailing-stop milestones
+//     (requires strategyId). No mode.
 //   - `custom_event` — fires when a specific custom event fires (requires
 //     customEventId). No mode (always emits).
 //   - any indicator event id, e.g. `cycle.low.confirmed`, `cycle.high.window.early`,
@@ -47,9 +51,13 @@ export function registerSubscriptionTools(
   // 2. Create subscription
   server.tool(
     'dwlf_create_subscription',
-    "Create a new subscription. Three shapes are supported, distinguished by `eventTypeId`:\n" +
+    "Create a new subscription. Four shapes are supported, distinguished by `eventTypeId`:\n" +
       "  - `strategy.entry.triggered` — requires `strategyId`; pair with `mode: 'confirm'` " +
       "or `'auto'`. Confirm-mode creates a planned Trade for review; auto-mode opens it directly.\n" +
+      "  - `strategy.exit.triggered` — requires `strategyId`. Fires when the strategy's exit graph matches, " +
+      "and also delivers that strategy's stop alerts: every live stop-out (fixed or trailing) and a trailing stop " +
+      "locking in breakeven, then each further whole R. `strategy.stop.hit` / `strategy.stop.moved` cannot be " +
+      "subscribed to directly.\n" +
       "  - `custom_event` — requires `customEventId`. Fires when that custom event fires.\n" +
       "  - any indicator event id (e.g. `cycle.low.confirmed`, `cycle.high.window.early`, " +
       "`swing_low_break`). Fires on the raw indicator event.\n\n" +
@@ -59,11 +67,11 @@ export function registerSubscriptionTools(
     {
       eventTypeId: z
         .string()
-        .describe("Event source: `strategy.entry.triggered`, `custom_event`, or an indicator event id like `cycle.low.confirmed`."),
+        .describe("Event source: `strategy.entry.triggered`, `strategy.exit.triggered`, `custom_event`, or an indicator event id like `cycle.low.confirmed`."),
       strategyId: z
         .string()
         .optional()
-        .describe("Required when eventTypeId is `strategy.entry.triggered`."),
+        .describe("Required when eventTypeId is `strategy.entry.triggered` or `strategy.exit.triggered`."),
       customEventId: z
         .string()
         .optional()
