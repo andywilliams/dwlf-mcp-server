@@ -25,9 +25,23 @@ test('several symbols or a group go to the list form', async () => {
   assert.deepEqual(calls, [{ path: '/stages', params: { symbols: 'BTC-USD,SPY' } }, { path: '/stages', params: { group: 'metals' } }]);
 });
 
-test('mixing selectors is an error, not a guess', async () => {
+test('mixing selectors is a usage error, not a guess and not a fetch failure', async () => {
   const { calls, call } = setup();
   const res = await call({ symbol: 'SPY', group: 'mag7' });
   assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /^Usage:/);
   assert.equal(calls.length, 0);
+});
+
+test('blank values mean "not given": no bare /stages/ path, no empty list entry', async () => {
+  const { calls, call } = setup();
+  await call({ symbol: '  ' });
+  await call({ symbols: [' ', 'spy'] });
+  assert.deepEqual(calls, [{ path: '/stages', params: {} }, { path: '/stages', params: { symbols: 'SPY' } }]);
+});
+
+test('no arguments asks for every staged symbol', async () => {
+  const { calls, call } = setup();
+  await call({});
+  assert.deepEqual(calls, [{ path: '/stages', params: {} }]);
 });

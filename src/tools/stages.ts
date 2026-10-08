@@ -21,11 +21,10 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       'little weekly history. SHAPE (many): `{ verification, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +
       'breadth: { counted, withoutStage, share: { base, advance, top, decline } } }` — shares are over symbols ' +
       'WITH a stage.\n\n' +
-      '⚠️ `verification.state: "under-forward-test"`: stages are CONTEXT, not a trading signal, and their predictive ' +
-      'claims are being tested forward (DWLF-384). Evidence so far: Stage 1 (base) has underperformed and mature ' +
-      'Stage 2 outperformed, both modestly; fresh breakouts into Stage 2 did NOT hold up. Say so rather than ' +
-      'presenting a stage as a buy/sell call. Like any trend read it confirms late — most of a move has ' +
-      'happened by the time a stage changes.',
+      'With no arguments, returns every staged symbol plus universe breadth (a large response).\n\n' +
+      '⚠️ Stages are CONTEXT, not a trading signal: report the response\'s `verification` (state + reason) with ' +
+      'the stage rather than presenting it as a buy/sell call. Like any trend read a stage confirms late — much ' +
+      'of a move has happened by the time a stage changes.',
     {
       symbol: z
         .string()
@@ -45,16 +44,23 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
         .describe('A named group, e.g. metals, gold_miners, mag7, crypto_spot, btc_mining — stages plus breadth'),
     },
     async ({ symbol, symbols, group }) => {
+      // Trim once, so a blank value means "not given" rather than a bare /stages/ path or an empty list entry.
+      const one = symbol?.trim() || undefined;
+      const many = symbols?.map((s) => s.trim()).filter(Boolean);
+      const named = group?.trim() || undefined;
+      const given = [one, many?.length ? many : undefined, named].filter((v) => v !== undefined).length;
+      if (given > 1) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: 'Usage: pass ONE of symbol, symbols or group (or none, for every staged symbol).' }],
+        };
+      }
       try {
-        const given = [symbol, symbols, group].filter((v) => v !== undefined).length;
-        if (given > 1) {
-          throw new Error('pass one of symbol, symbols or group');
-        }
-        const data = symbol
-          ? await client.get(`/stages/${encodeURIComponent(normalizeSymbol(symbol))}`)
+        const data = one
+          ? await client.get(`/stages/${encodeURIComponent(normalizeSymbol(one))}`)
           : await client.get('/stages', {
-              ...(symbols ? { symbols: symbols.map(normalizeSymbol).join(',') } : {}),
-              ...(group ? { group } : {}),
+              ...(many?.length ? { symbols: many.map(normalizeSymbol).join(',') } : {}),
+              ...(named ? { group: named } : {}),
             });
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       } catch (error) {
