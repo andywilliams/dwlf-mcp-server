@@ -37,7 +37,9 @@ const asString = (v: unknown) => (typeof v === 'string' ? v : undefined);
 const toParam = (p: CatalogueParam): NodeParam | null => {
   const name = asString(p?.name);
   if (!name) {return null;}
-  const values = Array.isArray(p.enum) ? p.enum.filter((v) => ['string', 'number', 'boolean'].includes(typeof v)).map(String) : [];
+  const values = Array.isArray(p.enum)
+    ? p.enum.filter((v): v is string | number | boolean => ['string', 'number', 'boolean'].includes(typeof v))
+    : [];
   const isEnum = values.length > 0;
   return {
     name,
@@ -92,28 +94,30 @@ export const mergeNodes = (local: StrategyNode[], catalogue: CatalogueStrategyNo
   return [...local, ...catalogue.filter((n) => !known.has(n.nodeType))];
 };
 
-let cached: { at: number; value: LoadedCatalogue } | null = null;
-
-/** GET /node-types, cached for 15 minutes when it succeeds; a failure is returned, not thrown, and not cached. */
-export const loadCatalogue = async (get: (path: string) => Promise<unknown>, now = Date.now()): Promise<LoadedCatalogue> => {
-  if (cached && now - cached.at < TTL_MS) {return cached.value;}
-  try {
-    const body = await get('/node-types');
-    const nodes = catalogueConditionNodes(body);
-    if (!nodes || nodes.length === 0) {
-      return { nodes: [], unsupported: [], error: 'GET /node-types returned no condition nodes' };
+/**
+ * A loader for GET /node-types that caches a good read for 15 minutes; a
+ * failure is returned, not thrown, and not cached. Built once per registration,
+ * so the cache lives in its closure.
+ */
+export const createCatalogueLoader = (get: (path: string) => Promise<unknown>, ttlMs = TTL_MS) => {
+  let cached: { at: number; value: LoadedCatalogue } | null = null;
+  return async (now = Date.now()): Promise<LoadedCatalogue> => {
+    if (cached && now - cached.at < ttlMs) {return cached.value;}
+    try {
+      const body = await get('/node-types');
+      const nodes = catalogueConditionNodes(body);
+      if (!nodes || nodes.length === 0) {
+        return { nodes: [], unsupported: [], error: 'GET /node-types returned no condition nodes' };
+      }
+      const unsupported = Array.isArray((body as { unsupported?: unknown })?.unsupported) ? (body as { unsupported: UnsupportedRule[] }).unsupported : [];
+      const value = { nodes, unsupported };
+      cached = { at: now, value };
+      return value;
+    } catch (error) {
+      return { nodes: [], unsupported: [], error: `GET /node-types failed: ${error instanceof Error ? error.message : String(error)}` };
     }
-    const unsupported = Array.isArray((body as { unsupported?: unknown })?.unsupported) ? (body as { unsupported: UnsupportedRule[] }).unsupported : [];
-    const value = { nodes, unsupported };
-    cached = { at: now, value };
-    return value;
-  } catch (error) {
-    return { nodes: [], unsupported: [], error: `GET /node-types failed: ${error instanceof Error ? error.message : String(error)}` };
-  }
+  };
 };
-
-/** Test seam: forget the cached catalogue. */
-export const resetCatalogueCache = () => { cached = null; };
 
 /** Whether a request can be answered from the local file alone. */
 export const needsCatalogue = ({ nodeType, category, local }: { nodeType?: string; category?: string; local: StrategyNode[] }) => {

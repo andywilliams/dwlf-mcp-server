@@ -2,12 +2,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 import { STRATEGY_NODES } from '../data/strategyNodeMetadata.js';
-import { describeNodes, loadCatalogue, needsCatalogue } from '../data/nodeCatalogue.js';
+import { createCatalogueLoader, describeNodes, needsCatalogue } from '../data/nodeCatalogue.js';
 
 export function registerStrategyTools(
   server: McpServer,
   client: DWLFClient
 ) {
+  // The node catalogue, cached per registration (DWLF-370).
+  const loadCatalogue = createCatalogueLoader((path) => client.get(path));
   // 0. Describe visual-strategy node types: the structural nodes from the local
   // file, the condition nodes from the API's node catalogue (DWLF-370).
   //
@@ -25,9 +27,11 @@ export function registerStrategyTools(
       'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
       'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
       '`honoredByExecutor: null` means not verified (catalogue parameters reach the compiled strategy; their effect on the run is not checked here). ' +
-      'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types), the same list ' +
-      'the strategy builder offers, with their parameters and the timeframes they fire on; `engineIgnores` lists node ' +
-      'types the engine cannot evaluate.',
+      'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
+      'minutes), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
+      '`timeframes` (the only ones the node fires on) and `catalogueCategory`. A node with `engineIgnored` is one the ' +
+      'engine cannot evaluate: do not use it. `engineIgnores` is the raw rule list ({ id } or { prefix }, with a reason). ' +
+      '`catalogueError` means the catalogue could not be read and only the static nodes are listed.',
     {
       nodeType: z
         .string()
@@ -43,7 +47,7 @@ export function registerStrategyTools(
         // Condition nodes come from the (cached) node catalogue; a request the
         // local file answers alone does not wait for it.
         const catalogue = needsCatalogue({ nodeType, category, local: STRATEGY_NODES })
-          ? await loadCatalogue((path) => client.get(path))
+          ? await loadCatalogue()
           : null;
         const { result, error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType, category });
         if (error) {

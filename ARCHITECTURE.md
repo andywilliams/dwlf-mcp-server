@@ -74,8 +74,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `strategyNodeMetadata.ts` names it as "source of truth for the runtime behaviour" and must be
   re-synced when the executor changes *(inferred from: file header comment; doc-drift PRs #43, #44,
   #47, #48, #50)*.
-- **SPT `GET /v2/node-types`** (public) for the condition nodes, read on every
-  `dwlf_describe_strategy_nodes` call; a failed read answers from the static file and says so
+- **SPT `GET /v2/node-types`** (public) for the condition nodes, read when a
+  `dwlf_describe_strategy_nodes` request needs them (cached 15 minutes); a failed read answers from the static file and says so
   (`catalogueError`) *(DWLF-370)*.
 - **npm + GitHub Actions OIDC** for release *(inferred from: `.github/workflows/publish.yml`)*.
 

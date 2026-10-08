@@ -1,7 +1,7 @@
-import { test, beforeEach } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  catalogueConditionNodes, mergeNodes, loadCatalogue, resetCatalogueCache, describeNodes, needsCatalogue, engineIgnoredReason,
+  catalogueConditionNodes, mergeNodes, createCatalogueLoader, describeNodes, needsCatalogue, engineIgnoredReason,
 } from '../dist/data/nodeCatalogue.js';
 import { STRATEGY_NODES } from '../dist/data/strategyNodeMetadata.js';
 
@@ -21,8 +21,6 @@ const body = {
   unsupported: [{ prefix: 'supplyDemand.', reason: 'zones are not evaluated' }],
 };
 
-beforeEach(() => resetCatalogueCache());
-
 test('maps catalogue condition nodes, keeping the catalogue category, leaving out gates, outputs and nameless entries', () => {
   const nodes = catalogueConditionNodes(body);
   assert.deepEqual(nodes.map((n) => n.nodeType), ['cycle.low.confirmed', 'ema.cross.above', 'trendline_break_bullish', 'supplyDemand.zone.tested.demand']);
@@ -35,7 +33,7 @@ test('maps catalogue condition nodes, keeping the catalogue category, leaving ou
 
 test('numeric enums keep their values; an empty enum is not an enum', () => {
   const ema = catalogueConditionNodes(body).find((n) => n.nodeType === 'ema.cross.above');
-  assert.deepEqual(ema.params[0].enumValues, ['10', '50', '200']);
+  assert.deepEqual(ema.params[0].enumValues, [10, 50, 200]);
   assert.equal(ema.params[1].type, 'string');
   assert.equal(ema.params[1].enumValues, undefined);
 });
@@ -61,18 +59,24 @@ test('local nodes win over the catalogue for the same type, and the rest are add
   assert.equal(merged.length, STRATEGY_NODES.length + 3);
 });
 
-test('loadCatalogue caches a good read and reports, without caching, a failed or empty one', async () => {
+test('the loader caches a good read until it expires', async () => {
   let calls = 0;
-  const good = async () => { calls += 1; return body; };
-  assert.equal((await loadCatalogue(good, 1000)).nodes.length, 4);
-  await loadCatalogue(good, 2000);
+  const load = createCatalogueLoader(async () => { calls += 1; return body; }, 1000);
+  assert.equal((await load(0)).nodes.length, 4);
+  await load(999);
   assert.equal(calls, 1);
-  assert.equal(calls, 1);
-  resetCatalogueCache();
-  const failed = await loadCatalogue(async () => { throw new Error('timeout'); });
-  assert.match(failed.error, /GET \/node-types failed: timeout/);
-  assert.match((await loadCatalogue(async () => ({ nodeTypes: [] }))).error, /no condition nodes/);
-  assert.match((await loadCatalogue(async () => ({ message: 'x' }))).error, /no condition nodes/);
+  await load(1000);
+  assert.equal(calls, 2);
+});
+
+test('the loader reports, without caching, a failed or empty read', async () => {
+  let fail = true;
+  const load = createCatalogueLoader(async () => { if (fail) {throw new Error('timeout');} return body; });
+  assert.match((await load(0)).error, /GET \/node-types failed: timeout/);
+  fail = false;
+  assert.equal((await load(1)).nodes.length, 4);
+  assert.match((await createCatalogueLoader(async () => ({ nodeTypes: [] }))(0)).error, /no condition nodes/);
+  assert.match((await createCatalogueLoader(async () => ({ message: 'x' }))(0)).error, /no condition nodes/);
 });
 
 test('only requests the local file cannot answer wait for the catalogue', () => {
@@ -84,7 +88,7 @@ test('only requests the local file cannot answer wait for the catalogue', () => 
 });
 
 test('describeNodes: a catalogue node by type, the condition category, and the ignore rules', async () => {
-  const catalogue = await loadCatalogue(async () => body);
+  const catalogue = await createCatalogueLoader(async () => body)(0);
   assert.equal(describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'cycle.low.confirmed' }).result.nodes[0].label, 'Cycle Low');
   const conditions = describeNodes({ local: STRATEGY_NODES, catalogue, category: 'condition' }).result.nodes.map((n) => n.nodeType);
   assert.ok(conditions.includes('cycle.low.confirmed') && conditions.includes('trendline_break_bullish'));

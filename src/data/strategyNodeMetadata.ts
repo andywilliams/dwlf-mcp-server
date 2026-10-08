@@ -19,7 +19,7 @@ export type NodeParam = {
   type: 'number' | 'string' | 'boolean' | 'enum';
   default: unknown;
   description: string;
-  enumValues?: string[];
+  enumValues?: (string | number | boolean)[];
   // Whether the executor currently honours an override on this param.
   // false = the value listed in `default` is the only value the engine
   // will ever use today, regardless of what's in the visual node's data.
@@ -472,6 +472,3 @@ export function getStrategyNodeByType(nodeType: string): StrategyNode | undefine
   return STRATEGY_NODES.find((n) => n.nodeType === nodeType);
 }
 
-export function getStrategyNodesByCategory(category: StrategyNode['category']): StrategyNode[] {
-  return STRATEGY_NODES.filter((n) => n.category === category);
-}
