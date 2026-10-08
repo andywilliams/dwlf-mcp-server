@@ -56,7 +56,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   from the platform's one node catalogue, `GET /v2/node-types` (DWLF-370, mapped by
   `src/data/nodeCatalogue.ts`), merged with a static file of the structural nodes (signals, stops,
   targets, gates, cancellation, exits) and a few conditions it annotates further — the local entry wins
-  for a shared type *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+  for a shared type. The catalogue's nodes are deliberately reshaped into this tool's node shape so the
+  two merge (an exception to invariant 2's pass-through, scoped to this tool), keeping the backend's
+  category as `catalogueCategory`; their parameters carry `honoredByExecutor: null` (not verified here),
+  and a node the catalogue marks unsupported carries `engineIgnored`. The catalogue is cached 15 minutes,
+  and a request the static file answers alone does not fetch it *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
 
 **Depends on**
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:

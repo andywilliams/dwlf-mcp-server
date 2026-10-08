@@ -23,7 +23,9 @@ export type NodeParam = {
   // Whether the executor currently honours an override on this param.
   // false = the value listed in `default` is the only value the engine
   // will ever use today, regardless of what's in the visual node's data.
-  honoredByExecutor: boolean;
+  // null = not verified here: the node catalogue's parameters (DWLF-370) are
+  // proven to reach the compiled strategy, not proven to change the run.
+  honoredByExecutor: boolean | null;
 };
 
 export type StrategyNode = {
