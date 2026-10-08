@@ -1,7 +1,11 @@
 import { z } from 'zod';
-import { STRATEGY_NODES, getStrategyNodeByType, getStrategyNodesByCategory, } from '../data/strategyNodeMetadata.js';
+import { STRATEGY_NODES } from '../data/strategyNodeMetadata.js';
+import { createCatalogueLoader, describeNodes, needsCatalogue } from '../data/nodeCatalogue.js';
 export function registerStrategyTools(server, client) {
-    // 0. Describe visual-strategy node types — local static catalog, no API call.
+    // The node catalogue, cached per registration (DWLF-370).
+    const loadCatalogue = createCatalogueLoader((path) => client.get(path));
+    // 0. Describe visual-strategy node types: the structural nodes from the local
+    // file, the condition nodes from the API's node catalogue (DWLF-370).
     //
     // Exists so an agent (or a user) can answer "what does this SL/TP/logic
     // node actually do at runtime?" without reading engine code. Each entry
@@ -14,8 +18,12 @@ export function registerStrategyTools(server, client) {
         'filters to a class (`stopLoss` / `takeProfit` / `signal` / `logic` / `cancellation` / `condition` / `exit`). ' +
         'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
         'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
-        'Indicator/event condition nodes (cycle, swing, EMA/SMA, DSS, Bollinger, SMC, VWAP, trendline, fib) are not all ' +
-        'listed here.', {
+        '`honoredByExecutor: null` means not verified (catalogue parameters reach the compiled strategy; their effect on the run is not checked here). ' +
+        'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
+        'minutes; an unfiltered call lists them by name, ask by nodeType or category "condition" for detail), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
+        '`timeframes` (the only ones the node fires on) and `catalogueCategory`. A node with `engineIgnored` is one the ' +
+        'engine cannot evaluate: do not use it. `engineIgnores` is the raw rule list ({ id } or { prefix }, with a reason). ' +
+        '`catalogueError` means the catalogue could not be read and only the static nodes are listed.', {
         nodeType: z
             .string()
             .optional()
@@ -26,32 +34,16 @@ export function registerStrategyTools(server, client) {
             .describe('Return only nodes in this category.'),
     }, async ({ nodeType, category }) => {
         try {
-            let nodes;
-            if (nodeType) {
-                const single = getStrategyNodeByType(nodeType);
-                if (!single) {
-                    return {
-                        content: [{ type: 'text', text: JSON.stringify({
-                                    error: `Unknown nodeType: ${nodeType}`,
-                                    hint: 'Call without args to see the full catalog of supported node types.',
-                                }, null, 2) }],
-                        isError: true,
-                    };
-                }
-                nodes = [single];
+            // Condition nodes come from the (cached) node catalogue; a request the
+            // local file answers alone does not wait for it.
+            const catalogue = needsCatalogue({ nodeType, category, local: STRATEGY_NODES })
+                ? await loadCatalogue()
+                : null;
+            const { result, error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType, category });
+            if (error) {
+                return { content: [{ type: 'text', text: JSON.stringify(error, null, 2) }], isError: true };
             }
-            else if (category) {
-                nodes = getStrategyNodesByCategory(category);
-            }
-            else {
-                nodes = STRATEGY_NODES;
-            }
-            return {
-                content: [{ type: 'text', text: JSON.stringify({
-                            count: nodes.length,
-                            nodes,
-                        }, null, 2) }],
-            };
+            return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
         catch (error) {
             return {
