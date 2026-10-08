@@ -33,11 +33,14 @@ test('mixing selectors is a usage error, not a guess and not a fetch failure', a
   assert.equal(calls.length, 0);
 });
 
-test('blank values mean "not given": no bare /stages/ path, no empty list entry', async () => {
+test('a blank selector is a usage error, never a silent universe-wide call', async () => {
   const { calls, call } = setup();
-  await call({ symbol: '  ' });
-  await call({ symbols: [' ', 'spy'] });
-  assert.deepEqual(calls, [{ path: '/stages', params: {} }, { path: '/stages', params: { symbols: 'SPY' } }]);
+  for (const args of [{ symbol: '  ' }, { symbols: [' ', 'spy'] }, { group: ' ' }]) {
+    const res = await call(args);
+    assert.equal(res.isError, true, JSON.stringify(args));
+    assert.match(res.content[0].text, /^Usage:/);
+  }
+  assert.equal(calls.length, 0);
 });
 
 test('no arguments asks for every staged symbol', async () => {

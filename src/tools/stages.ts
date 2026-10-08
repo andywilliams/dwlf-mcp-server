@@ -44,12 +44,13 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
         .describe('A named group, e.g. metals, gold_miners, mag7, crypto_spot, btc_mining — stages plus breadth'),
     },
     async ({ symbol, symbols, group }) => {
-      // Trim once, so a blank value means "not given" rather than a bare /stages/ path or an empty list entry.
-      const one = symbol?.trim() || undefined;
-      const many = symbols?.map((s) => s.trim()).filter(Boolean);
-      const named = group?.trim() || undefined;
-      const given = [one, many?.length ? many : undefined, named].filter((v) => v !== undefined).length;
-      if (given > 1) {
+      // A blank selector is a mistake (an unfilled value), never a request for the whole universe.
+      const one = symbol?.trim();
+      const many = symbols?.map((s) => s.trim());
+      const named = group?.trim();
+      const blank = one === '' || named === '' || (many !== undefined && (!many.length || many.some((s) => !s)));
+      const given = [one, many, named].filter((v) => v !== undefined).length;
+      if (blank || given > 1) {
         return {
           isError: true,
           content: [{ type: 'text', text: 'Usage: pass ONE of symbol, symbols or group (or none, for every staged symbol).' }],
@@ -59,7 +60,7 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
         const data = one
           ? await client.get(`/stages/${encodeURIComponent(normalizeSymbol(one))}`)
           : await client.get('/stages', {
-              ...(many?.length ? { symbols: many.map(normalizeSymbol).join(',') } : {}),
+              ...(many ? { symbols: many.map(normalizeSymbol).join(',') } : {}),
               ...(named ? { group: named } : {}),
             });
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };

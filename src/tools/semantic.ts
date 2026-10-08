@@ -57,7 +57,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 2. Get full semantic snapshot (intelligence)
   server.tool(
     'dwlf_get_intelligence',
-    'Get the full semantic snapshot for a symbol — current price, active events, FSM state, market regime, the weekly Weinstein `stage` (context under forward test; see dwlf_get_stage), support/resistance levels, and signal quality. This is the preferred single-call way to get structured market context for a symbol.',
+    'Get the full semantic snapshot for a symbol — current price, active events, FSM state, market regime, the weekly Weinstein `stage` object (`stage`, `stageName`, `weeksInStage`, `since`, `verification`; context, not a signal — see dwlf_get_stage), support/resistance levels, and signal quality. This is the preferred single-call way to get structured market context for a symbol.',
     {
       symbol: z.string().describe('Symbol to query (e.g. BTC, ETH, AAPL)'),
     },
@@ -87,7 +87,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
     'dwlf_get_daily_briefing',
     'Get the cross-asset daily briefing (covers the watchlist UNION the briefing list). Returns a ' +
       'TOP-LEVEL OVERVIEW by default: one headline line per symbol (price/%chg/ribbon, regime ' +
-      'trend+cycle, weekly Weinstein `stage` + `stageWeeks` (context under forward test), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
+      'trend+cycle, weekly Weinstein `stage` number + `stageWeeks` (weeks in stage; context, not a signal), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
       'full cross-asset block (sectorSentiment + triggerThemes + alignmentThemes) and a `drilldown` ' +
       'block. The overview is sized to stay within a single response across a large watchlist + ' +
       'briefing list — START HERE for the universe-wide read, then drill into symbols that matter. ' +
