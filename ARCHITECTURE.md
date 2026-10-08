@@ -60,7 +60,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   two merge (an exception to invariant 2's pass-through, scoped to this tool), keeping the backend's
   category as `catalogueCategory`; their parameters carry `honoredByExecutor: null` (not verified here),
   and a node the catalogue marks unsupported carries `engineIgnored`. The catalogue is cached 15 minutes,
-  and a request the static file answers alone does not fetch it *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+  a request the static file answers alone does not fetch it, and an unfiltered call lists catalogue
+  nodes by name only *(from: `src/data/nodeCatalogue.ts`, DWLF-370)* *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
 
 **Depends on**
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:

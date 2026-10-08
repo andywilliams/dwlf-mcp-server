@@ -28,7 +28,7 @@ export function registerStrategyTools(
       'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
       '`honoredByExecutor: null` means not verified (catalogue parameters reach the compiled strategy; their effect on the run is not checked here). ' +
       'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
-      'minutes), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
+      'minutes; an unfiltered call lists them by name, ask by nodeType or category "condition" for detail), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
       '`timeframes` (the only ones the node fires on) and `catalogueCategory`. A node with `engineIgnored` is one the ' +
       'engine cannot evaluate: do not use it. `engineIgnores` is the raw rule list ({ id } or { prefix }, with a reason). ' +
       '`catalogueError` means the catalogue could not be read and only the static nodes are listed.',

@@ -145,7 +145,12 @@ export const describeNodes = ({ local, catalogue, nodeType, category }: {
     }
     return { result: { count: 1, nodes: [single], ...(catalogueError ? { catalogueError } : {}) } };
   }
-  const nodes = category ? all.filter((n) => n.category === category) : all;
+  // Unfiltered, a catalogue node is listed by name only (about a hundred of
+  // them); ask for one by `nodeType`, or for `category: 'condition'`, for detail.
+  const brief = (n: (typeof all)[number]) => ('source' in n && n.source === 'catalogue'
+    ? { nodeType: n.nodeType, category: n.category, label: n.label, catalogueCategory: n.catalogueCategory, timeframes: n.timeframes, ...(n.engineIgnored ? { engineIgnored: n.engineIgnored } : {}), source: n.source }
+    : n);
+  const nodes = category ? all.filter((n) => n.category === category) : all.map(brief);
   return { result: {
     count: nodes.length,
     nodes,

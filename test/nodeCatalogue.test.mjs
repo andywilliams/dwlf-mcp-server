@@ -92,7 +92,11 @@ test('describeNodes: a catalogue node by type, the condition category, and the i
   assert.equal(describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'cycle.low.confirmed' }).result.nodes[0].label, 'Cycle Low');
   const conditions = describeNodes({ local: STRATEGY_NODES, catalogue, category: 'condition' }).result.nodes.map((n) => n.nodeType);
   assert.ok(conditions.includes('cycle.low.confirmed') && conditions.includes('trendline_break_bullish'));
-  assert.deepEqual(describeNodes({ local: STRATEGY_NODES, catalogue }).result.engineIgnores, body.unsupported);
+  const all = describeNodes({ local: STRATEGY_NODES, catalogue }).result;
+  assert.deepEqual(all.engineIgnores, body.unsupported);
+  const briefCycle = all.nodes.find((n) => n.nodeType === 'cycle.low.confirmed');
+  assert.equal(briefCycle.params, undefined, 'unfiltered lists catalogue nodes by name only');
+  assert.deepEqual(briefCycle.timeframes, ['weekly', 'daily']);
 });
 
 test('describeNodes: an unknown type while the catalogue is down says the catalogue is down', () => {
