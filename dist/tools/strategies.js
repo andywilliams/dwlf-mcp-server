@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import { STRATEGY_NODES, getStrategyNodeByType, getStrategyNodesByCategory, } from '../data/strategyNodeMetadata.js';
+import { STRATEGY_NODES, getStrategyNodeByType, } from '../data/strategyNodeMetadata.js';
+import { catalogueConditionNodes, mergeNodes } from '../data/nodeCatalogue.js';
 export function registerStrategyTools(server, client) {
-    // 0. Describe visual-strategy node types — local static catalog, no API call.
+    // 0. Describe visual-strategy node types: the structural nodes from the local
+    // file, the condition nodes from the API's node catalogue (DWLF-370).
     //
     // Exists so an agent (or a user) can answer "what does this SL/TP/logic
     // node actually do at runtime?" without reading engine code. Each entry
@@ -14,8 +16,9 @@ export function registerStrategyTools(server, client) {
         'filters to a class (`stopLoss` / `takeProfit` / `signal` / `logic` / `cancellation` / `condition` / `exit`). ' +
         'When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine uses today ' +
         'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
-        'Indicator/event condition nodes (cycle, swing, EMA/SMA, DSS, Bollinger, SMC, VWAP, trendline, fib) are not all ' +
-        'listed here.', {
+        'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types), the same list ' +
+        'the strategy builder offers, with their parameters and the timeframes they fire on; `engineIgnores` lists node ' +
+        'types the engine cannot evaluate.', {
         nodeType: z
             .string()
             .optional()
@@ -26,9 +29,26 @@ export function registerStrategyTools(server, client) {
             .describe('Return only nodes in this category.'),
     }, async ({ nodeType, category }) => {
         try {
+            // The catalogue is public and static; a failed read still answers from
+            // the local file, and says so.
+            let catalogueNodes = null;
+            let engineIgnores;
+            let catalogueError;
+            try {
+                const body = await client.get('/node-types');
+                catalogueNodes = catalogueConditionNodes(body);
+                engineIgnores = body?.unsupported;
+                if (!catalogueNodes) {
+                    catalogueError = 'GET /node-types returned no nodeTypes';
+                }
+            }
+            catch (error) {
+                catalogueError = `GET /node-types failed: ${error instanceof Error ? error.message : String(error)}`;
+            }
+            const all = mergeNodes(STRATEGY_NODES, catalogueNodes ?? []);
             let nodes;
             if (nodeType) {
-                const single = getStrategyNodeByType(nodeType);
+                const single = getStrategyNodeByType(nodeType) ?? all.find((n) => n.nodeType === nodeType);
                 if (!single) {
                     return {
                         content: [{ type: 'text', text: JSON.stringify({
@@ -41,15 +61,17 @@ export function registerStrategyTools(server, client) {
                 nodes = [single];
             }
             else if (category) {
-                nodes = getStrategyNodesByCategory(category);
+                nodes = all.filter((n) => n.category === category);
             }
             else {
-                nodes = STRATEGY_NODES;
+                nodes = all;
             }
             return {
                 content: [{ type: 'text', text: JSON.stringify({
                             count: nodes.length,
                             nodes,
+                            ...(engineIgnores && !nodeType ? { engineIgnores } : {}),
+                            ...(catalogueError ? { catalogueError } : {}),
                         }, null, 2) }],
             };
         }

@@ -52,8 +52,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   *(inferred from: `src/index.ts` imports + phase comments; `server.tool(` counts per file)*.
 - **One MCP resource** `dwlf://symbols` → `GET /market-data/symbols` *(inferred from:
   `src/resources/symbols.ts`)*.
-- **A static catalog of visual-strategy node semantics** surfaced by `dwlf_describe_strategy_nodes`
-  *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+- **Visual-strategy node semantics** surfaced by `dwlf_describe_strategy_nodes`: the condition nodes
+  from the platform's one node catalogue, `GET /v2/node-types` (DWLF-370, mapped by
+  `src/data/nodeCatalogue.ts`), merged with a static file of the structural nodes (signals, stops,
+  targets, gates, cancellation, exits) and a few conditions it annotates further — the local entry wins
+  for a shared type *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
 
 **Depends on**
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:
@@ -67,6 +70,9 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `strategyNodeMetadata.ts` names it as "source of truth for the runtime behaviour" and must be
   re-synced when the executor changes *(inferred from: file header comment; doc-drift PRs #43, #44,
   #47, #48, #50)*.
+- **SPT `GET /v2/node-types`** (public) for the condition nodes, read on every
+  `dwlf_describe_strategy_nodes` call; a failed read answers from the static file and says so
+  (`catalogueError`) *(DWLF-370)*.
 - **npm + GitHub Actions OIDC** for release *(inferred from: `.github/workflows/publish.yml`)*.
 
 **DECIDED 2026-08-13 (Andy): the Academy CDN IS a contract**, not opportunistic reuse. The academy exists to teach a fresh agent what DWLF is and how to use it — "we just want to teach agents that come to DWLF fresh what DWLF is all about" — so it is a first-class dependency, not opportunistic reuse. `dwlf-academy-content` owns the schema *(Andy, 2026-08-13 — a statement of intent about another repo; **not verified in that repo**, which has not been chartered)*.
