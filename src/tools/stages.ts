@@ -16,12 +16,12 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       '("what share of metals are in Stage 2?"). This is the platform\'s market-cycle stage read: prefer it ' +
       'over `regime.cycle` (accumulation/markup/…) from dwlf_get_regime when describing where an asset is in ' +
       'its cycle.\n\n' +
-      'SHAPE (one symbol): `{ symbol, stage, stageName, weeksInStage, since, rulesVersion, status, note, ' +
+      'SHAPE (one symbol): `{ symbol, stage, stageName, weeksInStage, since, rulesVersion, verification, ' +
       'history: [{ to, from, baseline, knowableFrom, close }] }`. `stage: null` with `reason: "no-stage"` = too ' +
-      'little weekly history. SHAPE (many): `{ status, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +
+      'little weekly history. SHAPE (many): `{ verification, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +
       'breadth: { counted, withoutStage, share: { base, advance, top, decline } } }` — shares are over symbols ' +
       'WITH a stage.\n\n' +
-      '⚠️ `status: "context-under-forward-test"`: stages are CONTEXT, not a trading signal, and their predictive ' +
+      '⚠️ `verification.state: "under-forward-test"`: stages are CONTEXT, not a trading signal, and their predictive ' +
       'claims are being tested forward (DWLF-384). Evidence so far: Stage 1 (base) has underperformed and mature ' +
       'Stage 2 outperformed, both modestly; fresh breakouts into Stage 2 did NOT hold up. Say so rather than ' +
       'presenting a stage as a buy/sell call. Like any trend read it confirms late — most of a move has ' +
