@@ -38,7 +38,8 @@ test('a blank selector is a usage error, never a silent universe-wide call', asy
   for (const args of [{ symbol: '  ' }, { symbols: [' ', 'spy'] }, { group: ' ' }]) {
     const res = await call(args);
     assert.equal(res.isError, true, JSON.stringify(args));
-    assert.match(res.content[0].text, /^Usage:/);
+    assert.match(res.content[0].text, /^Usage: a selector was blank/);
+    assert.doesNotMatch(res.content[0].text, /every staged symbol/);
   }
   assert.equal(calls.length, 0);
 });

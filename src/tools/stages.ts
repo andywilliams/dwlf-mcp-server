@@ -50,7 +50,13 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       const named = group?.trim();
       const blank = one === '' || named === '' || (many !== undefined && (!many.length || many.some((s) => !s)));
       const given = [one, many, named].filter((v) => v !== undefined).length;
-      if (blank || given > 1) {
+      if (blank) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: 'Usage: a selector was blank. Give a symbol (e.g. SPY), symbols (e.g. ["SPY","QQQ"]) or a group (e.g. metals).' }],
+        };
+      }
+      if (given > 1) {
         return {
           isError: true,
           content: [{ type: 'text', text: 'Usage: pass ONE of symbol, symbols or group (or none, for every staged symbol).' }],
