@@ -38,11 +38,20 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'edge\'s date is an estimate from average bar spacing (it can fall on a non-trading day until real bars exist).\n\n' +
       'PRICE ZONE (`depth: true`, DWLF-416): each window also carries `depth`, DERIVED at read time: how far price ' +
       'MOVED into this side\'s past pivots (`pct` min/p25/median/p75/max, a fall into a low or a rise into a high, ' +
-      'over the trailing `n` completed cycles; `thin` when few) and, once the current cycle\'s `anchor` has ' +
-      'confirmed (the highest high after a low ruler, the lowest low after a high ruler), `zone` = that band as ' +
-      'prices. ⚠️ `depth.verification.state` is `context-only`: a distribution of past moves, NOT a target or ' +
-      'forecast. Use it for "has X fallen far enough for a typical weekly low?" (compare price with `zone`), never ' +
-      'as an entry level. `zone` is null until the anchor confirms; a missing band says why in `depthUnavailable`.',
+      'over the trailing `n` completed cycles; `thin` when few) and `zone` = that band as prices from the current ' +
+      'cycle\'s `anchor`: the confirmed opposite pivot (`anchor.source: confirmed-pivot`, `pivotDate`; the highest ' +
+      'high after a low ruler, the lowest low after a high ruler) or, when none has confirmed or price has gone ' +
+      'beyond it, the cycle\'s extreme SO FAR (`running-extreme`, `barDate`, not yet a confirmed pivot). `zone` is ' +
+      'null when there is no anchor (a pivots-only band — `anchorBasis: pivots`, e.g. candles not licensed or ' +
+      'unavailable — before the opposite pivot confirms) or no completed cycles to measure (`pct` null). The CURRENT window also carries `reading`: `position` of the last weekly ' +
+      'close in the band — `not-reached` (short of the smallest move on record: the band does not apply yet) | ' +
+      '`shallow` | `in-zone` (inside p25–p75: the one to call out) | `deep` | `beyond` — plus `movePct`, `price` ' +
+      'and `closeDate`. An API key without raw-candle rights gets `price`/`movePct` null (`priceWithheld: true`), ' +
+      'the position kept, and a pivots-only band (`candlesUnavailable: not-licensed`). ⚠️ ' +
+      '`depth.verification.state` is `context-only`: a distribution of past moves, NOT a target or forecast. Use ' +
+      'it for "has X fallen far enough for a typical weekly low?", never as an entry level. A missing band says ' +
+      'why in `depthUnavailable`. For many symbols at once, `dwlf_get_cycle_setups` with `depth: true` carries the ' +
+      'same band on each open-window setup.',
     {
       symbol: z
         .string()

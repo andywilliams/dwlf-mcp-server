@@ -634,11 +634,26 @@ export function registerMarketDataTools(
       'engine itself sees — and the window store for timing; no window is computed here. ' +
       '⚠️ A symbol whose weekly window is not yet open is ABSENT from every list, not ' +
       'suppressed — for its window dates call `dwlf_get_cycle_windows`. ' +
+      'DEPTH (`depth: true`, DWLF-416): each row also carries `depth`, its weekly window\'s derived price band ' +
+      '(the same object `dwlf_get_cycle_windows` returns; long rows = the fall into the weekly low, short rows = ' +
+      'the rise into the weekly high), and `depth.reading.position` places the last weekly close: ' +
+      '`in-zone` (inside the p25–p75 of past cycles\' moves — call it out), `shallow` / `deep` / `beyond`, or ' +
+      '`not-reached` (short of the smallest move on record — not worth raising). Context, NOT a gate or target: it ' +
+      'does not change the stage or ranking. A missing band says why in `depthUnavailable` (incl. `ruler-mismatch` ' +
+      'when the band\'s window is not the setup\'s). ' +
       'UI equivalent: https://www.dwlf.co.uk/screener',
-    {},
-    async () => {
+    {
+      depth: z
+        .boolean()
+        .optional()
+        .describe(
+          'Add each setup\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
+            'Historical context, not a target.'
+        ),
+    },
+    async ({ depth }) => {
       try {
-        const data = await client.get('/screener/cycle-setups');
+        const data = await client.get('/screener/cycle-setups', depth ? { depth: '1' } : undefined);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };
