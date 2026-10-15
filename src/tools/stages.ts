@@ -13,9 +13,8 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       'stage — 1 base, 2 advance, 3 top, 4 decline — derived from the 30-week average, with `weeksInStage`, ' +
       '`since` (when the stage became knowable) and the recent transitions. Use it for "is X basing or ' +
       'advancing?", "how long has X been in Stage 2?" and, with `group` or several `symbols`, for sector breadth ' +
-      '("what share of metals are in Stage 2?"). This is the platform\'s market-cycle stage read: prefer it ' +
-      'over `regime.cycle` (accumulation/markup/…) from dwlf_get_regime when describing where an asset is in ' +
-      'its cycle.\n\n' +
+      '("what share of metals are in Stage 2?"). This is the platform\'s market-cycle read: dwlf_get_regime ' +
+      'carries no cycle phase, and dwlf_get_intelligence returns this same stage as `stage`.\n\n' +
       'SHAPE (one symbol): `{ symbol, stage, stageName, weeksInStage, since, rulesVersion, verification, ' +
       'history: [{ to, from, baseline, knowableFrom, close }] }`. `stage: null` with `reason: "no-stage"` = too ' +
       'little weekly history. SHAPE (many): `{ verification, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +
