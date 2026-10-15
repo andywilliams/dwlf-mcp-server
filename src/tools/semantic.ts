@@ -7,10 +7,11 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 1. Get market regime classification
   server.tool(
     'dwlf_get_regime',
-    'Get the market regime classification for a symbol on one timeframe (daily by default) — trend, cycle, ' +
-      'momentum, volatility and a confidence score. With `history`, returns a dated regime series, newest first. ' +
-      'For where an asset is in its market cycle, use dwlf_get_stage (weekly Weinstein stage) rather than this ' +
-      'tool\'s `cycle` field.',
+    'Get the market regime classification for a symbol on one timeframe (daily by default) — trend, ' +
+      'momentum, volatility and a confidence score, plus `insufficientHistory` (true when the symbol has too ' +
+      'little history on that timeframe: the fields are then placeholders, not a reading). With `history`, returns a dated regime series, newest ' +
+      'first. It carries no cycle phase: for where an asset is in its market cycle, use dwlf_get_stage (weekly ' +
+      'Weinstein stage).',
     {
       symbol: z.string().describe('Symbol to query (e.g. BTC, ETH, AAPL)'),
       timeframe: z
@@ -87,7 +88,8 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
     'dwlf_get_daily_briefing',
     'Get the cross-asset daily briefing (covers the watchlist UNION the briefing list). Returns a ' +
       'TOP-LEVEL OVERVIEW by default: one headline line per symbol (price/%chg/ribbon, regime ' +
-      'trend+cycle, weekly Weinstein `stage` number + `stageWeeks` (weeks in stage; context, not a signal), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
+      'trend + `cycle`, the weekly cycle FSM\'s setup state (bottoming/rising/topping/declining; not the ' +
+      'cycle read — that is `stage`), weekly Weinstein `stage` number + `stageWeeks` (weeks in stage; context, not a signal), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
       'full cross-asset block (sectorSentiment + triggerThemes + alignmentThemes) and a `drilldown` ' +
       'block. The overview is sized to stay within a single response across a large watchlist + ' +
       'briefing list — START HERE for the universe-wide read, then drill into symbols that matter. ' +
