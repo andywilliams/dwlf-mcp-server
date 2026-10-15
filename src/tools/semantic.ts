@@ -88,7 +88,8 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
     'dwlf_get_daily_briefing',
     'Get the cross-asset daily briefing (covers the watchlist UNION the briefing list). Returns a ' +
       'TOP-LEVEL OVERVIEW by default: one headline line per symbol (price/%chg/ribbon, regime ' +
-      'trend + the weekly cycle FSM state as `cycle` (bottoming/rising/topping/declining), weekly Weinstein `stage` number + `stageWeeks` (weeks in stage; context, not a signal), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
+      'trend + `cycle`, the weekly cycle FSM\'s setup state (bottoming/rising/topping/declining; not the ' +
+      'cycle read — that is `stage`), weekly Weinstein `stage` number + `stageWeeks` (weeks in stage; context, not a signal), cycleAlignment composite, active-signal count, openTrade, and `flags`) plus the ' +
       'full cross-asset block (sectorSentiment + triggerThemes + alignmentThemes) and a `drilldown` ' +
       'block. The overview is sized to stay within a single response across a large watchlist + ' +
       'briefing list — START HERE for the universe-wide read, then drill into symbols that matter. ' +
