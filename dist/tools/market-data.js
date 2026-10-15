@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
+const DEFAULT_CANDLE_LIMIT = 50;
 export function registerMarketDataTools(server, client) {
     // 1. Get OHLCV candle data
     server.tool('dwlf_get_market_data', 'Get OHLCV candle data (open, high, low, close, volume) for a trading symbol at a chosen timeframe. ' +
@@ -18,13 +19,14 @@ export function registerMarketDataTools(server, client) {
         limit: z
             .number()
             .optional()
-            .describe('Number of most-recent candles to return (default: 50)'),
+            .describe(`Number of most-recent candles to return (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
     }, async ({ symbol, timeframe, limit }) => {
         try {
             const sym = normalizeSymbol(symbol);
             const data = await client.get(`/market-data/${sym}`, {
                 timeframe,
-                limit,
+                // Omitted, the API applies its own default of thousands of bars; send the documented one.
+                limit: limit ?? DEFAULT_CANDLE_LIMIT,
             });
             return {
                 content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
