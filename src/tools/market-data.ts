@@ -172,12 +172,12 @@ export function registerMarketDataTools(
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
       '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
-      'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date. ' +
+      'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date; ' +
+      'for a single-call summary across those types, use `dwlf_get_price_picture` instead. ' +
       'RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ' +
       'Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
       'compare price with RSI(14) or DSS at consecutive confirmed daily cycle lows (bullish) or highs (bearish). Each row carries a `divergence` ' +
-      'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`. ' +
-      'For a single-call summary across all those types, use `dwlf_get_price_picture` instead.',
+      'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`.',
     {
       symbol: z
         .string()
