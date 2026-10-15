@@ -23,3 +23,18 @@ test('an explicit limit is passed through', async () => {
   await call({ symbol: 'XAU-USD', timeframe: 'weekly', limit: 520 });
   assert.deepEqual(calls[0].params, { timeframe: 'weekly', limit: 520 });
 });
+
+// DWLF-416: dwlf_get_cycle_setups asks for each setup's depth band only when `depth` is set.
+test('cycle setups: depth: true adds depth=1; without it the request is unchanged', async () => {
+  const calls = [];
+  const handlers = {};
+  const server = { tool: (name, _desc, _schema, fn) => { handlers[name] = fn; } };
+  const client = { get: async (path, params) => { calls.push({ path, params }); return { long: [], short: [] }; } };
+  registerMarketDataTools(server, client);
+  await handlers.dwlf_get_cycle_setups({ depth: true });
+  await handlers.dwlf_get_cycle_setups({});
+  assert.deepEqual(calls, [
+    { path: '/screener/cycle-setups', params: { depth: '1' } },
+    { path: '/screener/cycle-setups', params: undefined },
+  ]);
+});
