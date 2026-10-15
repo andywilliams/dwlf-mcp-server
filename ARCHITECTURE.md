@@ -168,7 +168,7 @@ A reviewer should be able to test a diff against each of these:
 - **2026-07 — `dwlf_get_events` auto-follows the cursor for scoped custom-event queries (cap 40 pages)
   and echoes `filtersApplied`** — because the backend's `limit` counts rows *scanned* then
   post-filters, so page 1 holds only a fraction of the matches, and the silent 7-day default hides
-  older history *(inferred from: `src/tools/market-data.ts:255-336`; PRs #62, #39)*.
+  older history *(inferred from: `src/tools/market-data.ts:255-352`; PRs #62, #39)*.
 - **2026-07-15 — CI pins `npm@11.5.1` exactly** — because trusted publishing needs npm ≥ 11.5.1 while
   npm@12 dropped Node 20, so `@latest` broke with `EBADENGINE` *(inferred from: `publish.yml` step
   comment; PR #64)*.
