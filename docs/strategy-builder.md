@@ -183,10 +183,17 @@ All use `backgroundColor: "#4a5568"`, `borderColor: "#2d3748"`.
 | `dss.level.oversold` | DSS Entered Oversold Zone | — |
 | `dss.overbought` | DSS Overbought | — |
 
-#### RSI Conditions
-| nodeType | Label | Params |
-|----------|-------|--------|
-| `rsi.cross.above` | RSI Crossed Above {level} | `{ level: 30 }` or `{ level: 70 }` |
+#### RSI and divergence (events only, not builder nodes)
+RSI(14) and divergence events are stored daily and readable with `dwlf_get_events`, but they are **not** strategy-builder nodes yet: a new event family earns a strategy leg out of sample first, and a save that introduces one is refused (`/v2/node-types` lists them under `unsupported`). There is no `rsi.cross.above` node.
+
+| event | Fires when |
+|-------|------------|
+| `rsi.exit.overbought` / `rsi.exit.oversold` | RSI closes back at or inside 70 / 30 |
+| `rsi.midline.bullish` / `rsi.midline.bearish` | RSI closes across 50 |
+| `rsi.divergence.{regular,hidden}.{bullish,bearish}` | price vs RSI(14) at consecutive confirmed daily cycle lows (bullish) or highs (bearish) |
+| `dss.divergence.{regular,hidden}.{bullish,bearish}` | the same against the platform DSS |
+
+Regular: price makes the new extreme and the oscillator does not. Hidden: the reverse (a continuation read). A row is dated by the later pivot and knowable at its `eventTimestamp` (the pivot's confirm bar).
 
 #### Bollinger Band Conditions
 | nodeType | Label |
