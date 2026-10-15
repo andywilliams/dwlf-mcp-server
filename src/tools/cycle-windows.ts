@@ -4,8 +4,9 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
 
 /**
  * The stored cycle WINDOW for one symbol — when its next cycle pivot is due.
- * Backed by GET /v2/cycles/windows (DWLF-272). Pass-through: the backend
- * projects the window store and computes nothing, and so does this tool.
+ * Backed by GET /v2/cycles/windows (DWLF-272). Pass-through: this tool computes
+ * nothing. The backend projects the window store and, with `depth` (DWLF-416),
+ * derives each window's price zone at read time.
  */
 export function registerCycleWindowTools(server: McpServer, client: DWLFClient) {
   server.tool(
@@ -34,7 +35,14 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       'gate stands failed), treat the edges as rough timing, not a forecast. ⚠️ The store covers WEEKLY and DAILY ' +
       '(daily folded from the ledger\'s daily lows/highs); `timeframe: "1h"` answers with ' +
       'null sides rather than a computed substitute. On daily, `bars` are trading candles, and an extrapolated ' +
-      'edge\'s date is an estimate from average bar spacing (it can fall on a non-trading day until real bars exist).',
+      'edge\'s date is an estimate from average bar spacing (it can fall on a non-trading day until real bars exist).\n\n' +
+      'PRICE ZONE (`depth: true`, DWLF-416): each window also carries `depth`, DERIVED at read time: how far price ' +
+      'MOVED into this side\'s past pivots (`pct` min/p25/median/p75/max, a fall into a low or a rise into a high, ' +
+      'over the trailing `n` completed cycles; `thin` when few) and, once the current cycle\'s `anchor` has ' +
+      'confirmed (the highest high after a low ruler, the lowest low after a high ruler), `zone` = that band as ' +
+      'prices. ⚠️ `depth.verification.state` is `context-only`: a distribution of past moves, NOT a target or ' +
+      'forecast. Use it for "has X fallen far enough for a typical weekly low?" (compare price with `zone`), never ' +
+      'as an entry level. `zone` is null until the anchor confirms; a missing band says why in `depthUnavailable`.',
     {
       symbol: z
         .string()
@@ -58,6 +66,13 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
           'How many windows OLDER than `current` to return, newest first (0-20, default 0). Use ~10 to see ' +
             'past outcomes and judge how often this symbol\'s lows landed inside the window.'
         ),
+      depth: z
+        .boolean()
+        .optional()
+        .describe(
+          'Add each window\'s derived price zone (`depth`, DWLF-416): the typical move into this side\'s pivots, ' +
+            'and as prices from the current cycle\'s anchor. Historical context, not a target.'
+        ),
       generation: z
         .number()
         .int()
@@ -69,7 +84,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
             '(`generationSource` says which was used).'
         ),
     },
-    async ({ symbol, timeframe, side, history, generation }) => {
+    async ({ symbol, timeframe, side, history, depth, generation }) => {
       try {
         const params: Record<string, string> = {
           symbol: normalizeSymbol(symbol),
@@ -78,6 +93,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
         if (side) params.side = side;
         if (history !== undefined) params.history = String(history);
         if (generation !== undefined) params.generation = String(generation);
+        if (depth) params.depth = '1';
         const data = await client.get('/cycles/windows', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
