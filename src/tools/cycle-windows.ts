@@ -4,8 +4,9 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
 
 /**
  * The stored cycle WINDOW for one symbol — when its next cycle pivot is due.
- * Backed by GET /v2/cycles/windows (DWLF-272). Pass-through: the backend
- * projects the window store and computes nothing, and so does this tool.
+ * Backed by GET /v2/cycles/windows (DWLF-272). Pass-through: this tool computes
+ * nothing. The backend projects the window store and, with `depth` (DWLF-416),
+ * derives each window's price zone at read time.
  */
 export function registerCycleWindowTools(server: McpServer, client: DWLFClient) {
   server.tool(
