@@ -19,13 +19,13 @@ export function registerMarketDataTools(server, client) {
         limit: z
             .number()
             .optional()
-            .describe('Number of most-recent candles to return (default: 50; at most 5000 daily, 1040 weekly, 2000 hourly)'),
+            .describe(`Number of most-recent candles to return (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
     }, async ({ symbol, timeframe, limit }) => {
         try {
             const sym = normalizeSymbol(symbol);
             const data = await client.get(`/market-data/${sym}`, {
                 timeframe,
-                // The API's own default is thousands of bars (5000 daily); send the documented 50 instead.
+                // Omitted, the API applies its own default of thousands of bars; send the documented one.
                 limit: limit ?? DEFAULT_CANDLE_LIMIT,
             });
             return {
