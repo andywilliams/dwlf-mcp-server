@@ -21,7 +21,7 @@ backend's JSON *(inferred from: runtime deps are only `@modelcontextprotocol/sdk
 tool bodies are `client.get/post/... ` + `JSON.stringify(data)`)*. Its real product surface is the
 **tool docstrings** — the prerequisites, footguns and workflow ordering an agent cannot infer from a
 schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evaluations.ts:14,49`,
-`src/tools/market-data.ts:156-169`)*.
+`src/tools/market-data.ts:159-172`)*.
 
 **Not for:**
 - **Market/trading computation** — indicator math, event detection, cycle FSMs, strategy evaluation.
@@ -93,7 +93,7 @@ A reviewer should be able to test a diff against each of these:
 2. **Responses are passed through, not re-enveloped.** Tools return `JSON.stringify(<backend data>)`;
    enrichment is *additive* alongside the backend shape (`agentHints`, `filtersApplied`), never a
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
-   `market-data.ts:318-333` `filtersApplied`, `:573` `agentHints`)*.
+   `market-data.ts:321-336` `filtersApplied`, `:576` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
@@ -168,7 +168,7 @@ A reviewer should be able to test a diff against each of these:
 - **2026-07 — `dwlf_get_events` auto-follows the cursor for scoped custom-event queries (cap 40 pages)
   and echoes `filtersApplied`** — because the backend's `limit` counts rows *scanned* then
   post-filters, so page 1 holds only a fraction of the matches, and the silent 7-day default hides
-  older history *(inferred from: `src/tools/market-data.ts:252-333`; PRs #62, #39)*.
+  older history *(inferred from: `src/tools/market-data.ts:255-336`; PRs #62, #39)*.
 - **2026-07-15 — CI pins `npm@11.5.1` exactly** — because trusted publishing needs npm ≥ 11.5.1 while
   npm@12 dropped Node 20, so `@latest` broke with `EBADENGINE` *(inferred from: `publish.yml` step
   comment; PR #64)*.

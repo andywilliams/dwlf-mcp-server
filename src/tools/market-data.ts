@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 
+const DEFAULT_CANDLE_LIMIT = 50;
+
 export function registerMarketDataTools(
   server: McpServer,
   client: DWLFClient
@@ -26,14 +28,15 @@ export function registerMarketDataTools(
       limit: z
         .number()
         .optional()
-        .describe('Number of most-recent candles to return (default: 50)'),
+        .describe('Number of most-recent candles to return (default: 50; at most 5000 daily, 1040 weekly, 2000 hourly)'),
     },
     async ({ symbol, timeframe, limit }) => {
       try {
         const sym = normalizeSymbol(symbol);
         const data = await client.get(`/market-data/${sym}`, {
           timeframe,
-          limit,
+          // The API's own default is thousands of bars (5000 daily); send the documented 50 instead.
+          limit: limit ?? DEFAULT_CANDLE_LIMIT,
         });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
