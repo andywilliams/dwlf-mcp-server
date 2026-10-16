@@ -149,7 +149,9 @@ export function registerMarketDataTools(server, client) {
         'RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ' +
         'Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
         'compare price with RSI(14) or DSS at consecutive confirmed daily cycle lows (bullish) or highs (bearish). Each row carries a `divergence` ' +
-        'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`.', {
+        'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`. ' +
+        'SMA reclaim / loss (daily): `sma.reclaimed` / `sma.lost` on the 50, 100 and 200-day SMA (`length` on the row): two closes in a row ' +
+        'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one.', {
         symbol: z
             .string()
             .optional()
@@ -423,6 +425,9 @@ export function registerMarketDataTools(server, client) {
                 'sma.cross.below',
                 'ema.cross.above',
                 'ema.cross.below',
+                // Close-confirmed reclaim / loss of the 50/100/200-day SMA (DWLF-448)
+                'sma.reclaimed',
+                'sma.lost',
                 // Bollinger band breaks
                 'bollinger.break.aboveUpper',
                 'bollinger.break.belowLower',
@@ -458,7 +463,8 @@ export function registerMarketDataTools(server, client) {
                 if (eventType.startsWith('cycle.')) {
                     label = e.totalScore ? `${eventType} (score ${e.totalScore})` : eventType;
                 }
-                else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')) {
+                else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')
+                    || eventType === 'sma.reclaimed' || eventType === 'sma.lost') {
                     const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
                     maLength = lengthMatch ? Number(lengthMatch[1]) : NaN;
                     label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
