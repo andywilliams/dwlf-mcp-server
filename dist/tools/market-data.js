@@ -154,7 +154,8 @@ export function registerMarketDataTools(server, client) {
         'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one. ' +
         'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
         '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
-        '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger.', {
+        '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger, and events only: not builder ' +
+        'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them.', {
         symbol: z
             .string()
             .optional()

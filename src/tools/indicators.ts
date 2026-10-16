@@ -57,7 +57,7 @@ export function registerIndicatorTools(
       '`bollinger.break.*`, `ema.cross.*`, `sma.reclaimed` / `sma.lost` for a confirmed reclaim or loss of the 50/100/200-day SMA, `atr.regime.*` for volatility expansion/contraction, `adx.trend.*` / `adx.di.cross.*` for ADX/DMI trend strength (trending vs ranging), `rsi.exit.*` / `rsi.midline.*` for RSI(14), ' +
       '`rsi.divergence.*` / `dss.divergence.*` for price vs oscillator at confirmed cycle pivots), ' +
       'or dwlf_get_regime for the trend/momentum/volatility read. ' +
-      '`atr.regime.*` and the divergences are daily and fire rarely (ATR once when an episode starts), so pass a wide `days` for those.',
+      '`atr.regime.*`, `adx.trend.*` and the divergences are daily and fire rarely (ATR once when an episode starts), so pass a wide `days` for those.',
     {
       symbol: z
         .string()

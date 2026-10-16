@@ -195,6 +195,15 @@ RSI(14) and divergence events are stored daily and readable with `dwlf_get_event
 
 Regular: price makes the new extreme and the oscillator does not. Hidden: the reverse (a continuation read). A row is dated by the later pivot and knowable at its `eventTimestamp` (the pivot's confirm bar).
 
+#### ADX / DMI (events only, not builder nodes)
+ADX / DMI (Wilder 14) events are stored daily and readable with `dwlf_get_events`, but, like RSI, they are **not** builder nodes yet (refused on save, listed under `unsupported`). They describe whether price is trending or ranging; on 123 symbols neither event predicted a bigger or directional move, so they are context rather than triggers.
+
+| event | Fires when |
+|-------|------------|
+| `adx.trend.started.bullish` / `.bearish` | ADX rises to 25 (the side is whichever DI is on top) |
+| `adx.trend.faded` | ADX falls below 20 after a trend: ranging again |
+| `adx.di.cross.bullish` / `.bearish` | +DI and -DI cross while ADX is at least 20 |
+
 #### Bollinger Band Conditions
 | nodeType | Label |
 |----------|-------|
