@@ -125,11 +125,13 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
         .boolean()
         .optional()
         .describe(
-          'true adds crossAsset.depth = {readings: [{symbol, side, depth}], read, failed}: each ' +
-            "symbol's current weekly low and high window depth band, as dwlf_get_cycle_windows " +
-            'depth:true returns it. depth.reading.position: not-reached / shallow / in-zone ' +
-            '(25th-75th percentile of past cycles) / deep / beyond. failed > 0 = some bands could not ' +
-            'be read. Historical context, not a target.'
+          'true adds crossAsset.depth = {readings, read, failed, omitted}: each symbol\'s current ' +
+            'weekly low and high window depth reading (up to 50 symbols; omitted = the rest). In ' +
+            'overview/summary each reading is compact {symbol, side, position, movePct, price, anchor, ' +
+            'typical: {p25, p75}, n, ...} with not-reached left out; view:"full" carries the whole band ' +
+            'as dwlf_get_cycle_windows depth:true does. position: shallow / in-zone (25th-75th ' +
+            'percentile of past cycles) / deep / beyond. failed > 0 = some bands could not be read. ' +
+            'Costs 10 compute units. Historical context, not a target.'
         ),
     },
     async ({ symbols, view, depth }) => {
