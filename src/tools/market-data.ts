@@ -177,7 +177,9 @@ export function registerMarketDataTools(
       'RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ' +
       'Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
       'compare price with RSI(14) or DSS at consecutive confirmed daily cycle lows (bullish) or highs (bearish). Each row carries a `divergence` ' +
-      'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`.',
+      'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`. ' +
+      'SMA reclaim / loss (daily): `sma.reclaimed` / `sma.lost` on the 50, 100 and 200-day SMA (`length` on the row): two closes in a row ' +
+      'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one.',
     {
       symbol: z
         .string()
@@ -402,7 +404,8 @@ export function registerMarketDataTools(
   server.tool(
     'dwlf_get_price_picture',
     'Aggregate the price-meaningful indicator events for a symbol into a chronological narrative — ' +
-      'cycle pivots, swing points (HH/HL/LH/LL, breaks, sweeps), MA/EMA crosses, trendline breaks and breaches, ' +
+      'cycle pivots, swing points (HH/HL/LH/LL, breaks, sweeps), MA/EMA crosses, SMA 50/100/200 reclaims and losses ' +
+      '(`sma.reclaimed` / `sma.lost`), trendline breaks and breaches, ' +
       'bollinger breaks, key level breaks / flips / reclaims. The levels themselves are not included (use dwlf_get_support_resistance), nor SMC, ' +
       'VWAP, fib or DSS events (use dwlf_get_events). ' +
       'Each row carries date + price (or level) + a human-readable label. ' +
@@ -467,6 +470,9 @@ export function registerMarketDataTools(
           'sma.cross.below',
           'ema.cross.above',
           'ema.cross.below',
+          // Close-confirmed reclaim / loss of the 50/100/200-day SMA (DWLF-448)
+          'sma.reclaimed',
+          'sma.lost',
           // Bollinger band breaks
           'bollinger.break.aboveUpper',
           'bollinger.break.belowLower',
@@ -518,10 +524,16 @@ export function registerMarketDataTools(
 
             if (eventType.startsWith('cycle.')) {
               label = e.totalScore ? `${eventType} (score ${e.totalScore})` : eventType;
-            } else if (eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')) {
+            } else if (
+              eventType.startsWith('sma.cross') || eventType.startsWith('ema.cross')
+              || eventType === 'sma.reclaimed' || eventType === 'sma.lost'
+            ) {
+              // The row's own `length` first (served on every per-period MA row), else the
+              // `#length=N` in its sortKey.
               const lengthMatch = String(e.sortKey ?? '').match(/length=(\d+)/);
-              maLength = lengthMatch ? Number(lengthMatch[1]) : NaN;
-              label = lengthMatch ? `${eventType}(${lengthMatch[1]})` : eventType;
+              const rowLength = typeof e.length === 'number' && Number.isFinite(e.length) ? e.length : null;
+              maLength = rowLength ?? (lengthMatch ? Number(lengthMatch[1]) : NaN);
+              label = Number.isFinite(maLength) ? `${eventType}(${maLength})` : eventType;
               // Group by date + family (sma/ema) + direction (above/below) so
               // same-day same-direction crosses on different MA lengths collapse
               // to a single row like `ema.cross.below(50,100)` instead of two
@@ -592,7 +604,7 @@ export function registerMarketDataTools(
                   narrative,
                   agentHints: {
                     interpretation:
-                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection. keyLevel.broken / flipped / reclaimed rows are breaks of a key level (price = the level), suffixed (bullish|bearish).',
+                      'Read top-to-bottom for recent-to-older. Cycle pivots (cycle.low.confirmed / cycle.high.confirmed) anchor the structural narrative. Higher/lower lows-and-highs describe trend shape. MA crosses tag trend regime changes (same-day same-direction crosses across multiple MA lengths are collapsed into one row, e.g. `ema.cross.below(50,100)`). sma.reclaimed(N) / sma.lost(N) are the confirmed version: two closes at least half an ATR beyond the N-day SMA, grouped across lengths the same way. Swing sweeps mark stop-runs / liquidity events. Trendline breaks mark structural inflection. keyLevel.broken / flipped / reclaimed rows are breaks of a key level (price = the level), suffixed (bullish|bearish).',
                     limitations:
                       'This is a pivot-based summary — it cannot tell you intra-day movement, exact bar closes, or volume. For those you need raw OHLC via dwlf_get_market_data (owner-account only). Current key levels are not included (only breaks of them) — call dwlf_get_support_resistance for the levels themselves.',
                   },

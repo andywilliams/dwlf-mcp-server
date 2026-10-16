@@ -41,7 +41,7 @@ export function registerIndicatorTools(server, client) {
         'with `latest` and `missing` added. ' +
         'This is the only indicator data stored as values: there is no RSI, MACD or Bollinger value series, and ' +
         'there is no 4h/1h data. For momentum, band and cross signals use dwlf_get_events (e.g. `dss.cross.*`, ' +
-        '`bollinger.break.*`, `ema.cross.*`, `atr.regime.*` for volatility expansion/contraction, `rsi.exit.*` / `rsi.midline.*` for RSI(14), ' +
+        '`bollinger.break.*`, `ema.cross.*`, `sma.reclaimed` / `sma.lost` for a confirmed reclaim or loss of the 50/100/200-day SMA, `atr.regime.*` for volatility expansion/contraction, `rsi.exit.*` / `rsi.midline.*` for RSI(14), ' +
         '`rsi.divergence.*` / `dss.divergence.*` for price vs oscillator at confirmed cycle pivots), ' +
         'or dwlf_get_regime for the trend/momentum/volatility read. ' +
         '`atr.regime.*` and the divergences are daily and fire rarely (ATR once when an episode starts), so pass a wide `days` for those.', {
