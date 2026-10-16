@@ -99,7 +99,9 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       'watchlist can exceed response limits, so SCOPE them with `symbols`. `drilldown.flaggedSymbols` ' +
       'and per-symbol `flags` mark notable structure — drill those proactively (view:"summary"/' +
       '"full" scoped, or dwlf_get_price_picture / dwlf_get_trendlines / dwlf_get_support_resistance ' +
-      '/ dwlf_get_events). Use `symbols` to extend coverage beyond your watchlist + briefing list.',
+      '/ dwlf_get_events). Use `symbols` to extend coverage beyond your watchlist + briefing list. ' +
+      'Pass depth:true for crossAsset.depth: each symbol\'s weekly cycle window depth band ' +
+      '(where the last close sits in the move past cycles made; lead with in-zone).',
     {
       symbols: z
         .array(z.string())
@@ -119,8 +121,18 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
             "`symbols`). 'full' = every per-symbol field (heaviest — scope with `symbols`). Drill into " +
             'flagged symbols with summary/full or the per-symbol tools.'
         ),
+      depth: z
+        .boolean()
+        .optional()
+        .describe(
+          'true adds crossAsset.depth = {readings: [{symbol, side, depth}], read, failed}: each ' +
+            "symbol's current weekly low and high window depth band, as dwlf_get_cycle_windows " +
+            'depth:true returns it. depth.reading.position: not-reached / shallow / in-zone ' +
+            '(25th-75th percentile of past cycles) / deep / beyond. failed > 0 = some bands could not ' +
+            'be read. Historical context, not a target.'
+        ),
     },
-    async ({ symbols, view }) => {
+    async ({ symbols, view, depth }) => {
       try {
         const params: Record<string, unknown> = {};
         if (symbols && symbols.length > 0) {
@@ -130,6 +142,9 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
         // list never blows the response size; callers opt into the heavier
         // summary/full views explicitly (and should scope them with `symbols`).
         params.view = view === 'full' || view === 'summary' ? view : 'overview';
+        if (depth) {
+          params.depth = 1;
+        }
         const data = await client.get('/briefing/daily', params);
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
