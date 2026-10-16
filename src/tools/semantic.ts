@@ -126,7 +126,9 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
         .optional()
         .describe(
           'true adds crossAsset.depth = {readings, read, failed, omitted}: each symbol\'s current ' +
-            'weekly low and high window depth reading (up to 50 symbols; omitted = the rest). In ' +
+            'weekly low and high window depth reading. Only the first symbolLimit symbols of the book ' +
+            'are read; omittedSymbols names the rest, and failedSymbols those whose read failed: read ' +
+            'either with dwlf_get_cycle_windows depth:true, one symbol per call. In ' +
             'overview/summary each reading is compact {symbol, side, position, movePct, price, anchor, ' +
             'typical: {p25, p75}, n, ...} with not-reached left out; view:"full" carries the whole band ' +
             'as dwlf_get_cycle_windows depth:true does. position: shallow / in-zone (25th-75th ' +
@@ -145,7 +147,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
         // summary/full views explicitly (and should scope them with `symbols`).
         params.view = view === 'full' || view === 'summary' ? view : 'overview';
         if (depth) {
-          params.depth = 1;
+          params.depth = '1';
         }
         const data = await client.get('/briefing/daily', params);
         return {
