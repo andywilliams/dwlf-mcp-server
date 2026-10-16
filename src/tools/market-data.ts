@@ -179,7 +179,10 @@ export function registerMarketDataTools(
       'compare price with RSI(14) or DSS at consecutive confirmed daily cycle lows (bullish) or highs (bearish). Each row carries a `divergence` ' +
       'block (both pivots\' prices, both oscillator readings, barsBetween); it is dated by the later pivot and knowable at `eventTimestamp`. ' +
       'SMA reclaim / loss (daily): `sma.reclaimed` / `sma.lost` on the 50, 100 and 200-day SMA (`length` on the row): two closes in a row ' +
-      'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one.',
+      'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one. ' +
+      'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
+      '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
+      '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger.',
     {
       symbol: z
         .string()
