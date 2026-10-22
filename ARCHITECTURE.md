@@ -42,7 +42,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 ## Interfaces & dependencies
 
 **Exposes**
-- **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 18`,
+- **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
 - **~100 `dwlf_*` tools** grouped in 23 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, indicators,
@@ -169,9 +169,9 @@ A reviewer should be able to test a diff against each of these:
   and echoes `filtersApplied`** — because the backend's `limit` counts rows *scanned* then
   post-filters, so page 1 holds only a fraction of the matches, and the silent 7-day default hides
   older history *(inferred from: `src/tools/market-data.ts:255-352`; PRs #62, #39)*.
-- **2026-07-15 — CI pins `npm@11.5.1` exactly** — because trusted publishing needs npm ≥ 11.5.1 while
-  npm@12 dropped Node 20, so `@latest` broke with `EBADENGINE` *(inferred from: `publish.yml` step
-  comment; PR #64)*.
+- **2026-07-15 — CI pins `npm@11.5.1` exactly** — trusted publishing needs npm ≥ 11.5.1, the npm bundled
+  with the CI Node (22 since 2026-10-22, DWLF-498) is older, and an exact pin stops a new npm major changing
+  publish behaviour unreviewed *(inferred from: `publish.yml` step comment; PR #64)*.
 
 ## Accepted debt
 
