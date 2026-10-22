@@ -2,12 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 // DWLF-514: serverInfo.version is read from package.json at startup, so it tracks the published version
 // and a layout change that breaks the relative read fails here rather than on every client's launch.
-test('initialize advertises the package.json version', async () => {
+test('initialize advertises the package.json version', { timeout: 10_000 }, async () => {
   const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  const child = spawn(process.execPath, [new URL('../dist/index.js', import.meta.url).pathname], {
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../dist/index.js', import.meta.url))], {
     env: { ...process.env, DWLF_API_KEY: 'test' },
     stdio: ['pipe', 'pipe', 'ignore'],
   });
