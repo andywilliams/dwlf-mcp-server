@@ -11,6 +11,7 @@ test('initialize advertises the package.json version', { timeout: 10_000 }, asyn
   const child = spawn(process.execPath, [fileURLToPath(new URL('../dist/index.js', import.meta.url))], {
     env: { ...process.env, DWLF_API_KEY: 'test' },
     stdio: ['pipe', 'pipe', 'ignore'],
+    timeout: 8_000, // kills a hung server so its pipes can't hold the test run open
   });
   const reply = new Promise((resolve, reject) => {
     let out = '';
