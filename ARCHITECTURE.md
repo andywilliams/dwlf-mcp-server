@@ -181,14 +181,17 @@ that files pending work as "accepted" quietly licenses it forever, which is the 
 decision means. Where an entry names its own fix, that fix is available to anyone passing through;
 "accepted" means nobody is obliged to do it, not that doing it would be unwelcome.)*
 
-- **`node_modules/` is committed** — 3,950 tracked files, present since the first commit `eeb388e`,
-  despite `.gitignore` listing `node_modules/` *(inferred from: `git ls-tree -r HEAD | grep
-  '^node_modules/'` = 3950)*.
-  🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **was out of sync with `src/` when checked** (15 modified `dist/` files in the working tree on 2026-08-13) — a working-tree observation, not a durable property: the point is that nothing keeps them in sync, not that they are drifted right now.
-  ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball — so this is hygiene, not a shipping defect. `git rm -r --cached` is the fix for both. ⚠️ **Say so when you do it**: the `bin` entry points at `./dist/index.js`, so anyone running from a clone rather than the published package needs a build afterwards, and "it broke when you deleted dist" is the predictable complaint.
-- **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
-  `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
-  vs `package.json`; `server.tool(` count)*.
+- **`dist/` is committed** — ~60 tracked files despite `.gitignore` listing `dist/`; the rule was added
+  after the files were committed, and `.gitignore` never untracks anything. Nothing keeps them in sync
+  with `src/` except habit (PRs commit the rebuilt `dist/`). `node_modules/` had the same trap (3,950
+  files since `eeb388e`) and was untracked in v0.59.2 *(verified 2026-10-22: `git rm -r --cached
+  node_modules`, then `npm ci && npm test` green from a clean tree)*.
+  ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball. `git rm -r
+  --cached dist` is the fix. ⚠️ **Say so when you do it**: the `bin` entry points at `dist/index.js`, so
+  anyone running from a clone needs a build afterwards. The same applies to `node_modules/` now: a
+  checkout moving across v0.59.2 loses its tracked copy and needs `npm ci`.
+- **Version drift in metadata:** README says "45+ tools" where the actual count is ~100. (`serverInfo.version`
+  was hard-coded to `0.3.0`; since v0.59.2 it is read from `package.json` at startup.)
 - **Manual, one-bump-per-PR versioning** with no semantic-release; a missed bump merges but never
   ships *(inferred from: `publish.yml` skip-if-published; PR #46 "bump to 0.29.1 to publish annotation
   tool fix (#45)")*.
