@@ -214,7 +214,7 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
 - ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
   curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
-  *(Update 2026-10-22: there is now a `test` script — 26 `node --test` cases in `test/`, mostly tool docs/catalogue, and `publish.yml` gates on it. Whether that closes this decision is Andy's call; it is far from per-tool coverage.)*
+  *(Update 2026-10-22: there is now a `test` script — 27 `node --test` cases in `test/`, mostly tool docs/catalogue plus a serverInfo startup check, and `publish.yml` gates on it. Whether that closes this decision is Andy's call; it is far from per-tool coverage.)*
 
 ## Org context
 
