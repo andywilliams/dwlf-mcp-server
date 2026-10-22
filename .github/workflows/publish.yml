@@ -29,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
       - name: Upgrade npm to a version that supports Trusted Publishing
@@ -37,8 +37,8 @@ jobs:
         # with npm 10.x which would silently fall back to expecting
         # NODE_AUTH_TOKEN and 404 on publish. Pin an EXACT version rather than
         # @latest: npm@12 dropped Node 20 support, so once @latest advanced to 12
-        # this step broke with EBADENGINE. 11.5.1 is the trusted-publishing floor
-        # that still runs on the Node 20 this workflow uses.
+        # this step broke with EBADENGINE. 11.5.1 is the trusted-publishing floor;
+        # it also runs on the Node 22 this workflow now uses (Node 20 is EOL).
         run: npm install -g npm@11.5.1
 
       - name: Install dependencies
