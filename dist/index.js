@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DWLFClient } from './client.js';
@@ -26,9 +27,11 @@ import { registerSemanticTools } from './tools/semantic.js';
 import { registerAccountTools } from './tools/account.js';
 import { registerSubscriptionTools } from './tools/subscriptions.js';
 import { registerSymbolsResource } from './resources/symbols.js';
+// package.json sits one level above dist/ in both a clone and the published tarball.
+const { version } = createRequire(import.meta.url)('../package.json');
 const server = new McpServer({
     name: 'dwlf',
-    version: '0.3.0',
+    version,
 });
 const client = new DWLFClient();
 // Register all tools — Phase 1 (read)

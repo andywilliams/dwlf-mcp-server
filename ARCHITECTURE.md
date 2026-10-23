@@ -129,7 +129,7 @@ A reviewer should be able to test a diff against each of these:
    rule, because **documenting a credential-exposure hole while leaving it open is worse than not
    finding it** when the fix is one character class.
    ⚠️ **Deliberately NOT phrased as "no credentials in the repo"** — that is a stronger claim than the
-   evidence supports, and this repo commits 3,950 `node_modules` files nobody has scanned. The
+   evidence supports, and this repo's history still holds 3,950 `node_modules` files nobody has scanned (untracked in v0.59.2, not purged). The
    reviewable check is *does this diff read a secret from a file rather than the environment?*, which
    is verifiable; "nothing secret is anywhere in 24 MB of history" is not.
 
@@ -181,14 +181,17 @@ that files pending work as "accepted" quietly licenses it forever, which is the 
 decision means. Where an entry names its own fix, that fix is available to anyone passing through;
 "accepted" means nobody is obliged to do it, not that doing it would be unwelcome.)*
 
-- **`node_modules/` is committed** — 3,950 tracked files, present since the first commit `eeb388e`,
-  despite `.gitignore` listing `node_modules/` *(inferred from: `git ls-tree -r HEAD | grep
-  '^node_modules/'` = 3950)*.
-  🛑 **The cause is that `.gitignore` never untracks anything** *(verified 2026-08-13: `node_modules/` is line 2 of `.gitignore`, and 3,950 files remain tracked)*. The rule was added *after* the files were committed, so git faithfully keeps versioning all of them while appearing to ignore them — `.git` is **24 MB**, in a **public** repo. `dist/` is the same trap, smaller: 60 tracked files, also gitignored, and **was out of sync with `src/` when checked** (15 modified `dist/` files in the working tree on 2026-08-13) — a working-tree observation, not a durable property: the point is that nothing keeps them in sync, not that they are drifted right now.
-  ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball — so this is hygiene, not a shipping defect. `git rm -r --cached` is the fix for both. ⚠️ **Say so when you do it**: the `bin` entry points at `./dist/index.js`, so anyone running from a clone rather than the published package needs a build afterwards, and "it broke when you deleted dist" is the predictable complaint.
-- **Version drift in metadata:** `src/index.ts` advertises `version: '0.3.0'` while the package is at
-  `0.41.0`, and README says "45+ tools" where the actual count is ~100 *(inferred from: `src/index.ts`
-  vs `package.json`; `server.tool(` count)*.
+- **`dist/` is committed** — ~60 tracked files despite `.gitignore` listing `dist/`; the rule was added
+  after the files were committed, and `.gitignore` never untracks anything. Nothing keeps them in sync
+  with `src/` except habit (PRs commit the rebuilt `dist/`). `node_modules/` had the same trap (3,950
+  files since `eeb388e`) and was untracked in v0.59.2 *(verified 2026-10-22: `git rm -r --cached
+  node_modules`, then `npm ci && npm test` green from a clean tree)*.
+  ⇒ Consumers are unaffected — `files: ["dist","README.md","LICENSE"]` governs the tarball. `git rm -r
+  --cached dist` is the fix. ⚠️ **Say so when you do it**: the `bin` entry points at `dist/index.js`, so
+  anyone running from a clone needs a build afterwards. The same applies to `node_modules/` now: a
+  checkout moving across v0.59.2 loses its tracked copy and needs `npm ci`.
+- **Version drift in metadata:** README says "45+ tools" where the actual count is ~100. (`serverInfo.version`
+  was hard-coded to `0.3.0`; since v0.59.2 it is read from `package.json` at startup.)
 - **Manual, one-bump-per-PR versioning** with no semantic-release; a missed bump merges but never
   ships *(inferred from: `publish.yml` skip-if-published; PR #46 "bump to 0.29.1 to publish annotation
   tool fix (#45)")*.
@@ -211,6 +214,7 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   ⇒ **Why it bites here specifically:** `DWLFClient` returns `response.data` **raw** — six call sites, no unwrapping — so the variance is pushed out to every one of the ~100 tools individually. Unifying upstream lets the client unwrap **once**, which is the concrete payoff and the reason this repo cares about someone else's response shapes. ❗ Deliberately **not** recorded as accepted debt, and **not** attributed to a "v3" — a deferral to an unscheduled version is indistinguishable from never.
 - ❗ **No automated tests — and Andy has decided this should change** *(2026-08-13: "we should add some tests if we don't have them")*. **~100 tools, zero automated coverage**, which is now the largest untested surface on the platform and — after the bespoke agent's removal — the *only* agent surface. `package.json` has no `test` script; `docs/TESTING.md` is a manual
   curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
+  *(Update 2026-10-22: there is now a `test` script — 27 `node --test` cases in `test/`, mostly tool docs/catalogue plus a serverInfo startup check, and `publish.yml` gates on it. Whether that closes this decision is Andy's call; it is far from per-tool coverage.)*
 
 ## Org context
 
