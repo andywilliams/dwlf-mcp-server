@@ -41,7 +41,7 @@ const DATA_SHAPES = [
   '• timerange — {time1, time2, color, fillOpacity, lineStyle, lineWidth, label?}: vertical time band.',
   '• fibRetracement / measure — {time1, price1, time2, price2, levels:number[], showExtensions, extendRight, color, lineStyle, lineWidth, fillOpacity, label?}: fib/measure between two swing points.',
   '• fib_extension — {time1, price1, time2, price2, color, lineStyle, lineWidth, label?}: extension projection.',
-  '• alert_line — {price, color, lineStyle, lineWidth, showPrice, direction:"above"|"below", label?}: price-alert line.',
+  '• alert_line — {price, color, lineStyle, lineWidth, showPrice, direction:"above"|"below", label?}: a DRAWING of a price-alert line. Creating one here does NOT arm a price alert: nothing will fire, and the web chart shows it as "Alert not armed" until the user arms it there. Deleting an armed line disarms its alert.',
   '• long_position / short_position — {time1, time2, entryPrice, stopPrice, targetPrice, label?}: renders an entry line, stop+target zones and a live R:R badge.',
   'ALIASES (same storage — prefer the first of each pair): text over note; emoji over icon; alert_line over price_alert; fibRetracement over fib_retracement.',
   'TIP: copy an existing shape via dwlf_list_annotations if unsure.',
