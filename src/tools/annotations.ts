@@ -157,7 +157,7 @@ export function registerAnnotationTools(
   // 4. Delete annotation
   server.tool(
     'dwlf_delete_annotation',
-    'Delete an annotation by ID. symbol + timeframe are required (the backend needs them to locate the row).',
+    'Delete an annotation by ID. symbol + timeframe are required (the backend needs them to locate the row). Deleting an armed alert_line also cancels its live price alert.',
     {
       annotationId: z.string().describe('Annotation ID'),
       symbol: z.string().describe('Trading symbol the annotation belongs to (e.g. BTC, TSLA, GDXJ)'),

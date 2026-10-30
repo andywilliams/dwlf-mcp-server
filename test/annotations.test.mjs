@@ -12,4 +12,12 @@ test('the annotation tools say an alert_line does not arm an alert', () => {
   const alertLine = text.split('\n').find((l) => l.startsWith('• alert_line'));
   assert.ok(alertLine, 'alert_line is described');
   assert.match(alertLine, /does NOT arm a price alert/);
+  assert.match(alertLine, /Deleting an armed line disarms its alert/);
+});
+
+test('the delete tool says deleting an armed alert_line cancels its alert', () => {
+  const tools = {};
+  const server = { tool: (name, desc) => { tools[name] = desc; } };
+  registerAnnotationTools(server, { get: async () => ({}) });
+  assert.match(tools.dwlf_delete_annotation, /cancels its live price alert/);
 });
