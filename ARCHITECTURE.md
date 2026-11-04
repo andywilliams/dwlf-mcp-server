@@ -83,6 +83,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   and a node the catalogue marks unsupported carries `engineIgnored`. The catalogue is cached 15 minutes,
   a request the static file answers alone does not fetch it, and an unfiltered call lists catalogue
   nodes by name only *(from: `src/data/nodeCatalogue.ts`, DWLF-370)* *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+- **"Explain this event"** (`dwlf_explain_event`, DWLF-646): the definition from `GET /v2/events/{type}/explain`
+  and, for engine types, `/explain/occurrences`, each returned as the backend sends it under `definition` /
+  `occurrences`. The tool JOINS the two calls and derives nothing (an exception to invariant 2's single-call
+  pass-through, scoped to this tool). Only a 404 from the definition route (an API older than it) falls back to
+  the bundled catalogue, labelled `definitionSource: "bundled"`; any other failure is the tool's error.
 
 **Depends on**
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:

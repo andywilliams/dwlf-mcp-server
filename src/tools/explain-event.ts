@@ -7,8 +7,8 @@ import { ONCHAIN_EVENTS, ONCHAIN_CATALOGUE_AS_OF, ONCHAIN_CATALOGUE_BRK_VERSION 
 /**
  * "Explain this event" (DWLF-646). The definition comes from the API (GET /v2/events/{type}/explain, generated from
  * the onchain-packs catalogue and the trust pack's revision classes), so a catalogue change reaches agents without
- * a release. Only when that route does not answer (an older API, or unreachable) does it fall back to the catalogue
- * bundled with this package, and `definitionSource` says which was used. Occurrences (one day, what changed since a
+ * a release. Only when that route answers 404 (an API older than the route) does it fall back to the catalogue
+ * bundled with this package, and `definitionSource` says which was used; any other failure is an error. Occurrences (one day, what changed since a
  * date, or the latest five) come from GET /v2/events/{type}/explain/occurrences for engine types; never bundled.
  */
 
@@ -16,10 +16,6 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 type Json = Record<string, unknown>;
 
 const statusOf = (error: unknown): number | null => (axios.isAxiosError(error) ? error.response?.status ?? null : null);
-const bodyOf = (error: unknown): Json | null => {
-  const data = axios.isAxiosError(error) ? error.response?.data : null;
-  return data && typeof data === 'object' ? (data as Json) : null;
-};
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export function registerExplainEventTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
@@ -31,11 +27,11 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
       'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
       'changed: `fired` (rows dated or first served on or after it) and `revised` (older rows DWLF restated on or ' +
-      'after it); neither = the 5 most recent. Every occurrence answer carries `history` { count, first, last, ' +
+      'after it); neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
       'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
       '⚠️ Read before you report:\n' +
       '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
-      '- `definitionSource: "bundled"` means the API did not answer and the definition is this package\'s copy, ' +
+      '- `definitionSource: "bundled"` means this API does not serve explain yet and the definition is this package\'s copy, ' +
       'dated by `bundledAsOf`: say so.\n' +
       '- `occurrencesUnavailable` says why there are none (not in the engine, or the read failed). Never infer ' +
       '"it has not fired" from it.\n' +
@@ -64,14 +60,13 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
         definition = await client.get<Json>(path);
         definitionSource = 'api';
       } catch (error) {
-        const bundled = ONCHAIN_EVENTS.find((e) => e.id === type);
-        // The API answered and does not know the type, and neither does this package: the type does not exist.
-        if (!bundled) {
-          const status = statusOf(error);
-          return status === 404
-            ? usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`)
-            : { content: [{ type: 'text' as const, text: `Error explaining ${type}: ${messageOf(error)}` }], isError: true };
+        // Only a 404 falls back: an API older than the route, or a type it does not define. Any other failure
+        // (auth, rate limit, 5xx, timeout) is the tool's error, never quietly answered from the bundle.
+        if (statusOf(error) !== 404) {
+          return { content: [{ type: 'text' as const, text: `Error explaining ${type}: ${messageOf(error)}` }], isError: true };
         }
+        const bundled = ONCHAIN_EVENTS.find((e) => e.id === type);
+        if (!bundled) return usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`);
         definition = { ...bundled, inEngine: null };
         definitionSource = 'bundled';
         apiError = messageOf(error);
@@ -95,13 +90,7 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       try {
         out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
       } catch (error) {
-        const body = bodyOf(error);
-        // A day with no occurrence is an answer (404 naming the nearest days), not a failure.
-        if (date !== undefined && statusOf(error) === 404 && body && 'nearest' in body) {
-          out.occurrences = { ...body, occurrence: null };
-        } else {
-          out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
-        }
+        out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
       }
       return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 2) }] };
     }

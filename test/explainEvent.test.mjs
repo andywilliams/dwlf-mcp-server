@@ -60,12 +60,10 @@ test('a pack type: the definition, and no occurrence read (it is not in the engi
   assert.equal(s.calls.length, 1);
 });
 
-test('a day with no occurrence is an answer naming the nearest days, not a failure', async () => {
-  const s = setup({ [E]: ENGINE_DEF, [`${E}/occurrences`]: httpError(404, { message: 'no occurrence', nearest: { before: '2024-03-01', after: null } }) });
-  const { res, body } = await s.call({ eventType: 'onchain.sth_sopr.lose', date: '2024-03-02' });
-  assert.equal(res.isError, undefined);
-  assert.equal(body.occurrences.occurrence, null);
-  assert.deepEqual(body.occurrences.nearest, { before: '2024-03-01', after: null });
+test('a day with no occurrence passes through as the API answers it (occurrence null, nearest days)', async () => {
+  const s = setup({ [E]: ENGINE_DEF, [`${E}/occurrences`]: { occurrence: null, nearest: { before: '2024-03-01', after: null } } });
+  const { body } = await s.call({ eventType: 'onchain.sth_sopr.lose', date: '2024-03-02' });
+  assert.deepEqual(body.occurrences, { occurrence: null, nearest: { before: '2024-03-01', after: null } });
 });
 
 test('a failed occurrence read keeps the definition and says why, never an empty list', async () => {
@@ -84,6 +82,14 @@ test('an API without the route: the bundled definition, dated and labelled, and 
   assert.equal(body.definition.id, 'onchain.sth_sopr.lose');
   assert.equal(body.definition.inEngine, null);
   assert.match(body.apiError, /HTTP 404/);
+});
+
+test('only a 404 falls back to the bundle: auth, rate-limit, 5xx and network failures are tool errors', async () => {
+  for (const err of [httpError(401, {}), httpError(429, {}), httpError(503, {}), new Error('ETIMEDOUT')]) {
+    const { res } = await setup({ [E]: err }).call({ eventType: 'onchain.sth_sopr.lose' });
+    assert.equal(res.isError, true, err.message);
+    assert.match(res.content[0].text, /^Error explaining onchain.sth_sopr.lose: /);
+  }
 });
 
 test('a type neither the API nor the package knows is a usage error; an unreachable API is a tool error', async () => {
