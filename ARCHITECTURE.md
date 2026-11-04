@@ -59,7 +59,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **`dwlf_describe_onchain_events` answers from bundled data, `src/data/onchainCatalogue.ts`, which is GENERATED**
   from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs`: never edit it by hand, re-run the script.
   The MEANINGS are per-release, dated by `asOf`. Whether a pack is in the engine (`inEngine`) is read live from
-  `GET /v2/node-types` (cached 15 min; `null` when unreadable), never bundled. ⚠️ **Accepted debt:** the meanings
+  `GET /v2/node-types` (cached 15 min; `null` when unreadable), never bundled. ⚠️ **Accepted debt (DWLF-646):** the meanings
   belong behind the API too, so they stop being per-release *(inferred from: `src/tools/onchain-catalogue.ts`)*.
 - **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
   is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:

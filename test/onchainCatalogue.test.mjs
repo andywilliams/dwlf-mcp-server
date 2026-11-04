@@ -51,6 +51,9 @@ test('one type reports its OWN engine state, not its pack\'s', async () => {
   const sibling = (await call({ eventType: 'onchain.sth_realised_price.cross.above' })).body;
   assert.equal(sibling.event.inEngine, false);
   assert.equal(sibling.packState.inEngine, true); // the pack is partly in
+  const listing = (await call({ pack: 'costBasis' })).body.events;
+  assert.equal(listing.find((e) => e.id === 'onchain.sth_realised_price.cross.below').inEngine, true);
+  assert.equal(listing.find((e) => e.id === 'onchain.sth_realised_price.cross.above').inEngine, false);
 });
 
 test('an unreadable engine catalogue reads as unknown (null), never as "not in the engine"', async () => {

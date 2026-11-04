@@ -12,13 +12,12 @@ import {
  * pack is IN THE ENGINE is read live from the public node catalogue (GET /v2/node-types, cached 15 min), never
  * bundled, so a release does not freeze it: `inEngine` is true when the engine catalogues the pack's types, false
  * when it does not, null when the catalogue could not be read.
- * TODO(DWLF-596): serve the meanings from the API too (an /v2/node-types-style catalogue), so they stop being per-release.
+ * TODO(DWLF-646): serve the meanings from the API too (an /v2/node-types-style catalogue), so they stop being per-release.
  */
 
 const packLine = (id: string) => `${ONCHAIN_PACKS[id].title} (\`${id}\`, ${ONCHAIN_PACKS[id].count})`;
 const PACK_LIST = Object.keys(ONCHAIN_PACKS).map(packLine).join('; ');
 
-const summary = (e: OnchainEventEntry) => ({ id: e.id, pack: e.pack, meaning: e.meaning });
 
 export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
   const loadCatalogue = createCatalogueLoader((path) => client.get(path));
@@ -26,6 +25,10 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     const loaded = await loadCatalogue();
     return loaded.error ? null : new Set(loaded.nodes.filter((n) => !n.engineIgnored).map((n) => n.nodeType));
   };
+  // Each type carries its OWN engine state; a pack can be partly in the engine.
+  const summary = (e: OnchainEventEntry, inEngine: Set<string> | null) => ({
+    id: e.id, pack: e.pack, meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+  });
   const withPackState = (pack: string, inEngine: Set<string> | null) => ({
     pack, ...ONCHAIN_PACKS[pack],
     inEngine: inEngine === null ? null : ONCHAIN_EVENTS.some((e) => e.pack === pack && inEngine.has(e.id)),
@@ -38,10 +41,11 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       `Packs: ${PACK_LIST}. ` +
       'No arguments → the packs with their summaries. `pack` → that pack\'s types. `eventType` → one type in full. ' +
       '`search` → types whose id or meaning contains the words.\n\n' +
-      '⚠️ Read `inEngine` on each pack (read live from the engine\'s node catalogue): only a pack in the engine can ' +
-      'be used in custom events and has rows to read with dwlf_get_events or dwlf_get_conditions. `false` = a ' +
-      'documented condition with its history measured on DWLF\'s own node, not yet queryable; `null` = the catalogue ' +
-      'could not be read, so it is unknown. Every type describes a CONDITION on the chain, not advice. ' +
+      '⚠️ Read `inEngine` (live from the engine\'s node catalogue). It is given per TYPE, on every type returned, and ' +
+      'per pack, where a pack is `true` if ANY of its types is in the engine: a pack can be partly in. Before building ' +
+      'a custom event on a type, check that type\'s own `inEngine`. `true` = the engine evaluates it and its rows can ' +
+      'be read with dwlf_get_events or dwlf_get_conditions; `false` = a documented condition with its history ' +
+      'measured on DWLF\'s own node, not yet queryable; `null` = the catalogue could not be read, so it is unknown. Every type describes a CONDITION on the chain, not advice. ' +
       '`estimated: true` marks types built on an attribution or a proxy (mining-pool attribution, the fee-backlog proxy): read their caveats. And `confirmedAt` on a row is when it ' +
       'became knowable. Frequencies are historical counts, not predictions.',
     {
@@ -80,13 +84,15 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     if (pack !== undefined) {
       const id = pack.trim();
       if (!Object.hasOwn(ONCHAIN_PACKS, id)) return usage(`unknown pack "${id}"; one of ${Object.keys(ONCHAIN_PACKS).join(', ')}.`);
-      return reply({ packState: withPackState(id, await engineTypes()), events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map(summary) });
+      const inEngine = await engineTypes();
+      return reply({ packState: withPackState(id, inEngine), events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map((e) => summary(e, inEngine)) });
     }
     if (search !== undefined) {
       const words = search.toLowerCase().split(/\s+/).filter(Boolean);
       if (!words.length) return usage('search is blank.');
       const hits = ONCHAIN_EVENTS.filter((e) => words.every((w) => `${e.id} ${e.meaning}`.toLowerCase().includes(w)));
-      return reply({ search, count: hits.length, events: hits.slice(0, 50).map(summary), truncated: hits.length > 50 });
+      const inEngine = await engineTypes();
+      return reply({ search, count: hits.length, events: hits.slice(0, 50).map((e) => summary(e, inEngine)), truncated: hits.length > 50 });
     }
     const inEngine = await engineTypes();
     return reply({ packs: Object.keys(ONCHAIN_PACKS).map((p) => withPackState(p, inEngine)), total: ONCHAIN_EVENTS.length });
