@@ -161,7 +161,7 @@ A reviewer should be able to test a diff against each of these:
   ⇒ A hosted/remote MCP surface is what would make "arrive fresh and just use it" literally true, at the cost of transport, multi-tenant auth and hosting. **Not now; but when that trigger fires, this is a known decision being revisited, not a new question.**
   📌 **4-Nov-2026: the trigger has fired.** DWLF Block's self-serve agent funnel, the MCP Registry metadata and
   `docs/BLOCK.md` are third-party onboarding without Andy in the loop. The decision is being revisited deliberately
-  as DWLF-622 (design: `docs/HOSTED-MCP.md`). Until Andy decides there, stdio stays the shipped transport, and
+  as DWLF-622 (design: `docs/HOSTED-MCP.md`, added by dwlf-mcp-server#102). Until Andy decides there, stdio stays the shipped transport, and
   the registry entry declares stdio only.
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised

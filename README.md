@@ -117,7 +117,7 @@ Returns an API key immediately. Use this key for both REST API and MCP to ensure
 ### Tool profiles
 
 - **`full`** (default): every tool, as before.
-- **`block`**: about 45 tools for Bitcoin users of DWLF Block: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. A profile only hides tools: the API key's permissions and quotas are the same either way. Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
+- **`block`**: about 50 tools for Bitcoin users of DWLF Block: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. A profile only hides tools: the API key's permissions and quotas are the same either way. Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
 
 ## Tools
 

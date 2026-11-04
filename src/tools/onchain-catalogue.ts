@@ -12,7 +12,7 @@ import {
  * pack is IN THE ENGINE is read live from the public node catalogue (GET /v2/node-types, cached 15 min), never
  * bundled, so a release does not freeze it: `inEngine` is true when the engine catalogues the pack's types, false
  * when it does not, null when the catalogue could not be read.
- * TODO: serve the meanings from the API too (an /v2/node-types-style catalogue), so they stop being per-release.
+ * TODO(DWLF-596): serve the meanings from the API too (an /v2/node-types-style catalogue), so they stop being per-release.
  */
 
 const packLine = (id: string) => `${ONCHAIN_PACKS[id].title} (\`${id}\`, ${ONCHAIN_PACKS[id].count})`;
@@ -50,32 +50,45 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       search: z.string().optional().describe('Words to find in an id or meaning, e.g. "hash rate" or "consolidation"'),
     },
     async ({ pack, eventType, search }) => {
-      const meta = { asOf: ONCHAIN_CATALOGUE_AS_OF, brkVersion: ONCHAIN_CATALOGUE_BRK_VERSION, framing: 'Conditions, not calls.' };
-      const reply = (body: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify({ ...meta, ...(body as object) }, null, 2) }] });
-      const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
-
-      if ([pack, eventType, search].filter((v) => v !== undefined).length > 1) {
-        return usage('pass one of pack, eventType or search.');
+      try {
+        return await answer({ pack, eventType, search });
+      } catch (error) {
+        return {
+          content: [{ type: 'text' as const, text: `Error describing on-chain events: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
       }
-      if (eventType !== undefined) {
-        const id = eventType.trim().split('#')[0];
-        const entry = ONCHAIN_EVENTS.find((e) => e.id === id);
-        if (!entry) return usage(`no on-chain event type "${id}". Search with { search: "…" } or list a pack.`);
-        return reply({ event: entry, packState: withPackState(entry.pack, await engineTypes()) });
-      }
-      if (pack !== undefined) {
-        const id = pack.trim();
-        if (!ONCHAIN_PACKS[id]) return usage(`unknown pack "${id}"; one of ${Object.keys(ONCHAIN_PACKS).join(', ')}.`);
-        return reply({ packState: withPackState(id, await engineTypes()), events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map(summary) });
-      }
-      if (search !== undefined) {
-        const words = search.toLowerCase().split(/\s+/).filter(Boolean);
-        if (!words.length) return usage('search is blank.');
-        const hits = ONCHAIN_EVENTS.filter((e) => words.every((w) => `${e.id} ${e.meaning}`.toLowerCase().includes(w)));
-        return reply({ search, count: hits.length, events: hits.slice(0, 50).map(summary), truncated: hits.length > 50 });
-      }
-      const inEngine = await engineTypes();
-      return reply({ packs: Object.keys(ONCHAIN_PACKS).map((p) => withPackState(p, inEngine)), total: ONCHAIN_EVENTS.length });
     }
   );
+
+  async function answer({ pack, eventType, search }: { pack?: string; eventType?: string; search?: string }) {
+    const meta = { asOf: ONCHAIN_CATALOGUE_AS_OF, brkVersion: ONCHAIN_CATALOGUE_BRK_VERSION, framing: 'Conditions, not calls.' };
+    const reply = (body: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify({ ...meta, ...(body as object) }, null, 2) }] });
+    const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
+
+    if ([pack, eventType, search].filter((v) => v !== undefined).length > 1) {
+      return usage('pass one of pack, eventType or search.');
+    }
+    if (eventType !== undefined) {
+      const id = eventType.trim().split('#')[0];
+      const entry = ONCHAIN_EVENTS.find((e) => e.id === id);
+      if (!entry) return usage(`no on-chain event type "${id}". Search with { search: "…" } or list a pack.`);
+      const inEngine = await engineTypes();
+      // Per type, not per pack: a pack can be partly in the engine, or have one type the engine ignores.
+      return reply({ event: { ...entry, inEngine: inEngine === null ? null : inEngine.has(entry.id) }, packState: withPackState(entry.pack, inEngine) });
+    }
+    if (pack !== undefined) {
+      const id = pack.trim();
+      if (!Object.hasOwn(ONCHAIN_PACKS, id)) return usage(`unknown pack "${id}"; one of ${Object.keys(ONCHAIN_PACKS).join(', ')}.`);
+      return reply({ packState: withPackState(id, await engineTypes()), events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map(summary) });
+    }
+    if (search !== undefined) {
+      const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+      if (!words.length) return usage('search is blank.');
+      const hits = ONCHAIN_EVENTS.filter((e) => words.every((w) => `${e.id} ${e.meaning}`.toLowerCase().includes(w)));
+      return reply({ search, count: hits.length, events: hits.slice(0, 50).map(summary), truncated: hits.length > 50 });
+    }
+    const inEngine = await engineTypes();
+    return reply({ packs: Object.keys(ONCHAIN_PACKS).map((p) => withPackState(p, inEngine)), total: ONCHAIN_EVENTS.length });
+  }
 }

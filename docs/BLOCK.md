@@ -65,14 +65,15 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 
 - **Conditions:** `dwlf_get_conditions` (one call: regime, cost-basis ladder, cycle windows, recent events,
   provenance), `dwlf_describe_onchain_events` (what each `onchain.*` event means; answered from this package, no
-  key needed), `dwlf_get_events`, `dwlf_get_regime`, `dwlf_get_stage`, `dwlf_get_cycle_windows`, `dwlf_get_quote`,
-  `dwlf_get_price_picture`.
-- **Build and test:** custom events, strategies and backtests, with `dwlf_describe_strategy_nodes` for the node
-  catalogue.
+  key needed), `dwlf_get_events`, `dwlf_get_regime`, `dwlf_get_stage`, `dwlf_get_cycle_windows`,
+  `dwlf_get_cycle_setups`, `dwlf_get_intelligence`, `dwlf_get_support_resistance`, `dwlf_get_quote`,
+  `dwlf_get_price_picture`, `dwlf_get_market_data` (raw candles only where the key is licensed for them).
+- **Build and test:** custom events, strategies (including `dwlf_evaluate_strategy` and `dwlf_get_recent_signals`)
+  and backtests, with `dwlf_describe_strategy_nodes` for the node catalogue.
 - **Alerts:** subscriptions (`dwlf_create_subscription` and friends).
 - **Learning and account:** the academy, `dwlf_get_quotas`, `dwlf_register_agent`.
 
-The exact list is `BLOCK_TOOLS` in `src/profiles.ts`; a test fails if any of them stops existing.
+The exact list is `BLOCK_TOOLS` in `src/profiles.ts`. Tests fail if any of them stops existing, or if a Block tool's description points to a tool the profile hides.
 
 **Read the answers as conditions.** Nothing here is a recommendation to buy, sell or hold, and nothing is scored as
 a predictor. Each on-chain reading carries `confirmedAt`, the moment it became knowable.

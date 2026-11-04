@@ -44,6 +44,15 @@ test('no arguments: the packs, each saying LIVE whether the engine has it', asyn
   assert.equal(body.framing, 'Conditions, not calls.');
 });
 
+test('one type reports its OWN engine state, not its pack\'s', async () => {
+  const { call } = setup(); // the engine lists onchain.sth_realised_price.cross.below only
+  const listed = (await call({ eventType: 'onchain.sth_realised_price.cross.below' })).body;
+  assert.equal(listed.event.inEngine, true);
+  const sibling = (await call({ eventType: 'onchain.sth_realised_price.cross.above' })).body;
+  assert.equal(sibling.event.inEngine, false);
+  assert.equal(sibling.packState.inEngine, true); // the pack is partly in
+});
+
 test('an unreadable engine catalogue reads as unknown (null), never as "not in the engine"', async () => {
   const { body } = await setup({ get: async () => { throw new Error('HTTP 503'); } }).call({ pack: 'fees' });
   assert.equal(body.packState.inEngine, null);
@@ -80,6 +89,9 @@ test('a pack, a search, and selector mixing refused', async () => {
   assert.ok(s.body.count > 0 && s.body.events.every((e) => ['hash', 'rate'].every((w) => `${e.id} ${e.meaning}`.toLowerCase().includes(w))));
   assert.equal((await call({ pack: 'mining', search: 'x' })).res.isError, true);
   assert.equal((await call({ pack: 'nope' })).res.isError, true);
+  for (const proto of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.equal((await call({ pack: proto })).res.isError, true, proto);
+  }
   assert.equal((await call({ search: '  ' })).res.isError, true);
 });
 

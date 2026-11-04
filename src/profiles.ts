@@ -27,6 +27,10 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_get_cycle_windows',
   'dwlf_get_quote',
   'dwlf_get_price_picture',
+  'dwlf_get_market_data',
+  'dwlf_get_intelligence',
+  'dwlf_get_support_resistance',
+  'dwlf_get_cycle_setups',
   // Custom events: build, check, evaluate, activate
   'dwlf_describe_strategy_nodes',
   'dwlf_list_custom_events',
@@ -49,6 +53,8 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_update_strategy',
   'dwlf_compile_strategy',
   'dwlf_delete_strategy',
+  'dwlf_evaluate_strategy',
+  'dwlf_get_recent_signals',
   'dwlf_activate_strategy_symbols',
   'dwlf_deactivate_strategy_symbols',
   'dwlf_get_strategy_symbols',
@@ -87,10 +93,16 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
 export function resolveProfile(argv: readonly string[], env: Record<string, string | undefined>): ProfileName {
   let named: string | undefined;
   for (let i = 0; i < argv.length; i += 1) {
-    if (argv[i] === '--profile') named = argv[i + 1];
-    else if (argv[i].startsWith('--profile=')) named = argv[i].slice('--profile='.length);
+    if (argv[i] === '--profile') {
+      // A flag with no value is a broken config, never "use the default".
+      if (argv[i + 1] === undefined || argv[i + 1].startsWith('--')) throw new Error('--profile needs a value (full or block).');
+      named = argv[i + 1];
+    } else if (argv[i].startsWith('--profile=')) named = argv[i].slice('--profile='.length);
   }
-  const raw = (named ?? env.DWLF_TOOL_PROFILE ?? 'full').trim().toLowerCase();
+  // An empty env var is "unset" (client configs and installers often write optional variables as ""); an empty
+  // --profile= is a broken flag and falls through to the unknown-name error.
+  const fromEnv = env.DWLF_TOOL_PROFILE?.trim() ? env.DWLF_TOOL_PROFILE : undefined;
+  const raw = (named ?? fromEnv ?? 'full').trim().toLowerCase();
   if (raw === 'full' || raw === 'block') return raw;
   if (Object.hasOwn(PROFILE_ALIASES, raw)) return PROFILE_ALIASES[raw];
   throw new Error(`Unknown DWLF tool profile "${raw}". Use one of: ${Object.keys(PROFILES).join(', ')}.`);

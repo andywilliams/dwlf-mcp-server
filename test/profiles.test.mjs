@@ -22,6 +22,14 @@ test('profile resolution: flag beats env, default full, unknown is an error (nev
   assert.throws(() => resolveProfile([], { DWLF_TOOL_PROFILE: 'blok' }), /Use one of: full, block/);
 });
 
+test('profile edge cases: a trailing --profile is an error; an empty env var is unset', () => {
+  assert.throws(() => resolveProfile(['--profile'], {}), /--profile needs a value/);
+  assert.throws(() => resolveProfile(['--profile', '--other'], { DWLF_TOOL_PROFILE: 'block' }), /--profile needs a value/);
+  assert.equal(resolveProfile([], { DWLF_TOOL_PROFILE: '' }), 'full');
+  assert.equal(resolveProfile([], { DWLF_TOOL_PROFILE: '  ' }), 'full');
+  assert.throws(() => resolveProfile(['--profile='], {}), /Unknown DWLF tool profile ""/);
+});
+
 test('full registers every tool, exactly as registerAll offers them', () => {
   const direct = fakeServer();
   registerAll(direct.server, {});
@@ -41,8 +49,22 @@ test('every Block tool exists (a renamed tool fails here, not silently in the pr
   assert.ok(f.resources.length > 0, 'resources pass through the profile');
 });
 
+test('no Block tool sends the agent to a tool the profile hides', () => {
+  const desc = {};
+  registerAll({ tool: (name, d) => { desc[name] = String(d); }, resource: () => {} }, {});
+  const hiddenRefs = [];
+  for (const t of BLOCK_TOOLS) {
+    for (const ref of desc[t].match(/dwlf_[a-z_]+/g) || []) {
+      if (desc[ref] !== undefined && !BLOCK_TOOLS.has(ref)) {hiddenRefs.push(`${t} → ${ref}`);}
+    }
+  }
+  assert.deepEqual(hiddenRefs, []);
+  const refsInInstructions = (PROFILE_INSTRUCTIONS.block.match(/dwlf_[a-z_]+/g) || []).filter((r) => !BLOCK_TOOLS.has(r));
+  assert.deepEqual(refsInInstructions, []);
+});
+
 test('block leaves out the retail, metals and trade-journal tools', () => {
-  for (const t of ['dwlf_create_trade', 'dwlf_get_portfolio', 'dwlf_get_daily_briefing', 'dwlf_add_to_watchlist', 'dwlf_get_market_data']) {
+  for (const t of ['dwlf_create_trade', 'dwlf_get_portfolio', 'dwlf_get_daily_briefing', 'dwlf_add_to_watchlist', 'dwlf_get_holdings']) {
     assert.equal(BLOCK_TOOLS.has(t), false, t);
   }
   assert.match(PROFILE_INSTRUCTIONS.block, /conditions, not calls/i);

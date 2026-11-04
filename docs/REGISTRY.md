@@ -36,4 +36,4 @@ To switch, change both files in one commit (a test pins them equal) and publish 
 - The registry is a preview: re-read the quickstart before publishing, in case the schema moved.
 - A later step can automate publishing from CI ([registry GitHub Actions guide](https://modelcontextprotocol.io/registry/github-actions)).
   It isn't done here, because each listing is Andy's decision.
-- `remotes` (a hosted endpoint) comes with the hosted MCP (DWLF-622, `docs/HOSTED-MCP.md`).
+- `remotes` (a hosted endpoint) comes with the hosted MCP (DWLF-622; design in dwlf-mcp-server#102).
