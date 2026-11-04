@@ -6,18 +6,22 @@ import { BLOCK_TOOLS } from '../dist/profiles.js';
 
 // DWLF-622: the local-only hosted-MCP spike (spike/hosted-http.mjs). Exercises the HTTP shape only: no call
 // reaches the DWLF API (tools/list, and a tool answered from bundled data).
-const PORT = 18000 + Math.floor(Math.random() * 2000);
-const BASE = `http://127.0.0.1:${PORT}`;
+// The OS picks the port (--port 0), and the spike prints it, so parallel runs never collide.
+let PORT;
+let BASE;
 let child;
 
 before(async () => {
   // DWLF_API_URL points nowhere, so nothing in this test can reach the real API (the catalogue tool's engine
   // read then answers `inEngine: null`, which is the point: the spike is about the transport).
-  child = spawn(process.execPath, [fileURLToPath(new URL('../spike/hosted-http.mjs', import.meta.url)), '--port', String(PORT)], {
+  child = spawn(process.execPath, [fileURLToPath(new URL('../spike/hosted-http.mjs', import.meta.url)), '--port', '0'], {
     stdio: ['ignore', 'ignore', 'pipe'], env: { ...process.env, DWLF_API_URL: 'http://127.0.0.1:9' },
   });
   await new Promise((resolve, reject) => {
-    child.stderr.on('data', (d) => { if (String(d).includes('hosted-MCP spike')) resolve(); });
+    child.stderr.on('data', (d) => {
+      const m = String(d).match(/hosted-MCP spike .* port=(\d+)/);
+      if (m) { PORT = Number(m[1]); BASE = `http://127.0.0.1:${PORT}`; resolve(); }
+    });
     child.on('exit', (code) => reject(new Error(`spike exited ${code}`)));
     setTimeout(() => reject(new Error('spike did not start')), 5000);
   });

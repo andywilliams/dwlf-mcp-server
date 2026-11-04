@@ -47,9 +47,10 @@ listing or OAuth client exists.*
 |---|---|
 | Endpoint | `https://mcp.block.dwlf.co.uk/mcp` (profile `block`). A `full` endpoint (`mcp.dwlf.co.uk`) only when there is a reason. |
 | Transport | Streamable HTTP, POST only, JSON responses. The tools are request/response: no progress streams, no `subscriptions/listen` in v1. |
-| Runtime | One Lambda behind API Gateway (HTTP API). A fresh `McpServer` + `DWLFClient` per request, built from the caller's credential. The spike measured ~10 ms per request to build the server with every tool registered. |
+| Runtime | One Lambda behind API Gateway (HTTP API). A fresh `McpServer` + `DWLFClient` per request, built from the caller's credential. The spike's three requests (Block profile, ~50 tools) took ~30 ms in total; no timing is pinned in a test, and `full` (~100 tools) is unmeasured. |
+| Shared caches | ⚠️ A per-request build loses the registration-time caches. The node-catalogue loader (15 min) is created inside `registerStrategyTools` / `registerOnchainCatalogueTools`, so on the hosted shape every `dwlf_describe_strategy_nodes` / `dwlf_describe_onchain_events` call would refetch `GET /v2/node-types`. **The hosted entry hoists caller-independent caches to process scope.** The node catalogue is public and the same for every caller, so `registerAll(server, client, { shared })` takes one loader per process. Nothing caller-specific is ever shared. |
 | Where it lives | Recommended: **this repo**, as a second entry point (`src/http.ts`) with its own small CDK stack. The tools stay one codebase; SPT stays the front door for data (see §4); the stack holds only the Lambda, the route, WAF, a KMS key and one credential table. |
-| What it calls | `api.dwlf.co.uk/v2`, exactly as the stdio server does, so SPT's middleware chain (inv. 3), raw-candle gate (inv. 4), scopes (inv. 5), quotas and metering apply unchanged. **The hosted MCP holds no data and makes no policy.** |
+| What it calls | `api.dwlf.co.uk/v2`, exactly as the stdio server does, so SPT's middleware chain (SPT charter inv. 3), raw-candle gate (SPT inv. 4), scopes (SPT inv. 5), quotas and metering apply unchanged. **The hosted MCP holds no data and makes no policy.** |
 
 ## 4 · Auth: OAuth 2.1 in front, an on-behalf-of credential behind
 
@@ -82,7 +83,7 @@ the scopes the client was granted, labelled `hosted-mcp:<client_id>`.
 - A per-client key makes "what did this agent do" one usage query, and a leaked token revocable without touching
   the user's other keys.
 - The alternative is a signed service assertion (`acting_for: accountId`) that SPT trusts. It is cleaner long-term,
-  but it is a new authenticator in invariant 3's chain.
+  but it is a new authenticator in SPT's middleware chain (SPT charter inv. 3).
 
 ### 4.3 Scopes
 
@@ -91,6 +92,13 @@ OAuth scopes are SPT's API-key scopes, so one vocabulary does both jobs. `scopes
 `subscriptions:write`.
 - A tool that needs more answers `403` + `WWW-Authenticate: Bearer error="insufficient_scope", scope="…",
   resource_metadata="…"`, and the client steps up.
+- **Which scope each tool needs** is a tool → scope table in this repo, generated from SPT's route → permission map
+  (the routes each tool calls). A test fails when a tool calls a route the table doesn't cover. The MCP layer checks
+  it before calling SPT, so the challenge names the scopes up front instead of after a round trip.
+- **The managed key follows the grant.** The key record stores its scope set. On each request, if the verified
+  token's scopes differ from the key's (after a step-up, or a narrowed grant), the host mints a key with exactly the
+  token's scopes, swaps it in, then revokes the old one. A key is never broader than the live grant, and a step-up
+  never loops on SPT's 403.
 - `401` (never `403`) means no token or an invalid token, as Claude's directory requires.
 - `offline_access` is not advertised by the resource (spec).
 
@@ -127,7 +135,7 @@ OAuth scopes are SPT's API-key scopes, so one vocabulary does both jobs. `scopes
 |---|---|
 | Unauthenticated floods on `/mcp`, `/authorize`, `/token`, `/register` | API Gateway throttles plus WAF rate-based rules per IP. `/register` and CIMD fetches get their own tighter buckets. |
 | Agent loops (the same tool and arguments, many times a minute) | Loop guard: an identical `(tool, args)` hash > 10/min per client answers a tool error explaining the repeat. It is counted, never silent. |
-| Oversized or slow requests | Body cap (256 KB, as in the spike). The Lambda timeout sits under the 29 s gateway limit. Per-tool upstream timeout 25 s. |
+| Oversized or slow requests | Body cap (256 KB, as in the spike). Each `tools/call` runs under a **host deadline of 24 s** (an `AbortController` around the handler): on expiry the host returns an `isError` tool result ("took too long; try a narrower request"), never a gateway 504. Each upstream request gets `DWLFClient({ timeoutMs: 20000 })` (the option exists now; the stdio default stays 30 s). Multi-page tools (`dwlf_get_events` follows up to 40 pages; `dwlf_get_setup_transitions` up to 50 requests) need the remaining deadline passed into their loops, so they stop paging and say they were truncated. That is a build-step change to those two tools. If 24 s proves too tight, a Lambda Function URL (no 29 s cap) is the fallback. |
 | DNS rebinding / browser CSRF | `Origin` validated on every request (`403` when present and unknown). No cookies on `/mcp`. |
 | CIMD SSRF, metadata poisoning | The fetch guards in §4.4. Redirect URIs must match the document exactly. Consent always shows the redirect host. |
 | Consent phishing (a lookalike client name) | The verified host is shown. Clients previously denied are blocked per user. Staff can block a client id globally. |
@@ -192,9 +200,11 @@ HTTP on `127.0.0.1`. It isn't shipped (`spike/` is outside `files`).
   - GET/DELETE → `405`;
   - a foreign `Origin` → `403`;
   - a body over 256 KB → `413` before any server is built.
-- **Measured:** three requests, each building a fresh server with the profile, in ~30 ms total.
+- **Measured, loosely:** three requests, each building a fresh Block-profile server (~50 tools), in ~30 ms total.
+  This is from one local run; no test pins it.
 - **Deliberately not done:** OAuth. The spike's Bearer value is a DWLF API key forwarded to the API, the
   passthrough §2 forbids. It exists only to prove the transport and the per-request build. §4 is the design for
   the real auth.
-- **Needed for it:** `DWLFClient` takes `{ apiKey, baseURL }` (backwards compatible), so a host can build one client
-  per caller.
+- **Needed for it:** `DWLFClient` takes `{ apiKey, baseURL, timeoutMs }` (backwards compatible), so a host can build
+  one client per caller. `apiKey: undefined` means no key, never the operator's (`test/client.options.test.mjs`).
+- **Not in the spike:** shared caches (each request refetches the node catalogue), the per-tool deadline, scopes.

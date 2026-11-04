@@ -33,7 +33,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **Auth, account or key management.** One `DWLF_API_KEY` = one account for the process lifetime;
   no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
   `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
-  a single `DWLFClient` is constructed at module load in `src/index.ts`)*.
+  a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
+  accepts `{ apiKey, baseURL, timeoutMs }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
+  per caller. The shipped stdio server still builds exactly one client from the environment, so this boundary holds
+  for everything published. A caller that passes `apiKey: undefined` gets NO key, never the operator's
+  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
 - **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
@@ -139,7 +143,7 @@ A reviewer should be able to test a diff against each of these:
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
-   only; publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
+   (or, in the local hosted spike only, from the caller's request, never stored); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
    ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
    `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any

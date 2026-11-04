@@ -22,13 +22,17 @@ import { registerAll } from '../dist/register.js';
 import { profiledServer, resolveProfile, PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
 
 const args = process.argv.slice(2);
-const port = Number(args[args.indexOf('--port') + 1]) || 8787;
+// `--port 0` asks the OS for a free port (tests); the startup line prints the one chosen.
+const portArg = args.includes('--port') ? Number(args[args.indexOf('--port') + 1]) : 8787;
+const requestedPort = Number.isInteger(portArg) && portArg >= 0 ? portArg : 8787;
 const profile = resolveProfile(args, { DWLF_TOOL_PROFILE: 'block' }); // the hosted default is the Block profile
 const HOST = '127.0.0.1';
-const RESOURCE = `http://${HOST}:${port}/mcp`;
 const PRM_PATH = '/.well-known/oauth-protected-resource';
 const MAX_BODY = 256 * 1024;
-const ALLOWED_ORIGINS = new Set([`http://${HOST}:${port}`, `http://localhost:${port}`]);
+// Known only once listening (the port may be OS-assigned).
+let port;
+let RESOURCE;
+let ALLOWED_ORIGINS;
 
 const json = (res, status, body, headers = {}) => {
   res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
@@ -103,4 +107,10 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, HOST, () => console.error(`hosted-MCP spike (${profile}) on ${RESOURCE}`));
+server.on('error', (e) => { console.error(`hosted-MCP spike failed to listen: ${e.message}`); process.exit(1); });
+server.listen(requestedPort, HOST, () => {
+  port = server.address().port;
+  RESOURCE = `http://${HOST}:${port}/mcp`;
+  ALLOWED_ORIGINS = new Set([`http://${HOST}:${port}`, `http://localhost:${port}`]);
+  console.error(`hosted-MCP spike (${profile}) on ${RESOURCE} port=${port}`);
+});

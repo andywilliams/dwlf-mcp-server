@@ -4,11 +4,13 @@ export declare class DWLFClient {
     /**
      * `options` overrides the environment for one client, so a multi-tenant host (the hosted-MCP spike, DWLF-622)
      * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
-     * always has.
+     * always has. Passing `apiKey` (even as undefined) means "this caller's key": the operator's env key is never
+     * used in its place. `timeoutMs` (default 30 s) lets a host keep each request under its gateway's limit.
      */
     constructor(options?: {
         apiKey?: string;
         baseURL?: string;
+        timeoutMs?: number;
     });
     /**
      * Build an Axios request config that strips `undefined` values from query
