@@ -1,7 +1,15 @@
 export declare function normalizeSymbol(input: string): string;
 export declare class DWLFClient {
     private http;
-    constructor();
+    /**
+     * `options` overrides the environment for one client, so a multi-tenant host (the hosted-MCP spike, DWLF-622)
+     * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
+     * always has.
+     */
+    constructor(options?: {
+        apiKey?: string;
+        baseURL?: string;
+    });
     /**
      * Build an Axios request config that strips `undefined` values from query
      * params. Returns `{}` when there are no params so axios doesn't append

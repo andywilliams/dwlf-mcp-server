@@ -58,9 +58,14 @@ export function normalizeSymbol(input: string): string {
 export class DWLFClient {
   private http: AxiosInstance;
 
-  constructor() {
-    const baseURL = process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
-    const apiKey = process.env.DWLF_API_KEY;
+  /**
+   * `options` overrides the environment for one client, so a multi-tenant host (the hosted-MCP spike, DWLF-622)
+   * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
+   * always has.
+   */
+  constructor(options: { apiKey?: string; baseURL?: string } = {}) {
+    const baseURL = options.baseURL || process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
+    const apiKey = 'apiKey' in options ? options.apiKey : process.env.DWLF_API_KEY;
 
     if (!apiKey) {
       console.error(
