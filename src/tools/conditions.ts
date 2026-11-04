@@ -3,23 +3,27 @@ import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 
 /**
- * The BTC conditions check (DWLF-602). Backed by GET /v2/conditions/btc. Pass-through: the backend assembles the
- * legs and applies the licensing and point-in-time rules; this tool computes nothing.
+ * The conditions check (DWLF-602). Backed by GET /v2/conditions/{asset}, `btc` today. Pass-through: the backend
+ * assembles the legs and applies the licensing and point-in-time rules; this tool computes nothing. A second asset
+ * is a new enum value, not a new tool.
  */
-export const CONDITIONS_SYMBOLS = ['BTC/USD', 'BTCOC/USD'] as const;
+export const CONDITIONS_ASSETS = ['btc'] as const;
 
 export function registerConditionsTools(server: McpServer, client: DWLFClient) {
   server.tool(
-    'dwlf_get_btc_conditions',
-    'What are Bitcoin\'s conditions right now? ONE call returning: the regime (daily and weekly trend, momentum, ' +
+    'dwlf_get_conditions',
+    'What are an asset\'s conditions right now? Bitcoin today (`asset: "btc"`). ONE call returning: the regime (daily and weekly trend, momentum, ' +
       'volatility; the Weinstein weekly stage; and the on-chain bands: MVRV below 1 / above 3.5, supply in profit ' +
       'below 50 %, 7-day STH-SOPR below 1); the COST-BASIS LADDER (price above or below the realised, ' +
       'short-term-holder and long-term-holder realised price, and since when); the stored weekly and daily cycle ' +
       'windows with today\'s `position` against their dates; every event on the symbol in the last `days` (price, ' +
-      'cycle, CFTC positioning `cot.*`, on-chain `onchain.*`); and provenance. Use it as the first step before ' +
-      'reasoning about Bitcoin, instead of stitching dwlf_get_regime, dwlf_get_stage, dwlf_get_cycle_windows and ' +
-      'dwlf_get_events together.\n\n' +
-      'SHAPE: `{ kind, responseVersion, framing, symbol, asOf, price, regime: { daily, weekly, stage, onchain: ' +
+      'cycle, CFTC positioning `cot.*`, on-chain `onchain.*`); and provenance. For BITCOIN, call this first, ' +
+      'instead of stitching dwlf_get_regime, dwlf_get_stage, dwlf_get_cycle_windows and dwlf_get_events together. ' +
+      'It carries what dwlf_get_intelligence does not: the on-chain cost basis, the on-chain bands, the cycle ' +
+      'windows and CFTC positioning. Use dwlf_get_intelligence for any other symbol, and for BTC\'s S/R levels, ' +
+      'FSM state and signal quality.\n\n' +
+      'SHAPE (responseVersion 1; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
+      'asset, responseVersion, framing, symbol, asOf, price, regime: { daily, weekly, stage, onchain: ' +
       '{ status, bands[] } }, costBasisLadder: { status, onchainSymbol, sideBasis, levelsPending, rungs: [{ key, ' +
       'side, level, distancePct, since }], counts }, cycleWindows: { weekly, daily }, recentEvents: { days, ' +
       'truncated, events: [{ eventType, date, family, onchain?, cot? }] }, provenance: { sources, methodVersions, ' +
@@ -40,6 +44,10 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'Sides and states are unaffected; do not ask for the close another way.\n' +
       '- Cycle windows carry `verification` (currently unverified): treat them as rough timing, not a forecast.',
     {
+      asset: z
+        .enum(CONDITIONS_ASSETS)
+        .optional()
+        .describe('The asset (default btc; the only one today).'),
       symbol: z
         .string()
         .optional()
@@ -52,7 +60,7 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
         .optional()
         .describe('Recent-events window in days (default 14).'),
     },
-    async ({ symbol, days }) => {
+    async ({ asset, symbol, days }) => {
       try {
         const params: Record<string, string | number> = {};
         if (symbol) {
@@ -60,14 +68,19 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
           params.symbol = normalizeSymbol(symbol);
         }
         if (days !== undefined) params.days = days;
-        const data = await client.get('/conditions/btc', params);
+        const data = await client.get(`/conditions/${asset || 'btc'}`, params);
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // An API older than this tool answers 404 for the route: say so, so an agent does not read it as "no data".
+        const hint = /\b404\b/.test(message)
+          ? ' The conditions route is not available on this DWLF API yet; nothing about the market follows from this.'
+          : '';
         return {
           content: [
             {
               type: 'text',
-              text: `Error fetching BTC conditions: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Error fetching ${asset || 'btc'} conditions: ${message}.${hint}`,
             },
           ],
           isError: true,
