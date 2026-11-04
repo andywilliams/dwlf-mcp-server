@@ -88,12 +88,14 @@ test('an API without the route: the bundled definition, dated and labelled, unkn
   assert.deepEqual(s.calls.map((c) => c.path), [E]);
 });
 
-test('the API says the type does not exist: a usage error, never a resurrected bundled definition', async () => {
-  const s = setup({ [E]: httpError(404, { code: 'UNKNOWN_EVENT_TYPE', message: 'DWLF does not define the event type' }) });
-  const { res } = await s.call({ eventType: 'onchain.sth_sopr.lose' });
-  assert.equal(res.isError, true);
-  assert.match(res.content[0].text, /^Usage: no on-chain event type "onchain.sth_sopr.lose"/);
-  assert.equal(s.calls.length, 1);
+test('the API says the type does not exist (either envelope): a usage error, never a resurrected bundled definition', async () => {
+  for (const data of [{ code: 'UNKNOWN_EVENT_TYPE', message: 'x' }, { error: { code: 'UNKNOWN_EVENT_TYPE', message: 'x' } }]) {
+    const s = setup({ [E]: httpError(404, data) });
+    const { res } = await s.call({ eventType: 'onchain.sth_sopr.lose' });
+    assert.equal(res.isError, true, JSON.stringify(data));
+    assert.match(res.content[0].text, /^Usage: no on-chain event type "onchain.sth_sopr.lose"/);
+    assert.equal(s.calls.length, 1);
+  }
 });
 
 test('a row-key suffix is dropped: the type is explained', async () => {

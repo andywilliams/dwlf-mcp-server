@@ -7,8 +7,9 @@ import { ONCHAIN_EVENTS, ONCHAIN_CATALOGUE_AS_OF, ONCHAIN_CATALOGUE_BRK_VERSION 
 /**
  * "Explain this event" (DWLF-646). The definition comes from the API (GET /v2/events/{type}/explain, generated from
  * the onchain-packs catalogue and the trust pack's revision classes), so a catalogue change reaches agents without
- * a release. Only when that route answers 404 (an API older than the route) does it fall back to the catalogue
- * bundled with this package, and `definitionSource` says which was used; any other failure is an error. Occurrences (one day, what changed since a
+ * a release. The API decides which types exist (a 404 tagged `UNKNOWN_EVENT_TYPE` is a usage error). Only an
+ * untagged 404, an API without the route, falls back to the catalogue bundled with this package, and
+ * `definitionSource` says which was used; any other failure is an error. Occurrences (one day, what changed since a
  * date, or the latest five) come from GET /v2/events/{type}/explain/occurrences for engine types; never bundled.
  */
 
@@ -17,8 +18,12 @@ type Json = Record<string, unknown>;
 
 const statusOf = (error: unknown): number | null => (axios.isAxiosError(error) ? error.response?.status ?? null : null);
 // SPT tags "no such type" (DWLF-646); a 404 without it is a route this API lacks (its /v2 catch-all).
-const isUnknownType = (error: unknown) => axios.isAxiosError(error)
-  && (error.response?.data as { code?: unknown } | undefined)?.code === 'UNKNOWN_EVENT_TYPE';
+// Read in either envelope (top-level `code`, or the `{ error: { code } }` shape the backend is standardising on).
+const isUnknownType = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return false;
+  const data = error.response?.data as { code?: unknown; error?: { code?: unknown } } | undefined;
+  return data?.code === 'UNKNOWN_EVENT_TYPE' || data?.error?.code === 'UNKNOWN_EVENT_TYPE';
+};
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
 const reply = (body: Json) => ({ content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }] });
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
