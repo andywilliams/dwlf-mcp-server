@@ -1,0 +1,109 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import axios from 'axios';
+import { z } from 'zod';
+import { DWLFClient } from '../client.js';
+import { ONCHAIN_EVENTS, ONCHAIN_CATALOGUE_AS_OF, ONCHAIN_CATALOGUE_BRK_VERSION } from '../data/onchainCatalogue.js';
+
+/**
+ * "Explain this event" (DWLF-646). The definition comes from the API (GET /v2/events/{type}/explain, generated from
+ * the onchain-packs catalogue and the trust pack's revision classes), so a catalogue change reaches agents without
+ * a release. Only when that route does not answer (an older API, or unreachable) does it fall back to the catalogue
+ * bundled with this package, and `definitionSource` says which was used. Occurrences (one day, what changed since a
+ * date, or the latest five) come from GET /v2/events/{type}/explain/occurrences for engine types; never bundled.
+ */
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+type Json = Record<string, unknown>;
+
+const statusOf = (error: unknown): number | null => (axios.isAxiosError(error) ? error.response?.status ?? null : null);
+const bodyOf = (error: unknown): Json | null => {
+  const data = axios.isAxiosError(error) ? error.response?.data : null;
+  return data && typeof data === 'object' ? (data as Json) : null;
+};
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+export function registerExplainEventTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
+  server.tool(
+    'dwlf_explain_event',
+    'Explain one Bitcoin on-chain event type (`onchain.*`) and, for the types the engine evaluates, its occurrences. ' +
+      'Returns the DEFINITION: meaning, method and version, inputs, threshold, history start, caveats, `revision` ' +
+      '(can this event\'s history change under you, and why: immutable / oracle / model / estimated), ' +
+      '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
+      'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
+      'changed: `fired` (rows dated or first served on or after it) and `revised` (older rows DWLF restated on or ' +
+      'after it); neither = the 5 most recent. Every occurrence answer carries `history` { count, first, last, ' +
+      'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
+      '⚠️ Read before you report:\n' +
+      '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
+      '- `definitionSource: "bundled"` means the API did not answer and the definition is this package\'s copy, ' +
+      'dated by `bundledAsOf`: say so.\n' +
+      '- `occurrencesUnavailable` says why there are none (not in the engine, or the read failed). Never infer ' +
+      '"it has not fired" from it.\n' +
+      '- `priceWithheld: true` on a row means this key may not receive the close (data licensing): do not ask for it ' +
+      'another way.\n' +
+      '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.',
+    {
+      eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose'),
+      date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
+      since: z.string().optional().describe('YYYY-MM-DD: what fired or was restated on or after this day'),
+    },
+    async ({ eventType, date, since }) => {
+      const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
+      const type = eventType.trim();
+      if (!type.startsWith('onchain.')) return usage(`eventType must be an onchain.* type (got "${type}").`);
+      if (date !== undefined && since !== undefined) return usage('pass date (one occurrence) or since (what changed), not both.');
+      for (const [name, v] of [['date', date], ['since', since]] as const) {
+        if (v !== undefined && !DAY.test(v)) return usage(`${name} must be YYYY-MM-DD (got "${v}").`);
+      }
+      const path = `/events/${encodeURIComponent(type)}/explain`;
+
+      let definition: Json;
+      let definitionSource: 'api' | 'bundled';
+      let apiError: string | null = null;
+      try {
+        definition = await client.get<Json>(path);
+        definitionSource = 'api';
+      } catch (error) {
+        const bundled = ONCHAIN_EVENTS.find((e) => e.id === type);
+        // The API answered and does not know the type, and neither does this package: the type does not exist.
+        if (!bundled) {
+          const status = statusOf(error);
+          return status === 404
+            ? usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`)
+            : { content: [{ type: 'text' as const, text: `Error explaining ${type}: ${messageOf(error)}` }], isError: true };
+        }
+        definition = { ...bundled, inEngine: null };
+        definitionSource = 'bundled';
+        apiError = messageOf(error);
+      }
+
+      const out: Json = {
+        definitionSource,
+        ...(definitionSource === 'bundled'
+          ? { bundledAsOf: ONCHAIN_CATALOGUE_AS_OF, bundledBrkVersion: ONCHAIN_CATALOGUE_BRK_VERSION, apiError }
+          : {}),
+        definition,
+        framing: 'Conditions, not calls.',
+      };
+      if (definition.inEngine === false) {
+        out.occurrencesUnavailable = 'not in the engine: documented and measured on DWLF\'s node, not yet in /v2/events';
+        return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 2) }] };
+      }
+      const params: Record<string, string> = {};
+      if (date !== undefined) params.date = date;
+      if (since !== undefined) params.since = since;
+      try {
+        out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
+      } catch (error) {
+        const body = bodyOf(error);
+        // A day with no occurrence is an answer (404 naming the nearest days), not a failure.
+        if (date !== undefined && statusOf(error) === 404 && body && 'nearest' in body) {
+          out.occurrences = { ...body, occurrence: null };
+        } else {
+          out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
+        }
+      }
+      return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 2) }] };
+    }
+  );
+}

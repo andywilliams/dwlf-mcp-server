@@ -21,6 +21,7 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   // Conditions and context
   'dwlf_get_conditions',
   'dwlf_describe_onchain_events',
+  'dwlf_explain_event',
   'dwlf_get_events',
   'dwlf_get_regime',
   'dwlf_get_stage',
@@ -85,7 +86,8 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
   block:
     'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for the current state ' +
     '(regime, cost-basis ladder, cycle windows, recent events, provenance), and use dwlf_describe_onchain_events ' +
-    'to learn what an on-chain event means before relying on it. Describe states and conditions; never turn them ' +
+    'to find an on-chain event and dwlf_explain_event to learn what it means, whether its history can change and ' +
+    'when it fired, before relying on it. Describe states and conditions; never turn them ' +
     'into buy, sell or hold recommendations. Nothing here is scored as a predictor.',
 };
 

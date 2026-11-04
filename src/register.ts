@@ -27,6 +27,7 @@ import { registerSubscriptionTools } from './tools/subscriptions.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 import { registerOnchainCatalogueTools } from './tools/onchain-catalogue.js';
+import { registerExplainEventTools } from './tools/explain-event.js';
 
 /** Registers every tool module and resource on `server` (which may be a profile's filtered view). */
 export function registerAll(server: McpServer, client: DWLFClient): void {
@@ -79,4 +80,5 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
 
   // Block: the on-chain event catalogue (DWLF-621): meanings bundled; engine state read from /v2/node-types
   registerOnchainCatalogueTools(server, client);
+  registerExplainEventTools(server, client);
 }
