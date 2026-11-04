@@ -16,6 +16,12 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 type Json = Record<string, unknown>;
 
 const statusOf = (error: unknown): number | null => (axios.isAxiosError(error) ? error.response?.status ?? null : null);
+// SPT tags "no such type" (DWLF-646); a 404 without it is a route this API lacks (its /v2 catch-all).
+const isUnknownType = (error: unknown) => axios.isAxiosError(error)
+  && (error.response?.data as { code?: unknown } | undefined)?.code === 'UNKNOWN_EVENT_TYPE';
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+const reply = (body: Json) => ({ content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }] });
+const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export function registerExplainEventTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
@@ -32,67 +38,73 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '⚠️ Read before you report:\n' +
       '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
       '- `definitionSource: "bundled"` means this API does not serve explain yet and the definition is this package\'s copy, ' +
-      'dated by `bundledAsOf`: say so.\n' +
+      'dated by `bundledAsOf`: say so. A bundled definition has no `revision` or `measuredHistory` (null = UNKNOWN, ' +
+      'not "cannot change") and no occurrences.\n' +
       '- `occurrencesUnavailable` says why there are none (not in the engine, or the read failed). Never infer ' +
       '"it has not fired" from it.\n' +
       '- `priceWithheld: true` on a row means this key may not receive the close (data licensing): do not ask for it ' +
       'another way.\n' +
       '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.',
     {
-      eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose'),
+      eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose (a `#…` row-key suffix is ignored)'),
       date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
       since: z.string().optional().describe('YYYY-MM-DD: what fired or was restated on or after this day'),
     },
     async ({ eventType, date, since }) => {
-      const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
-      const type = eventType.trim();
-      if (!type.startsWith('onchain.')) return usage(`eventType must be an onchain.* type (got "${type}").`);
-      if (date !== undefined && since !== undefined) return usage('pass date (one occurrence) or since (what changed), not both.');
-      for (const [name, v] of [['date', date], ['since', since]] as const) {
-        if (v !== undefined && !DAY.test(v)) return usage(`${name} must be YYYY-MM-DD (got "${v}").`);
-      }
-      const path = `/events/${encodeURIComponent(type)}/explain`;
-
-      let definition: Json;
-      let definitionSource: 'api' | 'bundled';
-      let apiError: string | null = null;
       try {
-        definition = await client.get<Json>(path);
-        definitionSource = 'api';
+        return await explain({ eventType, date, since });
       } catch (error) {
-        // Only a 404 falls back: an API older than the route, or a type it does not define. Any other failure
-        // (auth, rate limit, 5xx, timeout) is the tool's error, never quietly answered from the bundle.
-        if (statusOf(error) !== 404) {
-          return { content: [{ type: 'text' as const, text: `Error explaining ${type}: ${messageOf(error)}` }], isError: true };
-        }
-        const bundled = ONCHAIN_EVENTS.find((e) => e.id === type);
-        if (!bundled) return usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`);
-        definition = { ...bundled, inEngine: null };
-        definitionSource = 'bundled';
-        apiError = messageOf(error);
+        return { content: [{ type: 'text' as const, text: `Error explaining ${eventType}: ${messageOf(error)}` }], isError: true };
       }
-
-      const out: Json = {
-        definitionSource,
-        ...(definitionSource === 'bundled'
-          ? { bundledAsOf: ONCHAIN_CATALOGUE_AS_OF, bundledBrkVersion: ONCHAIN_CATALOGUE_BRK_VERSION, apiError }
-          : {}),
-        definition,
-        framing: 'Conditions, not calls.',
-      };
-      if (definition.inEngine === false) {
-        out.occurrencesUnavailable = 'not in the engine: documented and measured on DWLF\'s node, not yet in /v2/events';
-        return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 2) }] };
-      }
-      const params: Record<string, string> = {};
-      if (date !== undefined) params.date = date;
-      if (since !== undefined) params.since = since;
-      try {
-        out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
-      } catch (error) {
-        out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
-      }
-      return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 2) }] };
     }
   );
+
+  async function explain({ eventType, date, since }: { eventType: string; date?: string; since?: string }) {
+    // A row key's suffix (e.g. `#cohort=2019-01-01:weekly`) names a row, not a type: explain the type.
+    const type = eventType.trim().split('#')[0];
+    if (!type.startsWith('onchain.')) return usage(`eventType must be an onchain.* type (got "${type}").`);
+    if (date !== undefined && since !== undefined) return usage('pass date (one occurrence) or since (what changed), not both.');
+    for (const [name, v] of [['date', date], ['since', since]] as const) {
+      if (v !== undefined && !DAY.test(v)) return usage(`${name} must be YYYY-MM-DD (got "${v}").`);
+    }
+    const path = `/events/${encodeURIComponent(type)}/explain`;
+
+    let definition: Json;
+    try {
+      const got = await client.get<unknown>(path);
+      if (!isObject(got)) throw new Error('the explain route answered with no definition');
+      definition = got;
+    } catch (error) {
+      // The API is the authority on which types exist; only a route this API lacks falls back to the bundle. Any
+      // other failure (auth, rate limit, 5xx, timeout, a malformed answer) is the tool's error.
+      if (isUnknownType(error)) return usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`);
+      if (statusOf(error) !== 404) throw error;
+      const bundled = ONCHAIN_EVENTS.find((e) => e.id === type);
+      if (!bundled) return usage(`no on-chain event type "${type}". Browse with dwlf_describe_onchain_events.`);
+      return reply({
+        definitionSource: 'bundled',
+        bundledAsOf: ONCHAIN_CATALOGUE_AS_OF,
+        bundledBrkVersion: ONCHAIN_CATALOGUE_BRK_VERSION,
+        apiError: messageOf(error),
+        definition: { ...bundled, revision: null, measuredHistory: null, inEngine: null },
+        framing: 'Conditions, not calls.',
+        occurrencesUnavailable: 'this DWLF API does not serve explain yet, so occurrences cannot be read here',
+      });
+    }
+
+    const out: Json = { definitionSource: 'api', definition, framing: 'Conditions, not calls.' };
+    if (definition.inEngine === false) {
+      out.occurrencesUnavailable = 'not in the engine: documented and measured on DWLF\'s node, not yet in /v2/events';
+      return reply(out);
+    }
+    const params: Record<string, string> = {};
+    if (date !== undefined) params.date = date;
+    if (since !== undefined) params.since = since;
+    try {
+      out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
+    } catch (error) {
+      out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
+    }
+    return reply(out);
+  }
 }

@@ -74,14 +74,42 @@ test('a failed occurrence read keeps the definition and says why, never an empty
   assert.equal(body.occurrences, undefined);
 });
 
-test('an API without the route: the bundled definition, dated and labelled, and the error kept', async () => {
+test('an API without the route: the bundled definition, dated and labelled, unknowns null, no occurrence read', async () => {
   const s = setup({ [E]: httpError(404, { message: 'Not found' }) });
   const { body } = await s.call({ eventType: 'onchain.sth_sopr.lose' });
   assert.equal(body.definitionSource, 'bundled');
   assert.equal(body.bundledAsOf, ONCHAIN_CATALOGUE_AS_OF);
   assert.equal(body.definition.id, 'onchain.sth_sopr.lose');
   assert.equal(body.definition.inEngine, null);
+  assert.equal(body.definition.revision, null);
+  assert.equal(body.definition.measuredHistory, null);
   assert.match(body.apiError, /HTTP 404/);
+  assert.match(body.occurrencesUnavailable, /does not serve explain yet/);
+  assert.deepEqual(s.calls.map((c) => c.path), [E]);
+});
+
+test('the API says the type does not exist: a usage error, never a resurrected bundled definition', async () => {
+  const s = setup({ [E]: httpError(404, { code: 'UNKNOWN_EVENT_TYPE', message: 'DWLF does not define the event type' }) });
+  const { res } = await s.call({ eventType: 'onchain.sth_sopr.lose' });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /^Usage: no on-chain event type "onchain.sth_sopr.lose"/);
+  assert.equal(s.calls.length, 1);
+});
+
+test('a row-key suffix is dropped: the type is explained', async () => {
+  const D = '/events/onchain.dca.cost_basis.cross.above/explain';
+  const s = setup({ [D]: { type: 'onchain.dca.cost_basis.cross.above', inEngine: false } });
+  const { body } = await s.call({ eventType: 'onchain.dca.cost_basis.cross.above#cohort=2019-01-01:weekly' });
+  assert.equal(body.definition.type, 'onchain.dca.cost_basis.cross.above');
+  assert.equal(s.calls[0].path, D);
+});
+
+test('a definition route answering with no object is a tool error, not a thrown handler', async () => {
+  for (const answer of [null, 'ok', []]) {
+    const { res } = await setup({ [E]: answer }).call({ eventType: 'onchain.sth_sopr.lose' });
+    assert.equal(res.isError, true, JSON.stringify(answer));
+    assert.match(res.content[0].text, /no definition/);
+  }
 });
 
 test('only a 404 falls back to the bundle: auth, rate-limit, 5xx and network failures are tool errors', async () => {
