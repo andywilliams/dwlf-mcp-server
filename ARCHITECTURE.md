@@ -45,11 +45,25 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 24 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
+- **~100 `dwlf_*` tools** grouped in 25 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
-  subscriptions), each wired in `src/index.ts` via a `register*Tools(server, client)` call
-  *(inferred from: `src/index.ts` imports + phase comments; `server.tool(` counts per file)*.
+  subscriptions, onchain-catalogue), each wired by `registerAll` in `src/register.ts` via a
+  `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
+  *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
+- **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
+  `block` (the Bitcoin subset, `BLOCK_TOOLS` in `src/profiles.ts`), applied by a filtering view over `server.tool`.
+  A profile only hides tools. It is never a permission boundary, because every call carries the same key to the same
+  backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
+  `test/profiles.test.mjs`)*.
+- **`dwlf_describe_onchain_events` answers from bundled data, `src/data/onchainCatalogue.ts`, which is GENERATED**
+  from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs`: never edit it by hand, re-run the script.
+  It is the only tool that makes no API call besides the academy's CDN read. Its packs say whether they are
+  `ingested`: a hand-kept set in the tool, flipped only when a pack's rows are verified live *(inferred from:
+  `src/tools/onchain-catalogue.ts`)*.
+- **MCP Registry metadata:** `package.json` `mcpName` and the root `server.json` must agree with each other and with
+  the package version (`test/profiles.test.mjs`). Publishing to the registry is a manual, Andy-gated step
+  (`docs/REGISTRY.md`).
 - **One MCP resource** `dwlf://symbols` → `GET /market-data/symbols` *(inferred from:
   `src/resources/symbols.ts`)*.
 - **Visual-strategy node semantics** surfaced by `dwlf_describe_strategy_nodes`: the condition nodes

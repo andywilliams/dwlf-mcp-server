@@ -112,6 +112,12 @@ Returns an API key immediately. Use this key for both REST API and MCP to ensure
 |----------|----------|---------|-------------|
 | `DWLF_API_KEY` | Yes | — | Your DWLF API key (`dwlf_sk_...`) |
 | `DWLF_API_URL` | No | `https://api.dwlf.co.uk` | API base URL |
+| `DWLF_TOOL_PROFILE` | No | `full` | Tool set: `full` (every tool) or `block` (the Bitcoin subset for DWLF Block). The `--profile <name>` flag does the same and wins. An unknown name stops the server with the reason. |
+
+### Tool profiles
+
+- **`full`** (default): every tool, as before.
+- **`block`**: about 45 tools for Bitcoin users of DWLF Block: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. A profile only hides tools: the API key's permissions and quotas are the same either way. Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
 
 ## Tools
 
