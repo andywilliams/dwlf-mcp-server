@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 
@@ -8,6 +9,14 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
  * is a new enum value, not a new tool.
  */
 export const CONDITIONS_ASSETS = ['btc'] as const;
+
+// The symbols the route answers for, in the dash form it is sent in. BTCOC (DWLF's on-chain price) is not a
+// KNOWN_PAIRED base, so its bare and concatenated spellings are mapped here rather than in the shared normaliser.
+const CONDITIONS_SYMBOLS = new Set(['BTC-USD', 'BTCOC-USD']);
+const toConditionsSymbol = (input: string): string => {
+  const s = normalizeSymbol(input);
+  return s === 'BTCOC' || s === 'BTCOCUSD' ? 'BTCOC-USD' : s;
+};
 
 export function registerConditionsTools(server: McpServer, client: DWLFClient) {
   server.tool(
@@ -51,7 +60,7 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       symbol: z
         .string()
         .optional()
-        .describe('BTC/USD (default; the exchange price) or BTCOC/USD (DWLF\'s own on-chain BTC price). Also accepts BTC, BTCUSD, BTC-USD.'),
+        .describe('BTC/USD (default; the exchange price) or BTCOC/USD (DWLF\'s own on-chain BTC price). Any spelling: BTC, BTCUSD, BTC-USD, BTCOC, BTCOCUSD, BTCOC-USD.'),
       days: z
         .number()
         .int()
@@ -64,8 +73,15 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       try {
         const params: Record<string, string | number> = {};
         if (symbol) {
-          // normalizeSymbol maps BTC → BTC-USD and BTC/USD → BTC-USD, which the route reads back as BTC/USD.
-          params.symbol = normalizeSymbol(symbol);
+          // Dash form, which the route reads back as slash form (BTC-USD → BTC/USD).
+          const s = toConditionsSymbol(symbol);
+          if (!CONDITIONS_SYMBOLS.has(s)) {
+            return {
+              content: [{ type: 'text', text: `Usage: symbol must be BTC/USD or BTCOC/USD for asset btc (got "${symbol}").` }],
+              isError: true,
+            };
+          }
+          params.symbol = s;
         }
         if (days !== undefined) params.days = days;
         const data = await client.get(`/conditions/${asset || 'btc'}`, params);
@@ -73,7 +89,8 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // An API older than this tool answers 404 for the route: say so, so an agent does not read it as "no data".
-        const hint = /\b404\b/.test(message)
+        // Keyed on the response status, never the message text (axios only narrows the error; the request is the client's).
+        const hint = axios.isAxiosError(error) && error.response?.status === 404
           ? ' The conditions route is not available on this DWLF API yet; nothing about the market follows from this.'
           : '';
         return {
