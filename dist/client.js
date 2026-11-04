@@ -50,9 +50,15 @@ export function normalizeSymbol(input) {
 }
 export class DWLFClient {
     http;
-    constructor() {
-        const baseURL = process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
-        const apiKey = process.env.DWLF_API_KEY;
+    /**
+     * `options` overrides the environment for one client, so a multi-tenant host (the hosted-MCP spike, DWLF-622)
+     * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
+     * always has. Passing `apiKey` (even as undefined) means "this caller's key": the operator's env key is never
+     * used in its place. `timeoutMs` (default 30 s) lets a host keep each request under its gateway's limit.
+     */
+    constructor(options = {}) {
+        const baseURL = options.baseURL || process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
+        const apiKey = 'apiKey' in options ? options.apiKey : process.env.DWLF_API_KEY;
         if (!apiKey) {
             console.error('Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.\n' +
                 'For AI agents: Use the same API key from /v2/agent/register in your MCP config.\n' +
@@ -64,7 +70,7 @@ export class DWLFClient {
                 'Content-Type': 'application/json',
                 ...(apiKey ? { Authorization: `ApiKey ${apiKey}` } : {}),
             },
-            timeout: 30000,
+            timeout: options.timeoutMs ?? 30000,
         });
         // Surface the backend's error message, not just axios's bare "Request
         // failed with status code N". Every request method goes through this.http,
