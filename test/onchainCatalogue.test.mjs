@@ -4,15 +4,18 @@ import { registerOnchainCatalogueTools } from '../dist/tools/onchain-catalogue.j
 import { ONCHAIN_EVENTS, ONCHAIN_PACKS } from '../dist/data/onchainCatalogue.js';
 
 // DWLF-621: dwlf_describe_onchain_events answers from the bundled catalogue; no API call.
-const setup = () => {
+// The engine's live node catalogue (GET /node-types): by default it lists one cost-basis type and no pack type.
+const nodeTypes = (ids) => ({ nodeTypes: ids.map((id) => ({ id, label: id, category: 'onchain', description: '', direction: 'neutral', inputs: 1, outputs: 1, parameters: [], usedIn: ['event'] })) });
+const setup = ({ get = async () => nodeTypes(['onchain.sth_realised_price.cross.below']) } = {}) => {
   let handler;
   let description;
-  registerOnchainCatalogueTools({ tool: (_n, d, _s, fn) => { description = d; handler = fn; } });
+  const calls = [];
+  registerOnchainCatalogueTools({ tool: (_n, d, _s, fn) => { description = d; handler = fn; } }, { get: async (p) => { calls.push(p); return get(p); } });
   const call = async (args) => {
     const res = await handler(args);
     return { res, body: res.isError ? null : JSON.parse(res.content[0].text) };
   };
-  return { call, description: () => description };
+  return { call, calls, description: () => description };
 };
 
 test('the catalogue: unique ids, every onchain.*, every entry in a known pack, counts agree', () => {
@@ -31,12 +34,29 @@ test('no direction labels and no calls: conditions only', () => {
   }
 });
 
-test('no arguments: the packs, each saying whether it is ingested', async () => {
-  const { body } = await setup().call({});
+test('no arguments: the packs, each saying LIVE whether the engine has it', async () => {
+  const { body, } = await setup().call({});
   assert.equal(body.total, ONCHAIN_EVENTS.length);
   assert.deepEqual(body.packs.map((p) => p.pack).sort(), Object.keys(ONCHAIN_PACKS).sort());
-  assert.ok(body.packs.every((p) => typeof p.ingested === 'boolean'));
+  const inEngine = Object.fromEntries(body.packs.map((p) => [p.pack, p.inEngine]));
+  assert.equal(inEngine.costBasis, true);
+  assert.equal(inEngine.mining, false);
   assert.equal(body.framing, 'Conditions, not calls.');
+});
+
+test('an unreadable engine catalogue reads as unknown (null), never as "not in the engine"', async () => {
+  const { body } = await setup({ get: async () => { throw new Error('HTTP 503'); } }).call({ pack: 'fees' });
+  assert.equal(body.packState.inEngine, null);
+  assert.equal(body.events.length, ONCHAIN_PACKS.fees.count);
+});
+
+test('the engine catalogue is read once and cached across calls', async () => {
+  const t = setup();
+  await t.call({});
+  await t.call({ pack: 'mining' });
+  await t.call({ eventType: 'onchain.mining.difficulty.retarget' });
+  assert.deepEqual(t.calls, ['/node-types']);
+  assert.equal((await t.call({ search: 'hash' })).body.count > 0, true);
 });
 
 test('one type in full; a key suffix is ignored; an unknown id is a usage error', async () => {
@@ -66,6 +86,6 @@ test('a pack, a search, and selector mixing refused', async () => {
 test('the description names every pack and the ingested rule', () => {
   const d = setup().description();
   for (const id of Object.keys(ONCHAIN_PACKS)) {assert.ok(d.includes(`\`${id}\``), id);}
-  assert.match(d, /ingested/);
+  assert.match(d, /inEngine/);
   assert.match(d, /not advice/);
 });

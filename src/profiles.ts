@@ -13,6 +13,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
  */
 export type ProfileName = 'full' | 'block';
 
+// Profile names are a published contract (server.json `choices`, client configs in docs/BLOCK.md): a name is never
+// removed. A retired or split profile keeps its old name as an alias here, mapped to its successor.
+const PROFILE_ALIASES: Record<string, ProfileName> = {};
+
 export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   // Conditions and context
   'dwlf_get_conditions',
@@ -88,6 +92,7 @@ export function resolveProfile(argv: readonly string[], env: Record<string, stri
   }
   const raw = (named ?? env.DWLF_TOOL_PROFILE ?? 'full').trim().toLowerCase();
   if (raw === 'full' || raw === 'block') return raw;
+  if (Object.hasOwn(PROFILE_ALIASES, raw)) return PROFILE_ALIASES[raw];
   throw new Error(`Unknown DWLF tool profile "${raw}". Use one of: ${Object.keys(PROFILES).join(', ')}.`);
 }
 
