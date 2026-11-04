@@ -58,7 +58,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 2. Get full semantic snapshot (intelligence)
   server.tool(
     'dwlf_get_intelligence',
-    'Get the full semantic snapshot for a symbol — current price, active events, FSM state, market regime, the weekly Weinstein `stage` object (`stage`, `stageName`, `weeksInStage`, `since`, `verification`; context, not a signal — see dwlf_get_stage), support/resistance levels, and signal quality. This is the preferred single-call way to get structured market context for a symbol.',
+    'Get the full semantic snapshot for a symbol — current price, active events, FSM state, market regime, the weekly Weinstein `stage` object (`stage`, `stageName`, `weeksInStage`, `since`, `verification`; context, not a signal — see dwlf_get_stage), support/resistance levels, and signal quality. This is the preferred single-call way to get structured market context for a symbol. For BITCOIN\'s on-chain cost basis, cycle windows and positioning in one call, use dwlf_get_conditions first.',
     {
       symbol: z.string().describe('Symbol to query (e.g. BTC, ETH, AAPL)'),
     },
