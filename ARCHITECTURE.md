@@ -45,11 +45,28 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 24 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
+- **~100 `dwlf_*` tools** grouped in 25 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
-  subscriptions), each wired in `src/index.ts` via a `register*Tools(server, client)` call
-  *(inferred from: `src/index.ts` imports + phase comments; `server.tool(` counts per file)*.
+  subscriptions, onchain-catalogue), each wired by `registerAll` in `src/register.ts` via a
+  `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
+  *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
+- **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
+  `block` (the Bitcoin subset, `BLOCK_TOOLS` in `src/profiles.ts`), applied by a filtering view over `server.tool`.
+  A profile only hides tools. It is never a permission boundary, because every call carries the same key to the same
+  backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
+  `test/profiles.test.mjs`)*.
+- **`dwlf_describe_onchain_events` answers from bundled data, `src/data/onchainCatalogue.ts`, which is GENERATED**
+  from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs`: never edit it by hand, re-run the script.
+  The MEANINGS are per-release, dated by `asOf`. Whether a pack is in the engine (`inEngine`) is read live from
+  `GET /v2/node-types` (cached 15 min; `null` when unreadable), never bundled. ⚠️ **Accepted debt (DWLF-646):** the meanings
+  belong behind the API too, so they stop being per-release *(inferred from: `src/tools/onchain-catalogue.ts`)*.
+- **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
+  is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:
+  `src/profiles.ts`)*.
+- **MCP Registry metadata:** `package.json` `mcpName` and the root `server.json` must agree with each other and with
+  the package version (`test/profiles.test.mjs`). Publishing to the registry is a manual, Andy-gated step
+  (`docs/REGISTRY.md`).
 - **One MCP resource** `dwlf://symbols` → `GET /market-data/symbols` *(inferred from:
   `src/resources/symbols.ts`)*.
 - **Visual-strategy node semantics** surfaced by `dwlf_describe_strategy_nodes`: the condition nodes
@@ -112,8 +129,11 @@ A reviewer should be able to test a diff against each of these:
 5. **The docstring is the contract.** A change to a tool's behaviour, default, or backend semantics
    must change its `description` in the same diff *(inferred from: PR #62 "auto-paginate … + document
    the footgun", #50 "doc-drift audit", #39 "echo filtersApplied so the 7-day default is visible")*.
-6. **A new tool file is not shipped until it is registered in `src/index.ts`** — registration is the
-   only wiring point *(inferred from: `src/index.ts` explicit `register*Tools` list)*.
+6. **A new tool file is not shipped until it is registered in `registerAll` (`src/register.ts`)**, and **the same
+   PR decides whether it is in the `block` profile** (`BLOCK_TOOLS`, `src/profiles.ts`). Those are the two wiring
+   points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
+   catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
+   *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
@@ -139,6 +159,10 @@ A reviewer should be able to test a diff against each of these:
   **Why it is right today:** two users, no multi-tenancy to build, no hosting to run, and the API key is simply an env var.
   🛑 **The trigger that ends it, stated so it is not rediscovered as a surprise: the moment a third-party agent should onboard without Andy in the loop, stdio is the blocker.** It sits in direct tension with this platform's agent-first onboarding goal (see SPT's charter): an agent can only reach the frictionless registration endpoint *after* installing a binary, setting an env var and editing a local MCP config — friction that no amount of smooth registration removes, because it happens first.
   ⇒ A hosted/remote MCP surface is what would make "arrive fresh and just use it" literally true, at the cost of transport, multi-tenant auth and hosting. **Not now; but when that trigger fires, this is a known decision being revisited, not a new question.**
+  📌 **4-Nov-2026: the trigger has fired.** DWLF Block's self-serve agent funnel, the MCP Registry metadata and
+  `docs/BLOCK.md` are third-party onboarding without Andy in the loop. The decision is being revisited deliberately
+  as DWLF-622 (design: `docs/HOSTED-MCP.md`, added by dwlf-mcp-server#102). Until Andy decides there, stdio stays the shipped transport, and
+  the registry entry declares stdio only.
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and

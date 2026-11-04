@@ -4,88 +4,27 @@ import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DWLFClient } from './client.js';
-import { registerMarketDataTools } from './tools/market-data.js';
-import { registerRangeTools } from './tools/ranges.js';
-import { registerCycleSetupTools } from './tools/cycle-setups.js';
-import { registerCycleWindowTools } from './tools/cycle-windows.js';
-import { registerStageTools } from './tools/stages.js';
-import { registerConditionsTools } from './tools/conditions.js';
-import { registerIndicatorTools } from './tools/indicators.js';
-import { registerSignalTools } from './tools/signals.js';
-import { registerWatchlistTools } from './tools/watchlist.js';
-import { registerSymbolTagTools } from './tools/symbol-tags.js';
-import { registerStrategyTools } from './tools/strategies.js';
-import { registerBacktestTools } from './tools/backtests.js';
-import { registerPortfolioTools } from './tools/portfolio.js';
-import { registerTradeTools } from './tools/trades.js';
-import { registerCustomEventTools } from './tools/custom-events.js';
-import { registerEvaluationTools } from './tools/evaluations.js';
-import { registerAISummaryTools } from './tools/ai-summary.js';
-import { registerAcademyTools } from './tools/academy.js';
-import { registerSymbolActivationTools } from './tools/symbol-activations.js';
-import { registerAnnotationTools } from './tools/annotations.js';
-import { registerTradePlanTools } from './tools/trade-plans.js';
-import { registerSemanticTools } from './tools/semantic.js';
-import { registerAccountTools } from './tools/account.js';
-import { registerSubscriptionTools } from './tools/subscriptions.js';
-import { registerSymbolsResource } from './resources/symbols.js';
+import { registerAll } from './register.js';
+import { profiledServer, resolveProfile, PROFILE_INSTRUCTIONS, type ProfileName } from './profiles.js';
 
 // package.json sits one level above dist/ in both a clone and the published tarball.
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 
-const server = new McpServer({
-  name: 'dwlf',
-  version,
-});
+// Tool profile (DWLF-621): `full` by default; `block` for block.dwlf users. Unknown → exit with the reason.
+let profile: ProfileName;
+try {
+  profile = resolveProfile(process.argv.slice(2), process.env);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
+
+const instructions = PROFILE_INSTRUCTIONS[profile];
+const server = new McpServer({ name: 'dwlf', version }, instructions ? { instructions } : undefined);
 
 const client = new DWLFClient();
 
-// Register all tools — Phase 1 (read)
-registerMarketDataTools(server, client);
-registerRangeTools(server, client);
-registerCycleSetupTools(server, client);
-registerCycleWindowTools(server, client);
-registerStageTools(server, client);
-registerConditionsTools(server, client);
-registerIndicatorTools(server, client);
-registerSignalTools(server, client);
-registerWatchlistTools(server, client);
-registerSymbolTagTools(server, client);
-
-// Register all tools — Phase 2 (read + write)
-registerStrategyTools(server, client);
-registerBacktestTools(server, client);
-registerPortfolioTools(server, client);
-registerTradeTools(server, client);
-registerCustomEventTools(server, client);
-
-// Register all tools — Phase 2d (evaluations — on-demand evaluation triggering and polling)
-registerEvaluationTools(server, client);
-
-// Register all tools — Phase 2c (annotations & trade plans)
-registerAnnotationTools(server, client);
-registerTradePlanTools(server, client);
-
-// Register all tools — Phase 2b (symbol activation for events & strategies)
-registerSymbolActivationTools(server, client);
-
-// Register all tools — Phase 3 (AI summary endpoints)
-registerAISummaryTools(server, client);
-
-// Register all tools — Phase 4 (Academy — public CDN, no auth)
-registerAcademyTools(server);
-
-// Register all tools — Phase 5 (Semantic layer — regime, intelligence, briefing, agent registration)
-registerSemanticTools(server, client);
-
-// Register all tools — Phase 6 (Account — quotas, plan, policy limits)
-registerAccountTools(server, client);
-
-// Register all tools — Phase 7 (Subscription CRUD — pairs event sources with delivery channels)
-registerSubscriptionTools(server, client);
-
-// Register resources
-registerSymbolsResource(server, client);
+registerAll(profiledServer(server, profile), client);
 
 // Start server with stdio transport
 const transport = new StdioServerTransport();

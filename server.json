@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "uk.co.dwlf/mcp-server",
+  "title": "DWLF",
+  "description": "Market conditions, events, custom events and backtests as tools. Bitcoin on-chain via DWLF Block.",
+  "websiteUrl": "https://dwlf.co.uk",
+  "repository": {
+    "url": "https://github.com/andywilliams/dwlf-mcp-server",
+    "source": "github"
+  },
+  "version": "0.61.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@dwlf/mcp-server",
+      "version": "0.61.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "DWLF_API_KEY",
+          "description": "Your DWLF API key. An agent can get one from POST https://api.dwlf.co.uk/v2/agent/register.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "DWLF_TOOL_PROFILE",
+          "description": "Tool set: full (default, every tool) or block (the Bitcoin subset for DWLF Block).",
+          "isRequired": false,
+          "format": "string",
+          "default": "full",
+          "choices": [
+            "full",
+            "block"
+          ]
+        },
+        {
+          "name": "DWLF_API_URL",
+          "description": "API base URL. Leave unset for production.",
+          "isRequired": false,
+          "format": "string",
+          "default": "https://api.dwlf.co.uk"
+        }
+      ]
+    }
+  ]
+}
