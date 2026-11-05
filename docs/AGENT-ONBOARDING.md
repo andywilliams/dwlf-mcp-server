@@ -23,9 +23,12 @@ Result: Strategies created via MCP don't show up in REST API queries using the r
 curl -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "your-agent@example.com",
+    "email": "you@example.com",
     "agentId": "my-trading-bot",
-    "purpose": "Autonomous trading agent"
+    "purpose": "Autonomous trading agent",
+    "product": "block",
+    "disclaimerAccepted": true,
+    "disclaimerVersion": "<the version from the disclaimer 400>"
   }'
 ```
 
@@ -34,7 +37,9 @@ Response:
 {
   "apiKey": "dwlf_sk_abc123...",
   "accountId": "user_xyz789",
-  "message": "Account created. Check your email to verify and unlock compute features."
+  "activationStatus": "pending_activation",
+  "message": "Check your email to activate your account",
+  "nextStep": { "action": "Save the apiKey now (it is shown once). Then ask your user to click the activation link…", "call": "GET /v2/me" }
 }
 ```
 
@@ -122,15 +127,15 @@ The MCP server includes a `dwlf_register_agent` tool for programmatic account cr
 ```typescript
 {
   tool: "dwlf_register_agent",
-  arguments: {
-    email: "your-agent@example.com",
-    agentId: "my-trading-bot",
-    purpose: "Autonomous trading agent"
-  }
+  arguments: { email: "you@example.com" }
 }
 ```
 
-This returns an API key immediately. You can then reconfigure your MCP client to use this key.
+Two steps: the first call returns the disclaimer text for the user to read. Only if they accept, call again with
+`disclaimerAccepted: true` and the `disclaimerVersion` it named. That returns the API key (shown once); it works after
+the user clicks the emailed activation link. `product` defaults to the server's profile (`block` under `--profile block`,
+a classic DWLF account under the default `full`); pass `product: "block"` for a Block account. Then reconfigure your MCP
+client with the key.
 
 ## Authentication Flow
 
@@ -161,7 +166,7 @@ If `DWLF_API_KEY` is not set:
 
 2. **One API Key = One Account**: The API key determines which account you're using. Same key across REST and MCP = same account.
 
-3. **Email Verification**: While not required for basic features, verifying your email unlocks compute-intensive features like backtests and evaluations.
+3. **Activation**: the key refuses every call (403 `ACCOUNT_NOT_ACTIVATED`) until the user clicks the activation link emailed to them.
 
 4. **Security**: Never hardcode API keys in your code. Use environment variables or config files (excluded from version control).
 
@@ -201,20 +206,26 @@ This returns your account details including `accountId`.
 ```bash
 #!/bin/bash
 
-# Step 1: Register new agent account
+# Step 1: Show the user the disclaimer and ask. Only their "yes" may accept it, for the version they were shown.
+DISCLAIMER=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
+  -H "Content-Type: application/json" -d '{"email": "bot@example.com"}')
+DISCLAIMER_VERSION=$(echo "$DISCLAIMER" | jq -r '.disclaimer.version')
+echo "$DISCLAIMER" | jq -r '.disclaimer.title, .disclaimer.content'
+read -r -p "Do you accept this disclaimer (version $DISCLAIMER_VERSION)? [yes/no] " ANSWER
+[ "$ANSWER" = "yes" ] || { echo "Not accepted: no account was made."; exit 1; }
+
+# Step 2: Register with that acceptance
 RESPONSE=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "bot@example.com",
-    "agentId": "my-bot",
-    "purpose": "Trading automation"
-  }')
+  -d "{\"email\": \"bot@example.com\", \"agentId\": \"my-bot\", \"product\": \"block\",
+       \"disclaimerAccepted\": true, \"disclaimerVersion\": \"$DISCLAIMER_VERSION\"}")
 
-# Extract API key
-API_KEY=$(echo $RESPONSE | jq -r '.apiKey')
+# Extract API key (it works once the user clicks the emailed activation link)
+API_KEY=$(echo $RESPONSE | jq -r '.apiKey // empty')
+[ -n "$API_KEY" ] || { echo "No key: $RESPONSE"; exit 1; }
 echo "Registered with API key: $API_KEY"
 
-# Step 2: Configure MCP
+# Step 3: Configure MCP
 cat > ~/Library/Application\ Support/Claude/claude_desktop_config.json <<EOF
 {
   "mcpServers": {
@@ -231,7 +242,7 @@ EOF
 
 echo "MCP configured. Restart Claude Desktop to apply changes."
 
-# Step 3: Test REST API access
+# Step 4: Test REST API access
 echo "Testing REST API access..."
 curl https://api.dwlf.co.uk/v2/visual-strategies \
   -H "Authorization: ApiKey $API_KEY"

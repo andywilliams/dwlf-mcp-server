@@ -96,13 +96,21 @@ AI agents can register programmatically without browser access:
 curl -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "your-agent@example.com",
+    "email": "you@example.com",
     "agentId": "my-trading-bot",
-    "purpose": "Autonomous trading"
+    "purpose": "Autonomous trading",
+    "product": "block",
+    "disclaimerAccepted": true,
+    "disclaimerVersion": "<the version from the disclaimer 400>"
   }'
 ```
 
-Returns an API key immediately. Use this key for both REST API and MCP to ensure account consistency.
+The user must accept the DWLF disclaimer first: call once without `disclaimerAccepted` and the 400 carries the
+disclaimer's text and version; show it to them, and only if they accept, send `"disclaimerAccepted": true` and that
+`"disclaimerVersion"`. The 201 returns the API key at once, but it refuses calls (403 `ACCOUNT_NOT_ACTIVATED`) until
+the user clicks the activation link emailed to them; the response's `nextStep` says so. `"product": "block"` makes a
+free DWLF Block account.
+Use this key for both REST API and MCP to ensure account consistency.
 
 **📖 See [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md) for complete setup instructions.**
 

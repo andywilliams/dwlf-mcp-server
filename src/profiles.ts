@@ -88,7 +88,12 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     '(regime, cost-basis ladder, cycle windows, recent events, provenance), and use dwlf_describe_onchain_events ' +
     'to find an on-chain event and dwlf_explain_event to learn what it means, whether its history can change and ' +
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
-    'into buy, sell or hold recommendations. Nothing here is scored as a predictor.',
+    'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
+    // DWLF-685: the account facts in one line, so an agent can set a user up without reading the docs.
+    'Account: no key yet? dwlf_register_agent signs the user up by email (the free Block plan; dwlf_get_quotas shows its allowance; they ' +
+    'accept the disclaimer themselves, then click the emailed activation link) and returns the API key for ' +
+    'DWLF_API_KEY. Alerts: dwlf_create_subscription, delivered by Telegram when an event is confirmed (on-chain ' +
+    'events daily). A refused call ends with a "Next:" line saying what to do: follow it.',
 };
 
 /** The profile named by `--profile X` / `--profile=X`, else `DWLF_TOOL_PROFILE`, else `full`. Throws on an unknown name. */

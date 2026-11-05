@@ -5,6 +5,7 @@
 // nodes still described locally (strategyNodeMetadata.ts), keeping the
 // catalogue's own category as `catalogueCategory` — and builds the tool's answer.
 import type { NodeParam, StrategyNode } from './strategyNodeMetadata.js';
+import { ONCHAIN_EVENTS } from './onchainCatalogue.js';
 
 type CatalogueParam = { name?: unknown; type?: unknown; enum?: unknown; default?: unknown; description?: unknown };
 type CatalogueNode = {
@@ -127,13 +128,22 @@ export const needsCatalogue = ({ nodeType, category, local }: { nodeType?: strin
 };
 
 /** The tool's answer: `{ result }` to return, or `{ error }` for an unknown node type. */
-export const describeNodes = ({ local, catalogue, nodeType, category }: {
-  local: StrategyNode[]; catalogue: LoadedCatalogue | null; nodeType?: string; category?: string;
+export const describeNodes = ({ local, catalogue, nodeType, category, catalogueCategory }: {
+  local: StrategyNode[]; catalogue: LoadedCatalogue | null; nodeType?: string; category?: string; catalogueCategory?: string;
 }): { result?: Record<string, unknown>; error?: Record<string, unknown> } => {
   const all = mergeNodes(local, catalogue?.nodes ?? []);
   const catalogueError = catalogue?.error;
   if (nodeType) {
     const single = all.find((n) => n.nodeType === nodeType);
+    if (!single && !catalogueError && ONCHAIN_EVENTS.some((e) => e.id === nodeType)) {
+      // DWLF-685: a research-catalogue type the node catalogue lacks is real, but not evaluated by the engine.
+      return { error: {
+        error: `${nodeType} is not a node the engine can evaluate`,
+        hint: 'It is an on-chain catalogue type: dwlf_explain_event { eventType } describes it and its measured history. '
+          + 'The on-chain nodes you can build with are dwlf_describe_strategy_nodes { category: "condition", '
+          + 'catalogueCategory: "onchain" }.',
+      } };
+    }
     if (!single) {
       return { error: {
         error: `Unknown nodeType: ${nodeType}`,
@@ -145,15 +155,25 @@ export const describeNodes = ({ local, catalogue, nodeType, category }: {
     }
     return { result: { count: 1, nodes: [single], ...(catalogueError ? { catalogueError } : {}) } };
   }
-  // Unfiltered, a catalogue node is listed by name only (about a hundred of
-  // them); ask for one by `nodeType`, or for `category: 'condition'`, for detail.
   const brief = (n: (typeof all)[number]) => ('source' in n && n.source === 'catalogue'
     ? { nodeType: n.nodeType, category: n.category, label: n.label, catalogueCategory: n.catalogueCategory, timeframes: n.timeframes, ...(n.engineIgnored ? { engineIgnored: n.engineIgnored } : {}), source: n.source }
     : n);
-  const nodes = category ? all.filter((n) => n.category === category) : all.map(brief);
+  // Catalogue nodes are listed by name, under category "condition" too; `catalogueCategory` (e.g. "onchain") gives one
+  // family in full (DWLF-685).
+  const inCategory = category ? all.filter((n) => n.category === category) : all;
+  const inFamily = catalogueCategory
+    ? inCategory.filter((n) => 'catalogueCategory' in n && n.catalogueCategory === catalogueCategory)
+    : inCategory;
+  const families = [...new Set(all.flatMap((n) => ('catalogueCategory' in n && n.catalogueCategory ? [n.catalogueCategory] : [])))].sort();
+  if (catalogueCategory && !families.includes(catalogueCategory) && !catalogueError) {
+    return { error: { error: `Unknown catalogueCategory: ${catalogueCategory}`, hint: `One of: ${families.join(', ')}.` } };
+  }
+  const full = Boolean(catalogueCategory) || (Boolean(category) && category !== 'condition');
+  const nodes = full ? inFamily : inFamily.map(brief);
   return { result: {
     count: nodes.length,
     nodes,
+    ...(full ? {} : { detail: 'Listed by name. For full detail ask by nodeType, or by catalogueCategory (one of: ' + families.join(', ') + ').' }),
     ...(catalogue && catalogue.unsupported.length ? { engineIgnores: catalogue.unsupported } : {}),
     ...(catalogueError ? { catalogueError } : {}),
   } };

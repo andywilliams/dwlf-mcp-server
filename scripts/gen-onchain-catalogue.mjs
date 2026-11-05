@@ -14,6 +14,17 @@ if (!packsDir) {
 }
 const cat = JSON.parse(readFileSync(join(packsDir, 'catalogue.json'), 'utf8'));
 
+// What agents read is plain words (DWLF-685): references to files only the packs repo has (REGIMES.md, a job script)
+// point a reader nowhere, so they are dropped when generating. The same rule as SPT's explain (eventExplain.js
+// publicText) and src/data/publicText.ts, which also applies it when serving a bundle generated before this rule.
+const INTERNAL_REFS = [/\s*\(jobs\/[^)]*\)/g, /[;,]?\s*[Ss]ee REGIMES\.md(?: §\d+)?\.?/g];
+const publicText = (v) => {
+  if (typeof v !== 'string') return v;
+  const out = INTERNAL_REFS.reduce((acc, re) => acc.replace(re, ''), v).trim();
+  if (!out) return 'Documented in the pack\'s own notes, which DWLF does not serve yet.';
+  return v.trim().endsWith('.') && !/[.!?]$/.test(out) ? `${out}.` : out;
+};
+
 const firstParagraph = (md) => md.split('\n\n').map((p) => p.trim()).find((p) => p && !p.startsWith('#')) || '';
 const packIds = [...new Set(cat.types.map((t) => t.pack))];
 const packs = Object.fromEntries(packIds.map((id) => {
@@ -40,7 +51,7 @@ const COST_BASIS = [
   ['onchain.sth_sopr.reclaim', '7-day short-term-holder SOPR crossed back above 1 (coins moved by recent holders realised a profit on average).'],
   ['onchain.sth_sopr.lose', '7-day short-term-holder SOPR fell below 1 (coins moved by recent holders realised a loss on average).'],
 ].map(([id, meaning]) => ({
-  id, pack: 'costBasis', meaning, inputs: 'BRK realised-price, MVRV, supply-in-profit and SOPR series (onchain-export design §2)',
+  id, pack: 'costBasis', meaning, inputs: 'BRK realised-price, MVRV, supply-in-profit and SOPR series',
   historyStart: '2015-01-22', threshold: null, caveats: 'Thresholds are the common public bands, fitted to ~3 cycles.',
   granularity: 'daily', keySuffix: null, estimated: false, methodVersion: 1, frequency: null,
 }));
@@ -53,8 +64,8 @@ packs.costBasis = {
 const entries = [
   ...COST_BASIS,
   ...cat.types.map((t) => ({
-    id: t.id, pack: t.pack, meaning: t.meaning, inputs: t.inputs ?? null, historyStart: t.historyStart ?? null,
-    threshold: t.threshold ?? null, caveats: t.caveats ?? null, granularity: t.granularity ?? null,
+    id: t.id, pack: t.pack, meaning: publicText(t.meaning), inputs: publicText(t.inputs ?? null), historyStart: t.historyStart ?? null,
+    threshold: t.threshold ?? null, caveats: publicText(t.caveats ?? null), granularity: t.granularity ?? null,
     keySuffix: t.keySuffix ?? null, estimated: Boolean(t.estimated), methodVersion: t.methodVersion ?? null,
     frequency: t.frequency ? { perYear: t.frequency.perYear ?? null, last3y: t.frequency.last3y ?? null, first: t.frequency.first ?? null, last: t.frequency.last ?? null } : null,
   })),

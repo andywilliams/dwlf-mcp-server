@@ -60,14 +60,21 @@ export function registerSubscriptionTools(
       "subscribed to directly.\n" +
       "  - `custom_event` — requires `customEventId`. Fires when that custom event fires.\n" +
       "  - any indicator event id (e.g. `cycle.low.confirmed`, `cycle.high.window.early`, " +
-      "`swing_low_break`). Fires on the raw indicator event.\n\n" +
+      "`swing_low_break`). Fires on the raw indicator event.\n" +
+      "  - any on-chain event id (`onchain.*`, e.g. `onchain.sth_sopr.lose`; find them with dwlf_describe_onchain_events). " +
+      "They fire on DWLF's own BTC series only: pass `symbols: ['BTCOC/USD']` (or `['*']`) and `timeframes: ['1d']`. " +
+      "On-chain events are daily, so the alert comes when the day's event is confirmed (once the day's last block has " +
+      "six confirmations, early the next UTC day; each event's `onchain.confirmedAt` says when).\n\n" +
+      "Needs an API key with the `settings:write` scope (listing needs `settings:read`): keys from dwlf_register_agent " +
+      "have them. Telegram delivers through the user's OWN bot: its token must be saved in their DWLF notification " +
+      "settings first, and `chatId` is their chat with that bot.\n\n" +
       "`symbols` controls scope: an array of symbols, or `['*']` for a wildcard across the whole account universe. " +
       "`timeframes` accepts `['1d']`, `['1w']`, or `['*']` for any. " +
       "`channels` is an array of delivery destinations — currently `{ type: 'telegram', destination: { chatId: <id> }, enabled: true }`.",
     {
       eventTypeId: z
         .string()
-        .describe("Event source: `strategy.entry.triggered`, `strategy.exit.triggered`, `custom_event`, or an indicator event id like `cycle.low.confirmed`."),
+        .describe("Event source: `strategy.entry.triggered`, `strategy.exit.triggered`, `custom_event`, an indicator event id like `cycle.low.confirmed`, or an on-chain id like `onchain.sth_sopr.lose`."),
       strategyId: z
         .string()
         .optional()

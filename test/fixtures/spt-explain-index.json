@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/gen-spt-explain-fixture.mjs",
- "source": "serverless-portfolio-tracker@49f1ffa src/services/eventExplain.js listExplainable()",
+ "source": "serverless-portfolio-tracker@82f69a5 src/services/eventExplain.js listExplainable()",
  "catalogueAsOf": "2026-11-03",
  "brkVersion": "0.12.2",
  "packs": [
@@ -219,42 +219,42 @@
   {
    "type": "onchain.realised_price.cross.above",
    "pack": null,
-   "meaning": "The symbol's daily close crossed above the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed above the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
   {
    "type": "onchain.realised_price.cross.below",
    "pack": null,
-   "meaning": "The symbol's daily close crossed below the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed below the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
   {
    "type": "onchain.sth_realised_price.cross.above",
    "pack": null,
-   "meaning": "The symbol's daily close crossed above the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed above the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
   {
    "type": "onchain.sth_realised_price.cross.below",
    "pack": null,
-   "meaning": "The symbol's daily close crossed below the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed below the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
   {
    "type": "onchain.lth_realised_price.cross.above",
    "pack": null,
-   "meaning": "The symbol's daily close crossed above the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed above the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
   {
    "type": "onchain.lth_realised_price.cross.below",
    "pack": null,
-   "meaning": "The symbol's daily close crossed below the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "meaning": "The symbol's daily close crossed below the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close: DWLF decides it from that close and the level on this day and the day before.",
    "inEngine": true,
    "estimated": false
   },
@@ -653,7 +653,7 @@
   {
    "type": "onchain.regime.capital_sentiment.changed",
    "pack": "regime",
-   "meaning": "BRK's Capital Sentiment phase changed (raw, day to day). Phases place price against four references; see REGIMES.md.",
+   "meaning": "BRK's Capital Sentiment phase changed (raw, day to day). Phases place price against four references.",
    "inEngine": false,
    "estimated": false
   },

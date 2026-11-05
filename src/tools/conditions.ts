@@ -31,13 +31,15 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'It carries what dwlf_get_intelligence does not: the on-chain cost basis, the on-chain bands, the cycle ' +
       'windows and CFTC positioning. Use dwlf_get_intelligence for any other symbol, and for BTC\'s S/R levels, ' +
       'FSM state and signal quality.\n\n' +
-      'SHAPE (responseVersion 1; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
+      'SHAPE (responseVersion 3; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
       'asset, responseVersion, framing, symbol, asOf, price, regime: { daily, weekly, stage, onchain: ' +
-      '{ status, bands[] } }, costBasisLadder: { status, onchainSymbol, sideBasis, levelsPending, rungs: [{ key, ' +
-      'side, level, distancePct, since }], counts }, cycleWindows: { weekly, daily }, recentEvents: { days, ' +
+      '{ status, bands[] } }, costBasisLadder: { status, onchainSymbol, sideBasis, levelsPending, levelsNote?, rungs: [{ key, ' +
+      'side, level, distancePct, since, lastReading? }], counts }, cycleWindows: { weekly, daily }, recentEvents: { days, ' +
       'truncated, events: [{ eventType, date, family, onchain?, cot? }] }, provenance: { sources, methodVersions, ' +
       'brkVersion, scoring, unavailable } }`. A rung\'s `side` comes from its latest on-chain cross event; ' +
-      '`level`/`distancePct` need the stored on-chain day (`levelsPending: true` until then). On-chain readings ' +
+      '`level`/`distancePct` need the stored on-chain day (`levelsPending: true` until then). Until then each rung ' +
+      'and band has `lastReading` { value, metric, date, confirmedAt }: the metric on the day of its latest event. ' +
+      'Report it WITH its date ("MVRV was 2.1 on 14-Oct"), never as today\'s value. On-chain readings ' +
       'are read from the own-data BTC symbol (`onchainSymbol`), whose price is DWLF\'s own BRK oracle close.\n\n' +
       '⚠️ Read before you report:\n' +
       '- `framing`: these are CONDITIONS, NOT CALLS. Describe the state ("price is below the STH realised price ' +

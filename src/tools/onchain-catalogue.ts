@@ -1,3 +1,4 @@
+import { publicText, publicEntry } from '../data/publicText.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient } from '../client.js';
@@ -89,6 +90,29 @@ const reply = (meta: object, body: object) => ({ content: [{ type: 'text' as con
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
 const searchWords = (search: string) => search.toLowerCase().split(/\s+/).filter(Boolean);
 
+/**
+ * Words people search with that the ids and meanings do not use (DWLF-685). Each entry adds its words to the searchable
+ * text of every type whose id contains the key, so a search still needs ALL its words to match; a word that only fits
+ * one direction goes on that direction's id.
+ */
+const SEARCH_ALIASES: ReadonlyArray<readonly [string, string]> = [
+  ['sth', 'short-term holder short term holders sth'],
+  ['lth', 'long-term holder long term holders lth'],
+  ['realised_price', 'realized price cost basis on-chain cost'],
+  ['sopr', 'spent output profit ratio'],
+  ['sth_sopr.lose', 'capitulation selling at a loss'],
+  ['sth_sopr.reclaim', 'profit taking selling at a profit'],
+  ['mvrv', 'market value to realised value realized value valuation'],
+  ['supply_in_profit', 'coins in profit supply in loss'],
+  ['cohort.addr', 'whales whale addresses large holders'],
+  ['dormant', 'old coins long dormant revived'],
+  ['cdd', 'coin days destroyed'],
+];
+/** The text a search is matched against: id, meaning and label, plus the aliases for the id. */
+const searchText = (id: string, meaning?: string | null, label?: string | null): string =>
+  [id, meaning ?? '', label ?? '', ...SEARCH_ALIASES.filter(([key]) => id.includes(key)).map(([, words]) => words)]
+    .join(' ').toLowerCase();
+
 export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
   // Per registration, cached in these closures.
   const loadCatalogue = createCatalogueLoader((path) => client.get(path));
@@ -177,7 +201,7 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     if (search !== undefined) {
       const words = searchWords(search);
       if (!words.length) return usage('search is blank.');
-      const hits = lines.filter((t) => words.every((w) => `${t.type} ${t.meaning} ${t.label ?? ''}`.toLowerCase().includes(w)));
+      const hits = lines.filter((t) => { const text = searchText(t.type, t.meaning, t.label); return words.every((w) => text.includes(w)); });
       return reply(meta, { search, count: hits.length, events: hits.slice(0, 50).map(lineOf), truncated: hits.length > 50 });
     }
     return reply(meta, { packs: packIds.map(packState), total: lines.length });
@@ -200,7 +224,7 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     // Each type carries its OWN engine state; a pack can be partly in the engine.
     // The live summary line's shape (lineOf); the bundle has no label or revision class.
     const summary = (e: OnchainEventEntry, inEngine: Set<string> | null) => ({
-      id: e.id, pack: toPublicPack(e.pack), label: null, meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+      id: e.id, pack: toPublicPack(e.pack), label: null, meaning: publicText(e.meaning) ?? '', inEngine: inEngine === null ? null : inEngine.has(e.id),
       estimated: Boolean(e.estimated), revisionClass: null,
     });
     const withPackState = (id: string, inEngine: Set<string> | null) => ({
@@ -220,7 +244,7 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       }
       const inEngine = await engineTypes();
       // The same shape as the live answer: the summary line as `event`, the full entry as `definition`.
-      return reply(meta, { event: summary(entry, inEngine), definition: { ...entry, pack: toPublicPack(entry.pack) }, packState: withPackState(entry.pack, inEngine) });
+      return reply(meta, { event: summary(entry, inEngine), definition: { ...publicEntry(entry), pack: toPublicPack(entry.pack) }, packState: withPackState(entry.pack, inEngine) });
     }
     if (pack !== undefined) {
       const asked = pack.trim();
@@ -236,7 +260,7 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     if (search !== undefined) {
       const words = searchWords(search);
       if (!words.length) return usage('search is blank.');
-      const hits = ONCHAIN_EVENTS.filter((e) => words.every((w) => `${e.id} ${e.meaning}`.toLowerCase().includes(w)));
+      const hits = ONCHAIN_EVENTS.filter((e) => { const text = searchText(e.id, publicText(e.meaning)); return words.every((w) => text.includes(w)); });
       const inEngine = await engineTypes();
       return reply(meta, { search, count: hits.length, events: hits.slice(0, 50).map((e) => summary(e, inEngine)), truncated: hits.length > 50 });
     }

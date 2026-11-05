@@ -9,11 +9,18 @@ export function registerCustomEventTools(
   // 1. List custom events
   server.tool(
     'dwlf_list_custom_events',
-    "List the user's custom event definitions — user-created indicator-based events.",
-    {},
-    async () => {
+    "List the user's custom event definitions (user-built events). By default one line per event (id, name, " +
+      'description, timeframe, node count, alerts on fire, last change) so a long list fits; call ' +
+      'dwlf_get_custom_event for one event\'s full graph, or pass `detail: true` for every graph (large).',
+    {
+      detail: z.boolean().optional().describe('true = return each event in full, graph included (can be 100k+ characters).'),
+      limit: z.number().int().min(1).max(100).optional().describe('At most this many events (API default 50).'),
+      offset: z.number().int().min(0).optional().describe('Skip this many, for the next page.'),
+    },
+    async ({ detail, limit, offset }) => {
       try {
-        const data = await client.get('/custom-events');
+        // DWLF-685: the API's one-line-per-event view, unless the graphs are asked for.
+        const data = await client.get('/custom-events', { limit, offset, view: detail ? undefined : 'summary' });
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
         };

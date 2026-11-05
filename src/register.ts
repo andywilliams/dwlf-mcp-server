@@ -28,9 +28,13 @@ import { registerSymbolsResource } from './resources/symbols.js';
 
 import { registerOnchainCatalogueTools } from './tools/onchain-catalogue.js';
 import { registerExplainEventTools } from './tools/explain-event.js';
+import type { ProfileName } from './profiles.js';
 
-/** Registers every tool module and resource on `server` (which may be a profile's filtered view). */
-export function registerAll(server: McpServer, client: DWLFClient): void {
+/**
+ * Registers every tool module and resource on `server` (which may be a profile's filtered view). `profile` sets what
+ * dwlf_register_agent signs a user up for when the agent does not say (Block under `block`).
+ */
+export function registerAll(server: McpServer, client: DWLFClient, options: { profile?: ProfileName } = {}): void {
   // Register all tools — Phase 1 (read)
   registerMarketDataTools(server, client);
   registerRangeTools(server, client);
@@ -67,7 +71,7 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   registerAcademyTools(server);
 
   // Register all tools — Phase 5 (Semantic layer — regime, intelligence, briefing, agent registration)
-  registerSemanticTools(server, client);
+  registerSemanticTools(server, client, { defaultProduct: options.profile === 'block' ? 'block' : 'dwlf' });
 
   // Register all tools — Phase 6 (Account — quotas, plan, policy limits)
   registerAccountTools(server, client);

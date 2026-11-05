@@ -49,7 +49,7 @@ test('date and since pass through to the occurrences route', async () => {
   const s = setup({ [E]: ENGINE_DEF, [`${E}/occurrences`]: { history: { count: 3 } } });
   await s.call({ eventType: 'onchain.sth_sopr.lose', date: '2026-10-15' });
   await s.call({ eventType: 'onchain.sth_sopr.lose', since: '2026-10-01' });
-  assert.deepEqual(s.calls.filter((c) => c.path.endsWith('occurrences')).map((c) => c.params), [{ date: '2026-10-15' }, { since: '2026-10-01' }]);
+  assert.deepEqual(s.calls.filter((c) => c.path.endsWith('occurrences')).map((c) => c.params), [{ date: '2026-10-15' }, { since: '2026-10-01', rows: '10' }]);
 });
 
 test('a pack type: the definition, and no occurrence read (it is not in the engine)', async () => {

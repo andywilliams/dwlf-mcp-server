@@ -1,3 +1,4 @@
+import { publicEntry } from '../data/publicText.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
@@ -25,6 +26,9 @@ const isUnknownType = (error: unknown) => {
   return data?.code === 'UNKNOWN_EVENT_TYPE' || data?.error?.code === 'UNKNOWN_EVENT_TYPE';
 };
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+/** With `since`, rows listed per bucket unless the caller asks: enough to read, small enough to fit (DWLF-685). */
+const SINCE_ROWS_DEFAULT = 10;
+
 const reply = (body: Json) => ({ content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }] });
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -40,7 +44,8 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       'changed, as three disjoint buckets placed by the day a row became knowable (`onchain.confirmedAt`; an on-chain row ' +
       'dated D is confirmed on D+1): `fired` (knowable on or after `since`), `published` (knowable before `since` but ' +
       'first served on or after it, e.g. a backfill: new to you, NOT a firing) and `revised` (served before `since`, ' +
-      'restated on or after it). Each bucket is { count, firstDated, lastDated, rows (the newest), truncated }: quote ' +
+      'restated on or after it). Each bucket is { count, firstDated, lastDated, rows (the newest; `rows` sets how many, ' +
+      'default 10), truncated }: quote ' +
       '`count`, not the rows listed. Neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
       'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
       '⚠️ Read before you report:\n' +
@@ -62,17 +67,19 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose (a `#…` row-key suffix is ignored)'),
       date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
       since: z.string().optional().describe('YYYY-MM-DD: what fired, was first published, or was restated on or after this day'),
+      rows: z.number().int().min(1).max(50).optional()
+        .describe('With since: how many rows each bucket lists, the newest (default 10, max 50). Counts are always whole.'),
     },
-    async ({ eventType, date, since }) => {
+    async ({ eventType, date, since, rows }) => {
       try {
-        return await explain({ eventType, date, since });
+        return await explain({ eventType, date, since, rows });
       } catch (error) {
         return { content: [{ type: 'text' as const, text: `Error explaining ${eventType}: ${messageOf(error)}` }], isError: true };
       }
     }
   );
 
-  async function explain({ eventType, date, since }: { eventType: string; date?: string; since?: string }) {
+  async function explain({ eventType, date, since, rows }: { eventType: string; date?: string; since?: string; rows?: number }) {
     // A row key's suffix (e.g. `#cohort=2019-01-01:weekly`) names a row, not a type: explain the type.
     const type = eventType.trim().split('#')[0];
     if (!type.startsWith('onchain.')) return usage(`eventType must be an onchain.* type (got "${type}").`);
@@ -99,7 +106,7 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
         bundledAsOf: ONCHAIN_CATALOGUE_AS_OF,
         bundledBrkVersion: ONCHAIN_CATALOGUE_BRK_VERSION,
         apiError: messageOf(error),
-        definition: { ...bundled, revision: null, measuredHistory: null, inEngine: null },
+        definition: { ...publicEntry(bundled), revision: null, measuredHistory: null, inEngine: null },
         framing: 'Conditions, not calls.',
         occurrencesUnavailable: 'this DWLF API does not serve explain yet, so occurrences cannot be read here',
       });
@@ -112,7 +119,10 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
     }
     const params: Record<string, string> = {};
     if (date !== undefined) params.date = date;
-    if (since !== undefined) params.since = since;
+    if (since !== undefined) {
+      params.since = since;
+      params.rows = String(rows ?? SINCE_ROWS_DEFAULT);
+    }
     try {
       out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
     } catch (error) {

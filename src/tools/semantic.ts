@@ -2,8 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient } from '../client.js';
 import { normalizeSymbol } from '../client.js';
+import { registrationBody, describeRegistration, disclaimerFromError } from './registration.js';
 
-export function registerSemanticTools(server: McpServer, client: DWLFClient) {
+export function registerSemanticTools(
+  server: McpServer,
+  client: DWLFClient,
+  options: { defaultProduct?: 'block' | 'dwlf' } = {},
+) {
   // 1. Get market regime classification
   server.tool(
     'dwlf_get_regime',
@@ -172,33 +177,48 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 4. Register agent account (public endpoint, no auth needed)
   server.tool(
     'dwlf_register_agent',
-    'Programmatically register a new DWLF account — no browser or Google OAuth required. Returns an API key immediately. Email verification unlocks compute features (backtests, evaluations). Useful for onboarding flows where an agent registers itself.',
+    'Sign your user up for a DWLF account by email (no browser needed), and get its API key. Two steps, because the ' +
+      'user must accept the DWLF disclaimer themselves:\n' +
+      '  1. Call with `email` only. You get the disclaimer text and its version back: show the text to your user.\n' +
+      '  2. Only if they accept, call again with `disclaimerAccepted: true` and that `disclaimerVersion`. Never accept ' +
+      'on their behalf.\n' +
+      'The result has `apiKey` (shown once: tell the user to keep it) and `activationStatus: pending_activation`. The key ' +
+      'refuses every call (403 ACCOUNT_NOT_ACTIVATED) until the user clicks the activation link DWLF emails them. Then ' +
+      'it goes in this server\'s DWLF_API_KEY setting. `product: "block"` makes a free DWLF Block account (the default ' +
+      'under the Block profile). To re-send the activation email, call again with the same email, disclaimerAccepted ' +
+      'and disclaimerVersion (the disclaimer is checked first); it never makes a second key.',
     {
-      email: z.string().email().describe('Email address for the new account'),
-      agentId: z
+      email: z.string().email().describe('Your user\'s email address (the activation link is sent there).'),
+      disclaimerAccepted: z
+        .boolean()
+        .optional()
+        .describe('true ONLY after your user has read the disclaimer text (from step 1) and said they accept it.'),
+      disclaimerVersion: z
         .string()
         .optional()
-        .describe('Optional agent identifier to associate with this account'),
-      purpose: z
-        .string()
+        .describe('The disclaimer version from step 1. Required with disclaimerAccepted.'),
+      product: z
+        .enum(['block', 'dwlf'])
         .optional()
-        .describe('Optional description of what this account will be used for'),
+        .describe('`block`: a DWLF Block account. `dwlf`: a classic DWLF account. Default: this server\'s profile.'),
+      agentId: z.string().optional().describe('Your agent or client name, e.g. claude-desktop.'),
+      purpose: z.string().optional().describe('What the account is for, in a few words.'),
     },
-    async ({ email, agentId, purpose }) => {
+    async ({ email, disclaimerAccepted, disclaimerVersion, product, agentId, purpose }) => {
+      const body = registrationBody({ email, disclaimerAccepted, disclaimerVersion, product, agentId, purpose }, options.defaultProduct);
       try {
-        const body: Record<string, string> = { email };
-        if (agentId) body.agentId = agentId;
-        if (purpose) body.purpose = purpose;
         const data = await client.post('/agent/register', body);
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        };
+        return { content: [{ type: 'text', text: describeRegistration(data) }] };
       } catch (error) {
+        const disclaimer = disclaimerFromError(error);
+        if (disclaimer) {
+          return { content: [{ type: 'text', text: disclaimer }] };
+        }
         return {
           content: [
             {
               type: 'text',
-              text: `Error registering agent: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Error registering: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           isError: true,

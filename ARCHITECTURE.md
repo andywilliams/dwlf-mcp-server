@@ -34,10 +34,14 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
   `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
   a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
-  accepts `{ apiKey, baseURL, timeoutMs }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
+  accepts `{ apiKey, baseURL, timeoutMs, deployment }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
   per caller. The shipped stdio server still builds exactly one client from the environment, so this boundary holds
   for everything published. A caller that passes `apiKey: undefined` gets NO key, never the operator's
-  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
+  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`). *Since DWLF-685:* the client's error interceptor appends
+  one "Next:" line to a 401/403/429 (`src/errors.ts`): the API's own `nextStep` when it sends one, else a fallback;
+  `deployment` (`stdio` / `hosted`) picks the only deployment-specific one, a refused key. Output size of BACKEND
+  responses is asked of SPT, not cut here: `GET /custom-events?view=summary`, `/explain/occurrences?rows=`. (The node
+  catalogue this server already reshapes for `dwlf_describe_strategy_nodes` is listed by name locally.)
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
 - **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
@@ -89,8 +93,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   two merge (an exception to invariant 2's pass-through, scoped to this tool), keeping the backend's
   category as `catalogueCategory`; their parameters carry `honoredByExecutor: null` (not verified here),
   and a node the catalogue marks unsupported carries `engineIgnored`. The catalogue is cached 15 minutes,
-  a request the static file answers alone does not fetch it, and an unfiltered call lists catalogue
-  nodes by name only *(from: `src/data/nodeCatalogue.ts`, DWLF-370)* *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+  a request the static file answers alone does not fetch it, and catalogue nodes are listed by name only, under
+  `category: "condition"` too (DWLF-685); full detail is by `nodeType`, or by `catalogueCategory` for one family *(from: `src/data/nodeCatalogue.ts`, DWLF-370)* *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
 - **"Explain this event"** (`dwlf_explain_event`, DWLF-646): the definition from `GET /v2/events/{type}/explain`
   and, for engine types, `/explain/occurrences`, each returned as the backend sends it under `definition` /
   `occurrences`. The tool JOINS the two calls and derives nothing (an exception to invariant 2's single-call

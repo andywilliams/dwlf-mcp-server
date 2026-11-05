@@ -95,7 +95,7 @@ const server = createServer(async (req, res) => {
   // Per request: nothing shared between callers, nothing kept between requests.
   const instructions = PROFILE_INSTRUCTIONS[profile];
   const mcp = new McpServer({ name: 'dwlf', version: 'spike' }, instructions ? { instructions } : undefined);
-  registerAll(profiledServer(mcp, profile), new DWLFClient({ apiKey: token }));
+  registerAll(profiledServer(mcp, profile), new DWLFClient({ apiKey: token, deployment: 'hosted' }), { profile });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on('close', () => { transport.close(); mcp.close(); });
   try {
