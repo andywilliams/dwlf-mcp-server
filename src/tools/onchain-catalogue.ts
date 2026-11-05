@@ -91,9 +91,9 @@ const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usa
 const searchWords = (search: string) => search.toLowerCase().split(/\s+/).filter(Boolean);
 
 /**
- * Words people search with that the ids and meanings do not use (DWLF-685: "short-term holder", "STH cost basis" and
- * "capitulation" missed sth_sopr.lose and sth_realised_price.*). Each entry adds its words to the searchable text of
- * every type whose id contains the key, so a search still needs ALL its words to match.
+ * Words people search with that the ids and meanings do not use (DWLF-685). Each entry adds its words to the searchable
+ * text of every type whose id contains the key, so a search still needs ALL its words to match; a word that only fits
+ * one direction goes on that direction's id.
  */
 const SEARCH_ALIASES: ReadonlyArray<readonly [string, string]> = [
   ['sth', 'short-term holder short term holders sth'],

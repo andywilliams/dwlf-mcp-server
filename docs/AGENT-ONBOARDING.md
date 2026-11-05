@@ -206,9 +206,15 @@ This returns your account details including `accountId`.
 ```bash
 #!/bin/bash
 
-# Step 1: Register (the user must have read and accepted the disclaimer: see "Complete Onboarding Flow" above)
-DISCLAIMER_VERSION=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
-  -H "Content-Type: application/json" -d '{"email": "bot@example.com"}' | jq -r '.disclaimer.version')
+# Step 1: Show the user the disclaimer and ask. Only their "yes" may accept it, for the version they were shown.
+DISCLAIMER=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
+  -H "Content-Type: application/json" -d '{"email": "bot@example.com"}')
+DISCLAIMER_VERSION=$(echo "$DISCLAIMER" | jq -r '.disclaimer.version')
+echo "$DISCLAIMER" | jq -r '.disclaimer.title, .disclaimer.content'
+read -r -p "Do you accept this disclaimer (version $DISCLAIMER_VERSION)? [yes/no] " ANSWER
+[ "$ANSWER" = "yes" ] || { echo "Not accepted: no account was made."; exit 1; }
+
+# Step 2: Register with that acceptance
 RESPONSE=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
   -d "{\"email\": \"bot@example.com\", \"agentId\": \"my-bot\", \"product\": \"block\",
@@ -219,7 +225,7 @@ API_KEY=$(echo $RESPONSE | jq -r '.apiKey // empty')
 [ -n "$API_KEY" ] || { echo "No key: $RESPONSE"; exit 1; }
 echo "Registered with API key: $API_KEY"
 
-# Step 2: Configure MCP
+# Step 3: Configure MCP
 cat > ~/Library/Application\ Support/Claude/claude_desktop_config.json <<EOF
 {
   "mcpServers": {
@@ -236,7 +242,7 @@ EOF
 
 echo "MCP configured. Restart Claude Desktop to apply changes."
 
-# Step 3: Test REST API access
+# Step 4: Test REST API access
 echo "Testing REST API access..."
 curl https://api.dwlf.co.uk/v2/visual-strategies \
   -H "Authorization: ApiKey $API_KEY"

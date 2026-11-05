@@ -185,7 +185,8 @@ export function registerSemanticTools(
       'The result has `apiKey` (shown once: tell the user to keep it) and `activationStatus: pending_activation`. The key ' +
       'refuses every call (403 ACCOUNT_NOT_ACTIVATED) until the user clicks the activation link DWLF emails them. Then ' +
       'it goes in this server\'s DWLF_API_KEY setting. `product: "block"` makes a free DWLF Block account (the default ' +
-      'under the Block profile). Calling again with the same email re-sends the activation email; it never makes a second key.',
+      'under the Block profile). To re-send the activation email, call again with the same email, disclaimerAccepted ' +
+      'and disclaimerVersion (the disclaimer is checked first); it never makes a second key.',
     {
       email: z.string().email().describe('Your user\'s email address (the activation link is sent there).'),
       disclaimerAccepted: z

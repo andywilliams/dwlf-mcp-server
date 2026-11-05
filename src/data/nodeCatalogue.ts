@@ -142,7 +142,6 @@ export const describeNodes = ({ local, catalogue, nodeType, category, catalogueC
         hint: 'It is an on-chain catalogue type: dwlf_explain_event { eventType } describes it and its measured history. '
           + 'The on-chain nodes you can build with are dwlf_describe_strategy_nodes { category: "condition", '
           + 'catalogueCategory: "onchain" }.',
-        ...(catalogueError ? { catalogueError } : {}),
       } };
     }
     if (!single) {
@@ -156,8 +155,6 @@ export const describeNodes = ({ local, catalogue, nodeType, category, catalogueC
     }
     return { result: { count: 1, nodes: [single], ...(catalogueError ? { catalogueError } : {}) } };
   }
-  // Unfiltered, a catalogue node is listed by name only (about a hundred of
-  // them); ask for one by `nodeType`, or for `category: 'condition'`, for detail.
   const brief = (n: (typeof all)[number]) => ('source' in n && n.source === 'catalogue'
     ? { nodeType: n.nodeType, category: n.category, label: n.label, catalogueCategory: n.catalogueCategory, timeframes: n.timeframes, ...(n.engineIgnored ? { engineIgnored: n.engineIgnored } : {}), source: n.source }
     : n);
