@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { AxiosError } from 'axios';
 import { nextStepFor, formatNextStep } from '../dist/errors.js';
 import { registrationBody, disclaimerFromError, describeRegistration } from '../dist/tools/registration.js';
-import { summariseCustomEvents } from '../dist/tools/custom-events.js';
-import { trimSinceRows } from '../dist/tools/explain-event.js';
+import { registerCustomEventTools } from '../dist/tools/custom-events.js';
+import { registerExplainEventTools } from '../dist/tools/explain-event.js';
+import { registerSemanticTools } from '../dist/tools/semantic.js';
 import { searchText } from '../dist/tools/onchain-catalogue.js';
 import { createCatalogueLoader, describeNodes } from '../dist/data/nodeCatalogue.js';
 import { STRATEGY_NODES } from '../dist/data/strategyNodeMetadata.js';
@@ -45,11 +46,11 @@ test('429 without a nextStep (an older API): retry after N s, or the upgrade lin
 
 // ---- dwlf_register_agent ----------------------------------------------------------------------------------------
 
-test('register body: Block by default; acceptance only when the agent says the user accepted', () => {
-  assert.deepEqual(registrationBody({ email: 'a@b.co' }), { email: 'a@b.co', product: 'block' });
-  assert.deepEqual(registrationBody({ email: 'a@b.co', product: 'dwlf' }), { email: 'a@b.co' });
+test('register body: acceptance only when the agent says the user accepted', () => {
+  assert.deepEqual(registrationBody({ email: 'a@b.co' }, 'block'), { email: 'a@b.co', product: 'block' });
+  assert.deepEqual(registrationBody({ email: 'a@b.co' }), { email: 'a@b.co' });
   assert.deepEqual(
-    registrationBody({ email: 'a@b.co', disclaimerAccepted: true, disclaimerVersion: '1.3', agentId: 'x' }),
+    registrationBody({ email: 'a@b.co', disclaimerAccepted: true, disclaimerVersion: '1.3', agentId: 'x' }, 'block'),
     { email: 'a@b.co', product: 'block', disclaimerAccepted: true, disclaimerVersion: '1.3', agentId: 'x' },
   );
   assert.equal('disclaimerVersion' in registrationBody({ email: 'a@b.co', disclaimerAccepted: false, disclaimerVersion: '1.3' }), false);
@@ -81,22 +82,56 @@ test('the register answer ends with what to do next', () => {
 
 // ---- output sizes -----------------------------------------------------------------------------------------------
 
-test('custom events list one line each; the graph is not in it', () => {
-  const out = summariseCustomEvents({ events: [{ eventId: 'e1', name: 'n', visual: { nodes: [1, 2, 3], edges: [] }, metadata: { timeframe: 'daily' }, notifyOnFire: true }] });
-  assert.deepEqual(out.events[0], { eventId: 'e1', name: 'n', description: undefined, timeframe: 'daily', nodeCount: 3, notifyOnFire: true, executionTier: undefined, updatedAt: undefined });
-  assert.equal(JSON.stringify(out).includes('edges'), false);
-  assert.deepEqual(summariseCustomEvents({ odd: 1 }), { odd: 1 });
+// A fake server that keeps every tool's handler, and a client that records each call.
+const toolsOf = (register, routes = {}, options) => {
+  const tools = {};
+  const calls = [];
+  const record = (method) => async (path, params) => {
+    calls.push({ method, path, params });
+    const r = typeof routes[path] === 'function' ? routes[path](params) : routes[path];
+    if (r instanceof Error) throw r;
+    return r ?? {};
+  };
+  register({ tool: (n, _d, _s, fn) => { tools[n] = fn; } }, { get: record('get'), post: record('post') }, options);
+  return { tools, calls };
+};
+
+test('custom events: the API\'s summary view by default, the full list only when asked', async () => {
+  const { tools, calls } = toolsOf(registerCustomEventTools);
+  await tools.dwlf_list_custom_events({});
+  assert.equal(calls[0].params.view, 'summary');
+  await tools.dwlf_list_custom_events({ detail: true, limit: 5 });
+  assert.equal(calls[1].params.view, undefined);
+  assert.equal(calls[1].params.limit, 5);
 });
 
-test('explain since keeps the newest rows of each bucket and the whole counts', () => {
-  const rows = Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}` }));
-  const out = trimSinceRows({ changedSince: { since: '2026-10-01', fired: { count: 30, rows, truncated: false }, revised: { count: 0, rows: [] } } }, 10);
-  assert.equal(out.changedSince.fired.count, 30);
-  assert.equal(out.changedSince.fired.rows.length, 10);
-  assert.equal(out.changedSince.fired.rows.at(-1).date, '2026-10-30', 'the newest kept');
-  assert.equal(out.changedSince.fired.truncated, true);
-  assert.equal(out.changedSince.since, '2026-10-01');
-  assert.deepEqual(trimSinceRows({ recent: [1] }, 10), { recent: [1] });
+test('explain since asks the API for 10 rows per bucket unless told otherwise', async () => {
+  const E = '/events/onchain.sth_sopr.lose/explain';
+  const routes = { [E]: { type: 'onchain.sth_sopr.lose', inEngine: true }, [`${E}/occurrences`]: { changedSince: {} } };
+  const { tools, calls } = toolsOf(registerExplainEventTools, routes);
+  await tools.dwlf_explain_event({ eventType: 'onchain.sth_sopr.lose', since: '2026-10-01' });
+  assert.deepEqual(calls.at(-1).params, { since: '2026-10-01', rows: '10' });
+  await tools.dwlf_explain_event({ eventType: 'onchain.sth_sopr.lose', since: '2026-10-01', rows: 50 });
+  assert.equal(calls.at(-1).params.rows, '50');
+  await tools.dwlf_explain_event({ eventType: 'onchain.sth_sopr.lose' });
+  assert.equal(calls.at(-1).params.rows, undefined, 'rows only with since');
+});
+
+test('register signs up for the server\'s profile when the agent does not say', async () => {
+  const block = toolsOf(registerSemanticTools, {}, { defaultProduct: 'block' });
+  await block.tools.dwlf_register_agent({ email: 'a@b.co' });
+  assert.equal(block.calls.at(-1).params.product, 'block');
+  const full = toolsOf(registerSemanticTools, {}, { defaultProduct: 'dwlf' });
+  await full.tools.dwlf_register_agent({ email: 'a@b.co' });
+  assert.equal('product' in full.calls.at(-1).params, false, 'full profile: a classic account unless asked');
+  await full.tools.dwlf_register_agent({ email: 'a@b.co', product: 'block' });
+  assert.equal(full.calls.at(-1).params.product, 'block');
+});
+
+test('a hosted server\'s 401 says reconnect, not DWLF_API_KEY', () => {
+  const s = nextStepFor(401, { message: 'Unauthorized' }, 'hosted');
+  assert.match(s.action, /reconnect DWLF/);
+  assert.doesNotMatch(s.action, /DWLF_API_KEY/);
 });
 
 const catalogueBody = {
@@ -139,7 +174,7 @@ test('describe search finds STH types by the words people use', () => {
 
 test('the Block profile instructions carry the account and key facts in one place', () => {
   const s = PROFILE_INSTRUCTIONS.block;
-  for (const want of [/dwlf_register_agent/, /DWLF_API_KEY/, /activation link/, /50 calls a day/, /when an event is confirmed/, /"Next:"/]) {
+  for (const want of [/dwlf_register_agent/, /DWLF_API_KEY/, /activation link/, /when an event is confirmed/, /"Next:"/]) {
     assert.match(s, want);
   }
   assert.doesNotMatch(s, /real[- ]time/i);

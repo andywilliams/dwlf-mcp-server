@@ -24,7 +24,7 @@ const server = new McpServer({ name: 'dwlf', version }, instructions ? { instruc
 
 const client = new DWLFClient();
 
-registerAll(profiledServer(server, profile), client);
+registerAll(profiledServer(server, profile), client, { profile });
 
 // Start server with stdio transport
 const transport = new StdioServerTransport();

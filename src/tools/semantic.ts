@@ -4,7 +4,11 @@ import { DWLFClient } from '../client.js';
 import { normalizeSymbol } from '../client.js';
 import { registrationBody, describeRegistration, disclaimerFromError } from './registration.js';
 
-export function registerSemanticTools(server: McpServer, client: DWLFClient) {
+export function registerSemanticTools(
+  server: McpServer,
+  client: DWLFClient,
+  options: { defaultProduct?: 'block' | 'dwlf' } = {},
+) {
   // 1. Get market regime classification
   server.tool(
     'dwlf_get_regime',
@@ -180,8 +184,8 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       'on their behalf.\n' +
       'The result has `apiKey` (shown once: tell the user to keep it) and `activationStatus: pending_activation`. The key ' +
       'refuses every call (403 ACCOUNT_NOT_ACTIVATED) until the user clicks the activation link DWLF emails them. Then ' +
-      'it goes in this server\'s DWLF_API_KEY setting. `product` defaults to `block` (a free DWLF Block account: ' +
-      '50 calls a day). Calling again with the same email re-sends the activation email; it never makes a second key.',
+      'it goes in this server\'s DWLF_API_KEY setting. `product: "block"` makes a free DWLF Block account (the default ' +
+      'under the Block profile). Calling again with the same email re-sends the activation email; it never makes a second key.',
     {
       email: z.string().email().describe('Your user\'s email address (the activation link is sent there).'),
       disclaimerAccepted: z
@@ -195,12 +199,12 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       product: z
         .enum(['block', 'dwlf'])
         .optional()
-        .describe('`block` (default): a DWLF Block account. `dwlf`: a classic DWLF account.'),
+        .describe('`block`: a DWLF Block account. `dwlf`: a classic DWLF account. Default: this server\'s profile.'),
       agentId: z.string().optional().describe('Your agent or client name, e.g. claude-desktop.'),
       purpose: z.string().optional().describe('What the account is for, in a few words.'),
     },
     async ({ email, disclaimerAccepted, disclaimerVersion, product, agentId, purpose }) => {
-      const body = registrationBody({ email, disclaimerAccepted, disclaimerVersion, product, agentId, purpose });
+      const body = registrationBody({ email, disclaimerAccepted, disclaimerVersion, product, agentId, purpose }, options.defaultProduct);
       try {
         const data = await client.post('/agent/register', body);
         return { content: [{ type: 'text', text: describeRegistration(data) }] };

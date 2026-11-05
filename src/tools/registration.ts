@@ -16,10 +16,13 @@ export interface RegistrationInput {
   purpose?: string;
 }
 
-/** The request body. `product` defaults to Block; a classic DWLF account is the API's no-product case. */
-export function registrationBody(input: RegistrationInput): Record<string, unknown> {
+/**
+ * The request body. `product` defaults to the server's profile: Block under the `block` profile, a classic DWLF
+ * account (the API's no-product case) under `full`.
+ */
+export function registrationBody(input: RegistrationInput, defaultProduct: 'block' | 'dwlf' = 'dwlf'): Record<string, unknown> {
   const body: Record<string, unknown> = { email: input.email };
-  if ((input.product ?? 'block') === 'block') body.product = 'block';
+  if ((input.product ?? defaultProduct) === 'block') body.product = 'block';
   if (input.disclaimerAccepted === true) {
     body.disclaimerAccepted = true;
     if (input.disclaimerVersion) body.disclaimerVersion = input.disclaimerVersion;

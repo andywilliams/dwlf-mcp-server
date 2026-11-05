@@ -13,7 +13,7 @@ export interface NextStep {
   retryAfterSeconds?: number;
 }
 
-const GETTING_STARTED_URL = 'https://block.dwlf.co.uk/docs/quickstart/';
+const GETTING_STARTED_URL = 'https://docs.dwlf.co.uk/getting-started.html';
 const PRICING_URL = 'https://block.dwlf.co.uk/pricing/';
 
 /** API calls an MCP tool makes, so a step can name the tool instead of an HTTP call the agent cannot send. */
@@ -35,10 +35,23 @@ const num = (v: unknown): number | undefined => (typeof v === 'number' && Number
 const isNextStep = (v: unknown): v is NextStep =>
   Boolean(v) && typeof v === 'object' && typeof (v as NextStep).action === 'string';
 
+/**
+ * Where this server runs decides the one fallback the API cannot give: what to do about a refused key (API Gateway's
+ * bare 401). Locally (stdio) the key is the user's DWLF_API_KEY; hosted, it was minted for the client's connection.
+ */
+export type Deployment = 'stdio' | 'hosted';
+
 /** The step for a refusal, or null when the status/body is not one this knows how to advise on. */
-export function nextStepFor(status: number, body: Body): NextStep | null {
+export function nextStepFor(status: number, body: Body, deployment: Deployment = 'stdio'): NextStep | null {
   if (isNextStep(body?.nextStep)) return body.nextStep;
   const error = str(body?.error);
+  if (status === 401 && deployment === 'hosted') {
+    return {
+      action: 'The connection to DWLF is no longer authorised (it expired or the user disconnected it). Ask your user '
+        + 'to reconnect DWLF in their MCP client, then retry.',
+      url: GETTING_STARTED_URL,
+    };
+  }
   if (status === 401) {
     return {
       action:

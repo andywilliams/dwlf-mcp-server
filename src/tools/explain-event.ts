@@ -26,24 +26,8 @@ const isUnknownType = (error: unknown) => {
   return data?.code === 'UNKNOWN_EVENT_TYPE' || data?.error?.code === 'UNKNOWN_EVENT_TYPE';
 };
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
-/**
- * A `since` answer lists up to 50 rows per bucket, each with its full on-chain block: 60-65k characters for a busy
- * type (DWLF-685). The tool keeps the newest `limit` rows of each bucket (the API lists them oldest first) and leaves
- * every count whole, marking a cut bucket `truncated`. Pure; anything without `changedSince` passes through.
- */
+/** With `since`, rows listed per bucket unless the caller asks (DWLF-685: 50 rows ran to 60-65k characters). */
 export const SINCE_ROWS_DEFAULT = 10;
-export const trimSinceRows = (occurrences: Json, limit: number): Json => {
-  const changed = (occurrences as { changedSince?: Record<string, unknown> } | null)?.changedSince;
-  if (!changed || typeof changed !== 'object') return occurrences;
-  const trimmed: Record<string, unknown> = { ...changed };
-  for (const [name, b] of Object.entries(changed)) {
-    const bucket = b as { rows?: unknown[]; truncated?: boolean } | null;
-    if (bucket && Array.isArray(bucket.rows) && bucket.rows.length > limit) {
-      trimmed[name] = { ...bucket, rows: bucket.rows.slice(-limit), truncated: true, rowsShown: limit };
-    }
-  }
-  return { ...(occurrences as object), changedSince: trimmed } as Json;
-};
 
 const reply = (body: Json) => ({ content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }] });
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
@@ -135,9 +119,12 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
     }
     const params: Record<string, string> = {};
     if (date !== undefined) params.date = date;
-    if (since !== undefined) params.since = since;
+    if (since !== undefined) {
+      params.since = since;
+      params.rows = String(rows ?? SINCE_ROWS_DEFAULT);
+    }
     try {
-      out.occurrences = trimSinceRows(await client.get<Json>(`${path}/occurrences`, params), rows ?? SINCE_ROWS_DEFAULT);
+      out.occurrences = await client.get<Json>(`${path}/occurrences`, params);
     } catch (error) {
       out.occurrencesUnavailable = `the occurrences read failed: ${messageOf(error)}`;
     }

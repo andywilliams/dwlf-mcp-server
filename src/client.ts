@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { nextStepFor, formatNextStep } from './errors.js';
+import { nextStepFor, formatNextStep, Deployment } from './errors.js';
 
 /**
  * Normalize symbol input to DWLF's expected format.
@@ -64,8 +64,9 @@ export class DWLFClient {
    * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
    * always has. Passing `apiKey` (even as undefined) means "this caller's key": the operator's env key is never
    * used in its place. `timeoutMs` (default 30 s) lets a host keep each request under its gateway's limit.
+   * `deployment` ('stdio' default, or 'hosted') picks the advice a refused key gets (src/errors.ts).
    */
-  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number } = {}) {
+  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; deployment?: Deployment } = {}) {
     const baseURL = options.baseURL || process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
     const apiKey = 'apiKey' in options ? options.apiKey : process.env.DWLF_API_KEY;
 
@@ -109,7 +110,8 @@ export class DWLFClient {
             detail = body.slice(0, 300);
           }
           // DWLF-685: a refusal (401/403/429) also says what to do next: the call, the plan, a link.
-          const step = nextStepFor(status, body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined);
+          const step = nextStepFor(status, body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined,
+            options.deployment ?? 'stdio');
           error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}${step ? `\n${formatNextStep(step)}` : ''}`;
         }
         return Promise.reject(error);
