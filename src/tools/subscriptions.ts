@@ -63,8 +63,8 @@ export function registerSubscriptionTools(
       "`swing_low_break`). Fires on the raw indicator event.\n" +
       "  - any on-chain event id (`onchain.*`, e.g. `onchain.sth_sopr.lose`; find them with dwlf_describe_onchain_events). " +
       "They fire on DWLF's own BTC series only: pass `symbols: ['BTCOC/USD']` (or `['*']`) and `timeframes: ['1d']`. " +
-      "On-chain events are daily, so the alert comes when the day's event is confirmed (after six confirmations of " +
-      "its last block, about 01:00-03:00 UTC the next day).\n\n" +
+      "On-chain events are daily, so the alert comes when the day's event is confirmed (once the day's last block has " +
+      "six confirmations, early the next UTC day; each event's `onchain.confirmedAt` says when).\n\n" +
       "Needs an API key with the `settings:write` scope (listing needs `settings:read`): keys from dwlf_register_agent " +
       "have them. Telegram delivers through the user's OWN bot: its token must be saved in their DWLF notification " +
       "settings first, and `chatId` is their chat with that bot.\n\n" +

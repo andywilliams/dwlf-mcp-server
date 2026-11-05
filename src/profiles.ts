@@ -90,7 +90,7 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
     'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
     // DWLF-685: the account facts in one line, so an agent can set a user up without reading the docs.
-    'Account: no key yet? dwlf_register_agent signs the user up by email (free Block plan, 50 calls a day; they ' +
+    'Account: no key yet? dwlf_register_agent signs the user up by email (the free Block plan; dwlf_get_quotas shows its allowance; they ' +
     'accept the disclaimer themselves, then click the emailed activation link) and returns the API key for ' +
     'DWLF_API_KEY. Alerts: dwlf_create_subscription, delivered by Telegram when an event is confirmed (on-chain ' +
     'events daily). A refused call ends with a "Next:" line saying what to do: follow it.',
