@@ -30,18 +30,20 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **New platform capability.** A tool may only surface something `api.dwlf.co.uk/v2` already does;
   capability is added in `serverless-portfolio-tracker` first *(inferred from: SYSTEM.md "API-first —
   no privileged client"; every tool is an HTTP call through `src/client.ts`)*.
-- **Auth, account or key management.** One `DWLF_API_KEY` = one account for the process lifetime;
-  no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
-  `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
-  a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
-  accepts `{ apiKey, baseURL, timeoutMs }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
-  per caller. The shipped stdio server still builds exactly one client from the environment, so this boundary holds
-  for everything published. A caller that passes `apiKey: undefined` gets NO key, never the operator's
-  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
+- **Auth, account or key management — beyond the hosted resource server.** The stdio server: one `DWLF_API_KEY` =
+  one account for the process lifetime; no key storage, no account switching *(inferred from: `src/client.ts` reads
+  `process.env.DWLF_API_KEY` once; a single `DWLFClient` is built at module load in `src/index.ts`)*. A caller that
+  passes `apiKey: undefined` gets NO key, never the operator's `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
+  *Since DWLF-622 (proposed in the PR that adds `src/hosted/`; Andy ratifies by merging):* the hosted endpoint is an
+  OAuth **resource server** only. It verifies access tokens and holds one managed API key per (account, client),
+  minted by the authorization server, never by this repo. **It never issues tokens, signs anyone in, shows consent,
+  or registers clients**: that is the authorization server's job (`docs/HOSTED-MCP.md` §4.1), in whichever repo
+  Andy picks.
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
-- **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
-  uses `StdioServerTransport`; no HTTP server code)*.
+- **Policy.** The hosted endpoint makes none: plans, quotas, scopes, licensing and metering are SPT's, enforced on
+  the managed key. Its own limits (calls per minute, the loop guard, calls in flight) only absorb load before SPT,
+  and refuse with a tool error *(DWLF-622)*.
 
 ## Interfaces & dependencies
 
@@ -49,6 +51,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
+- **The hosted MCP endpoint (DWLF-622), built dark:** `src/hosted/` (Streamable HTTP, stateless, POST only) + `infra/`
+  (CDK: Lambda behind a regional REST API with WAF, one DynamoDB table, one KMS key). `HOSTED_MCP_ENABLED` is off
+  unless exactly `true`; off, every path is 404. It serves the Block profile less `HOSTED_EXCLUDED`
+  (`src/hosted/scopes.ts`) and publishes RFC 9728 metadata. `dist/hosted` is excluded from the npm package (`files`),
+  and its dependencies (`jose`, the AWS SDK clients) are devDependencies bundled into the Lambda only.
 - **~100 `dwlf_*` tools** grouped in 26 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
@@ -100,6 +107,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   failure is the tool's error.
 
 **Depends on**
+- **The hosted endpoint only (DWLF-622), and none of it at run time while its flag is off:**
+  - the **authorization server**: its JWKS (token verification), its token exchange and revocation endpoints
+    (`docs/HOSTED-MCP.md` §4.2, a contract this repo defines and the AS implements);
+  - **AWS**: one DynamoDB table, one KMS key, one SSM parameter (the exchange client secret);
+  - **SPT's route source** at build time: `scripts/gen-spt-routes.mjs` reads `src/handlers/unifiedApi.js` to generate
+    `test/fixtures/spt-routes.json`. It's regenerated by hand, so the scope check knows only the SPT it was last run
+    against; it fails loudly if the file's shape changes (under 100 routes found).
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:
   `DWLF_API_URL`), contract = HTTP + `Authorization: ApiKey <DWLF_API_KEY>`, response shapes consumed
   as-is *(inferred from: `src/client.ts` `baseURL`/headers, 30 s timeout)*.
@@ -136,6 +150,8 @@ A reviewer should be able to test a diff against each of these:
    URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
    the sole `Authorization` assignment in `src/`. The "no tool builds its own URL" half is
    **not** mechanically verified — it is the rule this invariant asks a reviewer to apply.)*
+   *Hosted (DWLF-622):* the one other authenticated HTTP in `src/` is `src/hosted/aws.ts` `ExchangeMinter`, which
+   talks to the **authorization server** (token exchange, revocation) as a confidential client, never to the DWLF API.
    ⚠️ **"`academy.ts` is the only tool importing axios" would be wrong** — `src/tools/backtests.ts`
    imports it too, but **only for `axios.isAxiosError()` when narrowing a 409**, never to make a
    request *(verified 2026-08-13)*. ⇒ **Importing axios is not the test; making a request is.** A
@@ -150,16 +166,20 @@ A reviewer should be able to test a diff against each of these:
    must change its `description` in the same diff *(inferred from: PR #62 "auto-paginate … + document
    the footgun", #50 "doc-drift audit", #39 "echo filtersApplied so the 7-day default is visible")*.
 6. **A new tool file is not shipped until it is registered in `registerAll` (`src/register.ts`)**, and **the same
-   PR decides whether it is in the `block` profile** (`BLOCK_TOOLS`, `src/profiles.ts`). Those are the two wiring
-   points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
-   catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
-   *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
+   PR decides whether it is in the `block` profile** (`BLOCK_TOOLS`, `src/profiles.ts`). A tool in `BLOCK_TOOLS` also
+   needs a third wiring point: **its scopes in `TOOL_SCOPES`, or a reason in `HOSTED_EXCLUDED`** (`src/hosted/scopes.ts`,
+   DWLF-622), since the hosted endpoint serves the Block profile. A Bitcoin-relevant tool left out of `BLOCK_TOOLS` is
+   invisible to Block users. `test/profiles.test.mjs` catches a profile entry whose tool no longer exists, but not a
+   missing one; that half is the reviewer's. `test/hostedUnits.test.mjs` fails a Block tool with no scope entry, and a
+   scope entry that doesn't cover the SPT routes the tool calls *(inferred from: `src/register.ts`,
+   `src/profiles.ts`)*.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
-   (or, in the local hosted spike only, from the caller's request, never stored); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
+   (or, in the local hosted spike only, from the caller's request, never stored; in the hosted endpoint, from its
+   KMS-sealed table, and its exchange secret from SSM at run time); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
    ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
    `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any
@@ -173,6 +193,15 @@ A reviewer should be able to test a diff against each of these:
    reviewable check is *does this diff read a secret from a file rather than the environment?*, which
    is verifiable; "nothing secret is anywhere in 24 MB of history" is not.
 
+9. **The hosted server never forwards a client's token, and never makes policy; SPT does** *(DWLF-622)*. An access
+   token is accepted only when it is audience-bound to this server's canonical URI (RFC 8707), so one minted for any
+   other resource, the DWLF API included, is refused. The only place the token goes is the authorization server's
+   token exchange (RFC 8693), which returns the account's managed key. Every tool call reaches SPT on that key, so
+   SPT's middleware chain, raw-candle gate, scopes and plan limits apply unchanged *(verified:
+   `test/hosted.test.mjs` "never the bearer token", "another audience")*. A tool → scope table
+   (`src/hosted/scopes.ts`) lets the endpoint challenge for a step-up before calling SPT; a test checks it against
+   SPT's generated route table, and it is never the boundary.
+
 ## Standing decisions
 
 - **2026-01-30 — stdio transport, one `McpServer` and one `DWLFClient` built at module load; one API key, one account, per process. Confirmed 2026-08-13 as the CURRENT posture, with a named expiry condition** *(Andy, 2026-08-13, accepting the recommendation)*.
@@ -183,6 +212,10 @@ A reviewer should be able to test a diff against each of these:
   `docs/BLOCK.md` are third-party onboarding without Andy in the loop. The decision is being revisited deliberately
   as DWLF-622 (design: `docs/HOSTED-MCP.md`, added by dwlf-mcp-server#102). Until Andy decides there, stdio stays the shipped transport, and
   the registry entry declares stdio only.
+  📌 **5-Nov-2026 (proposed in the DWLF-622 build PR; Andy ratifies by merging): stdio AND hosted Streamable HTTP,
+  one tool codebase.** The hosted resource server is built and deployable dark (`src/hosted/`, `infra/`, flag off).
+  It goes live only after the authorization server exists and Andy decides `docs/HOSTED-MCP.md` §9. The registry
+  entry gains `remotes` at launch, not before.
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and

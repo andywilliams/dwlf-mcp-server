@@ -1,0 +1,27 @@
+name: CI
+
+# Pull-request checks (DWLF-622). Publish runs the package tests on master only; this runs them on every PR, and
+# synthesises the hosted MCP's CDK stack (bundling included), whose tests nothing else runs.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - name: Hosted MCP stack (infra/)
+        run: npm run test:infra

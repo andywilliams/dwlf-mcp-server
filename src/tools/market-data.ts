@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
@@ -167,7 +168,8 @@ export function registerMarketDataTools(
       'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
       '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
       'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
-      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened; on the hosted endpoint it can stop ' +
+      'early to answer in time, and then says so with `incomplete: true` and a `cursor`) — but you must still pass a ' +
       'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
@@ -300,15 +302,29 @@ export function registerMarketDataTools(
         let autoPaginated = false;
         let pagesFetched = 1;
         let pageCapHit = false;
+        let stoppedForTime = false;
 
         if (scoped && data && typeof data === 'object' && !Array.isArray(data)) {
           const record = data as Record<string, unknown>;
           const acc: unknown[] = Array.isArray(record.events) ? [...(record.events as unknown[])] : [];
           let cursor = (record.cursor as string | null | undefined) ?? null;
           const MAX_PAGES = 40; // backstop (~8k scanned rows); real events never approach this
+          // A hosted host's per-call deadline (DWLF-622): stop paging while there is still time to answer, and say so.
+          // A page's own timeout is capped at the time left (DWLFClient), so a page that runs out of time fails here
+          // and the pages already read are returned, marked incomplete.
+          const PAGE_BUDGET_MS = 3000;
           while (cursor && pagesFetched < MAX_PAGES) {
-            // eslint-disable-next-line no-await-in-loop
-            const page = await fetchPage(cursor);
+            if (client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
+            let page: unknown;
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              page = await fetchPage(cursor);
+            } catch (error) {
+              // Only a page that ran out of time: a 429, a 401 or a 500 is the tool's error, not "stopped for time".
+              const timedOut = axios.isAxiosError(error) && ['ECONNABORTED', 'ETIMEDOUT', 'ERR_CANCELED'].includes(error.code ?? '');
+              if (timedOut && client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
+              throw error;
+            }
             pagesFetched += 1;
             autoPaginated = true;
             if (page && typeof page === 'object' && !Array.isArray(page)) {
@@ -356,8 +372,9 @@ export function registerMarketDataTools(
           filtersApplied.pagesFetched = pagesFetched;
           if (pageCapHit) {
             filtersApplied.incomplete = true;
-            filtersApplied.paginationHint =
-              'Hit the auto-pagination page cap — results may be incomplete. Narrow with fromDate/toDate to fetch the rest.';
+            filtersApplied.paginationHint = stoppedForTime
+              ? 'Stopped paging to answer within the time limit — results are incomplete. Narrow with fromDate/toDate, or follow `cursor`.'
+              : 'Hit the auto-pagination page cap — results may be incomplete. Narrow with fromDate/toDate to fetch the rest.';
           }
         }
 

@@ -116,9 +116,21 @@ export function resolveProfile(argv: readonly string[], env: Record<string, stri
  * check that each profile tool exists.
  */
 export function profiledServer(server: McpServer, profile: ProfileName, registered: Set<string> = new Set()): McpServer {
-  const allowed = PROFILES[profile];
+  return filteredServer(server, PROFILES[profile], registered);
+}
+
+/**
+ * A view of `server` that registers only the tools in `allowed` (null = all). The hosted MCP's set is built on it,
+ * with `toolsOnly`: resources and prompts are then not registered at all, so only a tool (which the host scopes,
+ * limits and gives a key) can reach the DWLF API.
+ */
+export function filteredServer(
+  server: McpServer, allowed: ReadonlySet<string> | null, registered: Set<string> = new Set(), options: { toolsOnly?: boolean } = {},
+): McpServer {
+  const DROPPED = new Set(['resource', 'registerResource', 'prompt', 'registerPrompt']);
   return new Proxy(server, {
     get(target, prop, receiver) {
+      if (options.toolsOnly && typeof prop === 'string' && DROPPED.has(prop)) return () => undefined;
       if (prop === 'tool') {
         return (...args: unknown[]) => {
           const name = String(args[0]);

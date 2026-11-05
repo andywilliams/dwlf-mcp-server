@@ -2,14 +2,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
 import { STRATEGY_NODES } from '../data/strategyNodeMetadata.js';
-import { createCatalogueLoader, describeNodes, needsCatalogue } from '../data/nodeCatalogue.js';
+import { createCatalogueLoader, describeNodes, needsCatalogue, type CatalogueLoader } from '../data/nodeCatalogue.js';
 
 export function registerStrategyTools(
   server: McpServer,
-  client: DWLFClient
+  client: DWLFClient,
+  // The node catalogue (DWLF-370): cached per registration, unless a host passes its process-wide loader (DWLF-622).
+  loadCatalogue: CatalogueLoader = createCatalogueLoader((path) => client.get(path)),
 ) {
-  // The node catalogue, cached per registration (DWLF-370).
-  const loadCatalogue = createCatalogueLoader((path) => client.get(path));
   // 0. Describe visual-strategy node types: the structural nodes from the local
   // file, the condition nodes from the API's node catalogue (DWLF-370).
   //

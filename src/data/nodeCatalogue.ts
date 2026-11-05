@@ -119,6 +119,9 @@ export const createCatalogueLoader = (get: (path: string) => Promise<unknown>, t
   };
 };
 
+/** A catalogue loader; a host shares one per process (DWLF-622), since the catalogue is public and the same for all. */
+export type CatalogueLoader = ReturnType<typeof createCatalogueLoader>;
+
 /** Whether a request can be answered from the local file alone. */
 export const needsCatalogue = ({ nodeType, category, local }: { nodeType?: string; category?: string; local: StrategyNode[] }) => {
   if (nodeType) {return !local.some((n) => n.nodeType === nodeType);}
