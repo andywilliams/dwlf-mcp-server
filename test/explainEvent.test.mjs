@@ -147,4 +147,8 @@ test('the description frames conditions, not calls, and names the fallback and w
   assert.match(s.description(), /CONDITIONS on the chain, not calls/);
   assert.match(s.description(), /definitionSource: "bundled"/);
   assert.match(s.description(), /priceWithheld/);
+  // SPT#743's since buckets: a backfill is never a firing, and an older API (no responseVersion) is handled.
+  assert.match(s.description(), /new to you, NOT a firing/);
+  assert.match(s.description(), /never report them as recent firings/);
+  assert.match(s.description(), /responseVersion`\. 2 = the bucket shape[^.]*\. MISSING = an older DWLF API/);
 });
