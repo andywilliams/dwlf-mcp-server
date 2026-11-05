@@ -21,7 +21,7 @@ const INTERNAL_REFS = [/\s*\(jobs\/[^)]*\)/g, /[;,]?\s*[Ss]ee REGIMES\.md(?: §\
 const publicText = (v) => {
   if (typeof v !== 'string') return v;
   const out = INTERNAL_REFS.reduce((acc, re) => acc.replace(re, ''), v).trim();
-  if (!out) return null;
+  if (!out) return 'Documented in the pack\'s own notes, which DWLF does not serve yet.';
   return v.trim().endsWith('.') && !/[.!?]$/.test(out) ? `${out}.` : out;
 };
 

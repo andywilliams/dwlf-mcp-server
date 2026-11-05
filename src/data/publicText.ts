@@ -6,13 +6,15 @@
  */
 import type { OnchainEventEntry } from './onchainCatalogue.js';
 
+const REFERENCE_ONLY = 'Documented in the pack\'s own notes, which DWLF does not serve yet.';
 const INTERNAL_REFS = [/\s*\(jobs\/[^)]*\)/g, /[;,]?\s*[Ss]ee REGIMES\.md(?: §\d+)?\.?/g];
 
-/** The text without the references; null when nothing else is left (or for null). */
+/** The text without the references (null stays null). */
 export function publicText(v: string | null): string | null {
   if (typeof v !== 'string') return v;
   const out = INTERNAL_REFS.reduce((acc, re) => acc.replace(re, ''), v).trim();
-  if (!out) return null;
+  // Text that was only a reference still said "there is more to know": say so, rather than claim nothing.
+  if (!out) return REFERENCE_ONLY;
   return v.trim().endsWith('.') && !/[.!?]$/.test(out) ? `${out}.` : out;
 }
 

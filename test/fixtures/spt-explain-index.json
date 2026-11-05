@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/gen-spt-explain-fixture.mjs",
- "source": "serverless-portfolio-tracker@a5d5028 src/services/eventExplain.js listExplainable()",
+ "source": "serverless-portfolio-tracker@82f69a5 src/services/eventExplain.js listExplainable()",
  "catalogueAsOf": "2026-11-03",
  "brkVersion": "0.12.2",
  "packs": [
