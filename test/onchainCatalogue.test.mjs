@@ -44,9 +44,10 @@ test('no direction labels and no calls: conditions only', () => {
 test('no arguments: the packs, each saying LIVE whether the engine has it', async () => {
   const { body, } = await setup().call({});
   assert.equal(body.total, ONCHAIN_EVENTS.length);
-  assert.deepEqual(body.packs.map((p) => p.pack).sort(), Object.keys(ONCHAIN_PACKS).sort());
+  // The bundle's engine group is named `engine` here too (its `costBasis`).
+  assert.deepEqual(body.packs.map((p) => p.pack).sort(), Object.keys(ONCHAIN_PACKS).map((p) => (p === 'costBasis' ? 'engine' : p)).sort());
   const inEngine = Object.fromEntries(body.packs.map((p) => [p.pack, p.inEngine]));
-  assert.equal(inEngine.costBasis, true);
+  assert.equal(inEngine.engine, true);
   assert.equal(inEngine.mining, false);
   assert.equal(body.framing, 'Conditions, not calls.');
 });
@@ -118,7 +119,7 @@ const FIXTURE = JSON.parse(fs.readFileSync(new URL('./fixtures/spt-explain-index
 /** The explain index as SPT serves it, rebuilt from the fixture (`pack` is `{ id, title }` or null on the wire). */
 const liveIndex = () => ({
   catalogueAsOf: FIXTURE.catalogueAsOf, brkVersion: FIXTURE.brkVersion, packs: FIXTURE.packs,
-  types: FIXTURE.types.map((t) => ({ ...t, pack: t.pack ? { id: t.pack, title: t.pack } : null, label: null, revisionClass: 'oracle' })),
+  typeSummaries: FIXTURE.typeSummaries.map((t) => ({ ...t, pack: t.pack ? { id: t.pack, title: t.pack } : null, label: null, revisionClass: 'oracle' })),
 });
 const apiGet = ({ explain = async (type) => ({ type, meaning: 'from the API', method: 'm', inEngine: true }) } = {}) => async (p) => {
   if (p === '/events/explain') return liveIndex();
@@ -129,7 +130,7 @@ const apiGet = ({ explain = async (type) => ({ type, meaning: 'from the API', me
 
 test('parity: the bundled copy matches what SPT serves (pack types exactly; cost-basis types are engine types there)', () => {
   assert.equal(ONCHAIN_CATALOGUE_AS_OF, FIXTURE.catalogueAsOf, 'same onchain-packs snapshot');
-  const api = new Map(FIXTURE.types.map((t) => [t.type, t]));
+  const api = new Map(FIXTURE.typeSummaries.map((t) => [t.type, t]));
   const problems = [];
   for (const e of ONCHAIN_EVENTS) {
     const a = api.get(e.id);
@@ -143,7 +144,7 @@ test('parity: the bundled copy matches what SPT serves (pack types exactly; cost
     if (a.estimated !== Boolean(e.estimated)) problems.push(`${e.id}: estimated differs`);
   }
   const bundledPackTypes = new Set(ONCHAIN_EVENTS.filter((e) => e.pack !== 'costBasis').map((e) => e.id));
-  for (const t of FIXTURE.types.filter((x) => x.pack !== null)) {
+  for (const t of FIXTURE.typeSummaries.filter((x) => x.pack !== null)) {
     if (!bundledPackTypes.has(t.type)) problems.push(`${t.type}: served in pack ${t.pack} but not bundled`);
   }
   assert.deepEqual(problems, []);
@@ -154,10 +155,10 @@ test('api: no arguments → the engine pseudo-pack plus each pack, live, with ev
   const { body } = await t.call({});
   const { calls } = t;
   assert.equal(body.definitionSource, 'api');
-  assert.equal(body.total, FIXTURE.types.length);
+  assert.equal(body.total, FIXTURE.typeSummaries.length);
   assert.deepEqual(body.packs.map((p) => p.pack), ['engine', ...FIXTURE.packs.map((p) => p.id)]);
   const engine = body.packs.find((p) => p.pack === 'engine');
-  assert.equal(engine.count, FIXTURE.types.filter((t) => t.pack === null).length);
+  assert.equal(engine.count, FIXTURE.typeSummaries.filter((t) => t.pack === null).length);
   assert.equal(engine.inEngine, true);
   assert.ok(!calls.includes('/node-types'), 'engine state comes from the API, not the node catalogue');
 });
@@ -171,10 +172,11 @@ test('api: a pack, the costBasis alias, search, and an engine type the bundle la
   assert.match(alias.aliasOf, /costBasis/);
   const hits = (await call({ search: 'hash rate' })).body;
   assert.ok(hits.count > 0 && hits.events.every((e) => /hash/i.test(`${e.id} ${e.meaning}`)));
-  const missingFromBundle = FIXTURE.types.find((t) => t.pack === null && !ONCHAIN_EVENTS.some((e) => e.id === t.type));
+  const missingFromBundle = FIXTURE.typeSummaries.find((t) => t.pack === null && !ONCHAIN_EVENTS.some((e) => e.id === t.type));
   const one = (await call({ eventType: missingFromBundle.type })).body;
   assert.equal(one.event.id, missingFromBundle.type);
-  assert.equal(one.event.meaning, 'from the API', 'the full definition is read from its explain route');
+  assert.equal(one.definition.meaning, 'from the API', 'the full definition is read from its explain route, passed through');
+  assert.equal(one.event.pack, 'engine');
   assert.equal((await call({ eventType: 'onchain.nope' })).res.isError, true);
 });
 
@@ -195,4 +197,33 @@ test('fallback: an unreadable index uses the bundle and says why; the index is c
   await t.call({ pack: 'fees' });
   await t.call({ search: 'fee' });
   assert.equal(t.calls.filter((p) => p === '/events/explain').length, 1);
+});
+
+test('fallback: an API without per-type lines (200, pre-#747) uses the bundle, says why, and is remembered briefly', async () => {
+  let indexReads = 0;
+  const get = async (p) => {
+    if (p === '/events/explain') { indexReads += 1; return { packs: FIXTURE.packs, catalogueAsOf: FIXTURE.catalogueAsOf }; }
+    return nodeTypes(['onchain.sth_realised_price.cross.below']);
+  };
+  const t = setup({ get });
+  const first = (await t.call({})).body;
+  assert.equal(first.definitionSource, 'bundled');
+  assert.match(first.apiError, /no per-type lines/);
+  await t.call({ search: 'hash' });
+  assert.equal(indexReads, 1, 'the too-old verdict is cached, so the fallback answers at once');
+});
+
+test('fallback: the engine group is `engine` (with `costBasis` as an alias) and says what the offline copy lacks', async () => {
+  const { call } = setup();
+  const all = (await call({})).body;
+  assert.equal(all.packs[0].pack, 'engine');
+  assert.ok(!all.packs.some((p) => p.pack === 'costBasis'));
+  assert.match(all.packs[0].missingFromOfflineCopy, /MVRV/);
+  const viaAlias = (await call({ pack: 'costBasis' })).body;
+  assert.equal(viaAlias.packState.pack, 'engine');
+  assert.match(viaAlias.aliasOf, /costBasis/);
+  assert.ok(viaAlias.events.every((e) => e.pack === 'engine'));
+  const one = (await call({ eventType: 'onchain.sth_realised_price.cross.below' })).body;
+  assert.equal(one.event.pack, 'engine');
+  assert.match((await call({ pack: 'nope' })).res.content[0].text, /engine/);
 });

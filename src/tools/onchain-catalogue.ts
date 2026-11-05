@@ -1,5 +1,4 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient } from '../client.js';
 import { createCatalogueLoader } from '../data/nodeCatalogue.js';
@@ -10,18 +9,17 @@ import {
 /**
  * What each Bitcoin on-chain event type means (DWLF-621; live since DWLF-646).
  *
- * The definitions come from the LIVE API: one read of GET /v2/events/explain, whose `types[]` carries a line per type
- * (SPT #747), cached 15 minutes, and GET /v2/events/{type}/explain for one type in full. So a catalogue change
+ * The definitions come from the LIVE API: one read of GET /v2/events/explain, whose `typeSummaries` carries a line per
+ * type (SPT #747), cached 15 minutes, and GET /v2/events/{type}/explain for one type in full. So a catalogue change
  * reaches agents without a release, and the engine's own types (which the bundle lacks) are covered too. Whether a
  * type is in the engine comes from the same API.
  *
  * The catalogue bundled with this package (`src/data/onchainCatalogue.ts`, generated from the onchain-packs docs) is
- * the OFFLINE FALLBACK: used when the index can't be read, or the API is older than `types[]`. Then engine state is
- * read from the node catalogue (GET /v2/node-types), as before. Every answer says which (`definitionSource`).
+ * the OFFLINE FALLBACK: used when the index can't be read, or the API is older than `typeSummaries`; then engine state
+ * comes from the node catalogue (GET /v2/node-types; null when unreadable). Every answer says which
+ * (`definitionSource`), and both name the engine's types `engine` (the bundle's `costBasis` is an alias).
  * test/onchainCatalogue.test.mjs checks the bundle against what SPT serves (test/fixtures/spt-explain-index.json).
  */
-
-type CatalogueLoader = ReturnType<typeof createCatalogueLoader>;
 
 type ApiTypeLine = {
   type: string;
@@ -33,34 +31,41 @@ type ApiTypeLine = {
   revisionClass?: string;
 };
 type ApiPack = { id: string; title: string; summary: string; types: string[] };
-export type ExplainIndex = { packs: ApiPack[]; types: ApiTypeLine[]; catalogueAsOf?: string; brkVersion?: string };
+export type ExplainIndex = { packs: ApiPack[]; typeSummaries: ApiTypeLine[]; catalogueAsOf?: string; brkVersion?: string };
 export type ExplainIndexLoader = (now?: number) => Promise<{ index: ExplainIndex } | { error: string }>;
 
 const TTL_MS = 15 * 60 * 1000;
+/** A failed or too-old read is remembered this long, so the fallback answers at once instead of re-trying each call. */
+const NEGATIVE_TTL_MS = 2 * 60 * 1000;
 /** The pseudo-pack for the types the engine itself evaluates (the API gives them no pack). */
 const ENGINE_PACK = 'engine';
 /** The bundle's name for the engine's cost-basis types, kept as an alias so older prompts still work. */
-const PACK_ALIASES: Record<string, string> = { costBasis: ENGINE_PACK };
+const BUNDLE_ENGINE_PACK = 'costBasis';
+const PACK_ALIASES: Record<string, string> = { [BUNDLE_ENGINE_PACK]: ENGINE_PACK };
 
 const isIndex = (body: unknown): body is ExplainIndex => {
   const b = body as Partial<ExplainIndex> | null;
-  return Boolean(b) && Array.isArray(b!.types) && Array.isArray(b!.packs) && b!.types!.length > 0
-    && b!.types!.every((t) => typeof t?.type === 'string' && typeof t?.meaning === 'string');
+  return Boolean(b) && Array.isArray(b!.typeSummaries) && Array.isArray(b!.packs) && b!.typeSummaries!.length > 0
+    && b!.typeSummaries!.every((t) => typeof t?.type === 'string' && typeof t?.meaning === 'string');
 };
 
-/** A loader for the explain index that caches a good read for 15 minutes; a failure is returned, never cached. */
-export const createExplainIndexLoader = (get: (path: string) => Promise<unknown>, ttlMs = TTL_MS): ExplainIndexLoader => {
-  let cached: { at: number; index: ExplainIndex } | null = null;
+/**
+ * A loader for the explain index: a good read is cached 15 minutes; a failure, or an API without per-type lines, for 2
+ * (so the offline copy answers at once meanwhile, and the live index is picked up soon after it appears).
+ */
+export const createExplainIndexLoader = (get: (path: string) => Promise<unknown>, ttlMs = TTL_MS, negativeTtlMs = NEGATIVE_TTL_MS): ExplainIndexLoader => {
+  let cached: { at: number; result: { index: ExplainIndex } | { error: string } } | null = null;
   return async (now = Date.now()) => {
-    if (cached && now - cached.at < ttlMs) return { index: cached.index };
+    if (cached && now - cached.at < ('index' in cached.result ? ttlMs : negativeTtlMs)) return cached.result;
+    let result: { index: ExplainIndex } | { error: string };
     try {
       const body = await get('/events/explain');
-      if (!isIndex(body)) return { error: 'GET /events/explain has no per-type lines (an API older than this tool)' };
-      cached = { at: now, index: body };
-      return { index: body };
+      result = isIndex(body) ? { index: body } : { error: 'GET /events/explain has no per-type lines (an API older than this tool)' };
     } catch (error) {
-      return { error: `GET /events/explain failed: ${error instanceof Error ? error.message : String(error)}` };
+      result = { error: `GET /events/explain failed: ${error instanceof Error ? error.message : String(error)}` };
     }
+    cached = { at: now, result };
+    return result;
   };
 };
 
@@ -70,23 +75,23 @@ const lineOf = (t: ApiTypeLine) => ({
   revisionClass: t.revisionClass ?? null,
 });
 
+/** The bundle's packs other than its engine group (which both paths call `engine`). */
+const BUNDLE_PACKS = Object.keys(ONCHAIN_PACKS).filter((p) => p !== BUNDLE_ENGINE_PACK);
+
 const reply = (meta: object, body: object) => ({ content: [{ type: 'text' as const, text: JSON.stringify({ ...meta, ...body }, null, 2) }] });
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
 const searchWords = (search: string) => search.toLowerCase().split(/\s+/).filter(Boolean);
 
-export function registerOnchainCatalogueTools(
-  server: McpServer,
-  client: Pick<DWLFClient, 'get'>,
-  // Per registration, unless a host passes its process-wide loaders (DWLF-622).
-  loadCatalogue: CatalogueLoader = createCatalogueLoader((path) => client.get(path)),
-  loadIndex: ExplainIndexLoader = createExplainIndexLoader((path) => client.get(path)),
-) {
+export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
+  // Per registration, cached in these closures.
+  const loadCatalogue = createCatalogueLoader((path) => client.get(path));
+  const loadIndex = createExplainIndexLoader((path) => client.get(path));
   server.tool(
     'dwlf_describe_onchain_events',
     'What does a Bitcoin on-chain event mean? Describes the `onchain.*` event types: the plain-English condition, ' +
       'the inputs and threshold, the history start, how often it has fired, the method version and the caveats. ' +
       `Packs: \`${ENGINE_PACK}\` (the types DWLF's engine evaluates: cost-basis crosses, MVRV, supply in profit, ` +
-      `STH-SOPR, cohorts, dormancy, CDD, whale transfers) and the onchain-packs (${Object.keys(ONCHAIN_PACKS).filter((p) => p !== 'costBasis').map((p) => `\`${p}\``).join(', ')}). ` +
+      `STH-SOPR, cohorts, dormancy, CDD, whale transfers) and the onchain-packs (${BUNDLE_PACKS.map((p) => `\`${p}\``).join(', ')}). ` +
       'No arguments → the packs with their summaries. `pack` → that pack\'s types. `eventType` → one type in full. ' +
       '`search` → types whose id or meaning contains the words. For one type\'s occurrences, use dwlf_explain_event.\n\n' +
       '⚠️ Read before you report:\n' +
@@ -100,7 +105,7 @@ export function registerOnchainCatalogueTools(
       'attribution or a proxy: read their caveats. `confirmedAt` on a row is when it became knowable. Frequencies are ' +
       'historical counts, not predictions.',
     {
-      pack: z.string().optional().describe(`One pack: ${ENGINE_PACK}, ${Object.keys(ONCHAIN_PACKS).filter((p) => p !== 'costBasis').join(', ')}`),
+      pack: z.string().optional().describe(`One pack: ${[ENGINE_PACK, ...BUNDLE_PACKS].join(', ')}`),
       eventType: z.string().optional().describe('One event type id, e.g. onchain.mining.hash_ribbon.capitulation.enter'),
       search: z.string().optional().describe('Words to find in an id or meaning, e.g. "hash rate" or "consolidation"'),
     },
@@ -123,7 +128,7 @@ export function registerOnchainCatalogueTools(
   /** Answers from the live index; one type in full from its own explain route. */
   async function fromApi(index: ExplainIndex, { pack, eventType, search }: { pack?: string; eventType?: string; search?: string }) {
     const meta = { definitionSource: 'api', asOf: index.catalogueAsOf ?? null, brkVersion: index.brkVersion ?? null, framing: 'Conditions, not calls.' };
-    const lines = index.types;
+    const lines = index.typeSummaries;
     const packState = (id: string) => {
       const members = lines.filter((t) => packOf(t) === id);
       const p = index.packs.find((x) => x.id === id);
@@ -141,12 +146,12 @@ export function registerOnchainCatalogueTools(
       const id = eventType.trim().split('#')[0];
       const line = lines.find((t) => t.type === id);
       if (!line) return usage(`no on-chain event type "${id}". Search with { search: "…" } or list a pack.`);
+      // `event` is the summary line (this tool's shape); `definition` is the API's, passed through unchanged.
       try {
         const definition = await client.get<Record<string, unknown>>(`/events/${encodeURIComponent(id)}/explain`);
-        return reply(meta, { event: { ...definition, id, pack: packOf(line) }, packState: packState(packOf(line)) });
+        return reply(meta, { event: lineOf(line), definition, packState: packState(packOf(line)) });
       } catch (error) {
-        // The one-line summary still answers; say the full definition could not be read.
-        const message = axios.isAxiosError(error) || error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         return reply(meta, { event: lineOf(line), detailUnavailable: `GET /events/${id}/explain failed: ${message}`, packState: packState(packOf(line)) });
       }
     }
@@ -169,7 +174,10 @@ export function registerOnchainCatalogueTools(
     return reply(meta, { packs: packIds.map(packState), total: lines.length });
   }
 
-  /** The offline fallback: the bundled catalogue, with engine state read from the node catalogue (as before). */
+  /**
+   * The offline fallback: the bundled catalogue, engine state from the node catalogue (GET /v2/node-types; null when
+   * unreadable). Its engine group is named `engine` here too, and says which engine types the offline copy lacks.
+   */
   async function fromBundle({ pack, eventType, search }: { pack?: string; eventType?: string; search?: string }, apiError: string) {
     const meta = {
       definitionSource: 'bundled', asOf: ONCHAIN_CATALOGUE_AS_OF, brkVersion: ONCHAIN_CATALOGUE_BRK_VERSION, apiError, framing: 'Conditions, not calls.',
@@ -178,13 +186,18 @@ export function registerOnchainCatalogueTools(
       const loaded = await loadCatalogue();
       return loaded.error ? null : new Set(loaded.nodes.filter((n) => !n.engineIgnored).map((n) => n.nodeType));
     };
+    const publicPack = (bundlePack: string) => (bundlePack === BUNDLE_ENGINE_PACK ? ENGINE_PACK : bundlePack);
+    const bundlePack = (publicName: string) => (publicName === ENGINE_PACK ? BUNDLE_ENGINE_PACK : publicName);
     // Each type carries its OWN engine state; a pack can be partly in the engine.
     const summary = (e: OnchainEventEntry, inEngine: Set<string> | null) => ({
-      id: e.id, pack: e.pack, meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+      id: e.id, pack: publicPack(e.pack), meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
     });
     const withPackState = (id: string, inEngine: Set<string> | null) => ({
-      pack: id, ...ONCHAIN_PACKS[id],
+      pack: publicPack(id), ...ONCHAIN_PACKS[id],
       inEngine: inEngine === null ? null : ONCHAIN_EVENTS.some((e) => e.pack === id && inEngine.has(e.id)),
+      ...(id === BUNDLE_ENGINE_PACK ? {
+        missingFromOfflineCopy: 'the offline copy has only the engine\'s cost-basis types: MVRV, supply in profit, STH-SOPR, cohorts, dormancy, CDD and whale transfers are described only by the live API',
+      } : {}),
     });
 
     if (eventType !== undefined) {
@@ -192,13 +205,21 @@ export function registerOnchainCatalogueTools(
       const entry = ONCHAIN_EVENTS.find((e) => e.id === id);
       if (!entry) return usage(`no on-chain event type "${id}" in this package's offline copy. Search with { search: "…" } or list a pack.`);
       const inEngine = await engineTypes();
-      return reply(meta, { event: { ...entry, inEngine: inEngine === null ? null : inEngine.has(entry.id) }, packState: withPackState(entry.pack, inEngine) });
+      return reply(meta, {
+        event: { ...entry, pack: publicPack(entry.pack), inEngine: inEngine === null ? null : inEngine.has(entry.id) },
+        packState: withPackState(entry.pack, inEngine),
+      });
     }
     if (pack !== undefined) {
-      const id = pack.trim() === ENGINE_PACK ? 'costBasis' : pack.trim();
-      if (!Object.hasOwn(ONCHAIN_PACKS, id)) return usage(`unknown pack "${pack.trim()}"; one of ${Object.keys(ONCHAIN_PACKS).join(', ')}.`);
+      const asked = pack.trim();
+      const id = bundlePack(Object.hasOwn(PACK_ALIASES, asked) ? PACK_ALIASES[asked] : asked);
+      if (!Object.hasOwn(ONCHAIN_PACKS, id)) return usage(`unknown pack "${asked}"; one of ${[ENGINE_PACK, ...BUNDLE_PACKS].join(', ')}.`);
       const inEngine = await engineTypes();
-      return reply(meta, { packState: withPackState(id, inEngine), events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map((e) => summary(e, inEngine)) });
+      return reply(meta, {
+        packState: withPackState(id, inEngine),
+        ...(asked === BUNDLE_ENGINE_PACK ? { aliasOf: `"${asked}" is now "${ENGINE_PACK}"` } : {}),
+        events: ONCHAIN_EVENTS.filter((e) => e.pack === id).map((e) => summary(e, inEngine)),
+      });
     }
     if (search !== undefined) {
       const words = searchWords(search);
@@ -208,6 +229,8 @@ export function registerOnchainCatalogueTools(
       return reply(meta, { search, count: hits.length, events: hits.slice(0, 50).map((e) => summary(e, inEngine)), truncated: hits.length > 50 });
     }
     const inEngine = await engineTypes();
-    return reply(meta, { packs: Object.keys(ONCHAIN_PACKS).map((p) => withPackState(p, inEngine)), total: ONCHAIN_EVENTS.length });
+    // The engine group first, as the live answer lists it.
+    const order = [BUNDLE_ENGINE_PACK, ...BUNDLE_PACKS];
+    return reply(meta, { packs: order.map((p) => withPackState(p, inEngine)), total: ONCHAIN_EVENTS.length });
   }
 }

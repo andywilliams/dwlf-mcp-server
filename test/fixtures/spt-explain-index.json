@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/gen-spt-explain-fixture.mjs",
- "source": "serverless-portfolio-tracker@66552ec src/services/eventExplain.js listExplainable()",
+ "source": "serverless-portfolio-tracker@49f1ffa src/services/eventExplain.js listExplainable()",
  "catalogueAsOf": "2026-11-03",
  "brkVersion": "0.12.2",
  "packs": [
@@ -159,7 +159,7 @@
    ]
   }
  ],
- "types": [
+ "typeSummaries": [
   {
    "type": "onchain.mvrv.deep_value.enter",
    "pack": null,
