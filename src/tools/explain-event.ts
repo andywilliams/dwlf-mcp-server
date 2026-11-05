@@ -56,7 +56,8 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '- `published` rows are history DWLF served late (a backfill): never report them as recent firings.\n' +
       '- Check `occurrences.responseVersion`. 2 = the bucket shape above. MISSING = an older DWLF API, where `fired` ' +
       'and `revised` are plain arrays and `fired` mixes real firings with late-published history (a backfill): then ' +
-      'report only the `fired` rows whose `date` is on or after `since` as firings, and say that the API is older.',
+      'report as firings only the `fired` rows whose `onchain.confirmedAt` (else `date`) is on or after `since`, the same ' +
+      'rule as version 2, and say that the API is older.',
     {
       eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose (a `#…` row-key suffix is ignored)'),
       date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
