@@ -6,7 +6,7 @@ import { ONCHAIN_EVENTS, ONCHAIN_PACKS, ONCHAIN_CATALOGUE_AS_OF } from '../dist/
 
 // DWLF-621 / DWLF-646: dwlf_describe_onchain_events answers from the LIVE explain index (GET /events/explain), and
 // from the bundled catalogue when that can't be read. Most tests below run the FALLBACK: their `get` answers only
-// /node-types (an API without `types[]`); the "api:" tests serve an index built from SPT's fixture.
+// /node-types (an API without `typeSummaries`); the "api:" tests serve an index built from SPT's fixture.
 // The engine's live node catalogue (GET /node-types): by default it lists one cost-basis type and no pack type.
 const nodeTypes = (ids) => ({ nodeTypes: ids.map((id) => ({ id, label: id, category: 'onchain', description: '', direction: 'neutral', inputs: 1, outputs: 1, parameters: [], usedIn: ['event'] })) });
 const olderApi = async (p) => {
@@ -79,17 +79,19 @@ test('the engine catalogue is read once and cached across calls', async () => {
   assert.equal((await t.call({ search: 'hash' })).body.count > 0, true);
 });
 
-test('one type in full; a key suffix is ignored; an unknown id is a usage error', async () => {
+test('fallback, one type: summary line + full definition; a key suffix is ignored; an id the copy lacks is no usage error', async () => {
   const { call } = setup();
   const { body } = await call({ eventType: 'onchain.mining.hash_ribbon.capitulation.enter' });
   assert.equal(body.event.pack, 'mining');
-  assert.ok(body.event.meaning && body.event.caveats !== undefined);
+  assert.ok(body.event.meaning && body.definition.caveats !== undefined);
   const dca = ONCHAIN_EVENTS.find((e) => e.pack === 'dca');
   const suffixed = await call({ eventType: `${dca.id}#cohort=2019-01-01:weekly` });
   assert.equal(suffixed.body.event.id, dca.id);
-  const bad = await call({ eventType: 'onchain.nope' });
-  assert.equal(bad.res.isError, true);
-  assert.match(bad.res.content[0].text, /^Usage: no on-chain event type/);
+  // Offline, the copy can't tell "no such type" from "a type only the live API has": it says so, not "Usage".
+  const unknown = await call({ eventType: 'onchain.nope' });
+  assert.equal(unknown.res.isError, undefined);
+  assert.equal(unknown.body.event, null);
+  assert.match(unknown.body.detailUnavailable, /offline copy/);
 });
 
 test('a pack, a search, and selector mixing refused', async () => {
@@ -218,12 +220,35 @@ test('fallback: the engine group is `engine` (with `costBasis` as an alias) and 
   const all = (await call({})).body;
   assert.equal(all.packs[0].pack, 'engine');
   assert.ok(!all.packs.some((p) => p.pack === 'costBasis'));
-  assert.match(all.packs[0].missingFromOfflineCopy, /MVRV/);
+  assert.match(all.packs[0].missingFromOfflineCopy, /cohort/);
+  assert.doesNotMatch(all.packs[0].missingFromOfflineCopy, /MVRV|SOPR|supply in profit/, 'those ARE bundled');
   const viaAlias = (await call({ pack: 'costBasis' })).body;
   assert.equal(viaAlias.packState.pack, 'engine');
   assert.match(viaAlias.aliasOf, /costBasis/);
   assert.ok(viaAlias.events.every((e) => e.pack === 'engine'));
   const one = (await call({ eventType: 'onchain.sth_realised_price.cross.below' })).body;
   assert.equal(one.event.pack, 'engine');
+  assert.ok(one.definition.caveats !== undefined, 'the full entry is `definition`, as in the live answer');
   assert.match((await call({ pack: 'nope' })).res.content[0].text, /engine/);
+  // A type only the live API knows: not a usage error, and the reason is there.
+  const gap = await call({ eventType: 'onchain.cdd.spike' });
+  assert.equal(gap.res.isError, undefined);
+  assert.equal(gap.body.event, null);
+  assert.ok(gap.body.apiError && gap.body.detailUnavailable);
+});
+
+test('index loader: a too-old verdict lasts the short TTL, then the live index is picked up and held the long one', async () => {
+  const { createExplainIndexLoader } = await import('../dist/tools/onchain-catalogue.js');
+  let reads = 0;
+  const get = async () => { reads += 1; return reads === 1 ? { packs: [] } : { packs: [], typeSummaries: [{ type: 'onchain.x', meaning: 'm' }] }; };
+  const load = createExplainIndexLoader(get, 1000, 100);
+  assert.ok('error' in await load(0));
+  assert.ok('error' in await load(99));
+  assert.equal(reads, 1);
+  assert.ok('index' in await load(100));
+  assert.equal(reads, 2);
+  await load(1099);
+  assert.equal(reads, 2, 'a good read holds the long TTL');
+  await load(1100);
+  assert.equal(reads, 3);
 });

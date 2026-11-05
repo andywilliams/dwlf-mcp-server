@@ -61,11 +61,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
-  `types[]` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
+  `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
   state (`inEngine`) comes from the same API, and the engine's own types are a pseudo-pack, `engine` (the bundle's
   `costBasis` is accepted as its alias). **The bundled copy is the offline fallback:** `src/data/onchainCatalogue.ts`,
   GENERATED from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs` (never edit it by hand), used only when
-  the index can't be read or the API predates `types[]`; then `inEngine` is read from `GET /v2/node-types` as before.
+  the index can't be read or the API predates `typeSummaries`; then `inEngine` is read from `GET /v2/node-types` as before.
   Every answer says which (`definitionSource`), and both paths name the engine's types `engine`. A failed or too-old
   index read is remembered 2 minutes, so the fallback answers at once. `test/onchainCatalogue.test.mjs` checks the
   bundle against what SPT serves (`test/fixtures/spt-explain-index.json`, from `scripts/gen-spt-explain-fixture.mjs`):

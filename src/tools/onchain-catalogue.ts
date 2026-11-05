@@ -92,7 +92,9 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       'the inputs and threshold, the history start, how often it has fired, the method version and the caveats. ' +
       `Packs: \`${ENGINE_PACK}\` (the types DWLF's engine evaluates: cost-basis crosses, MVRV, supply in profit, ` +
       `STH-SOPR, cohorts, dormancy, CDD, whale transfers) and the onchain-packs (${BUNDLE_PACKS.map((p) => `\`${p}\``).join(', ')}). ` +
-      'No arguments → the packs with their summaries. `pack` → that pack\'s types. `eventType` → one type in full. ' +
+      'No arguments → the packs with their summaries. `pack` → that pack\'s types. `eventType` → one type: `event` (its ' +
+      'summary line) and `definition` (the full definition: inputs, threshold, caveats, history; `detailUnavailable` ' +
+      'says why when it could not be read). ' +
       '`search` → types whose id or meaning contains the words. For one type\'s occurrences, use dwlf_explain_event.\n\n' +
       '⚠️ Read before you report:\n' +
       '- `definitionSource`: `api` = read live from DWLF; `bundled` = this package\'s offline copy (dated `asOf`), used ' +
@@ -186,33 +188,34 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       const loaded = await loadCatalogue();
       return loaded.error ? null : new Set(loaded.nodes.filter((n) => !n.engineIgnored).map((n) => n.nodeType));
     };
-    const publicPack = (bundlePack: string) => (bundlePack === BUNDLE_ENGINE_PACK ? ENGINE_PACK : bundlePack);
-    const bundlePack = (publicName: string) => (publicName === ENGINE_PACK ? BUNDLE_ENGINE_PACK : publicName);
+    const toPublicPack = (bundleName: string) => (bundleName === BUNDLE_ENGINE_PACK ? ENGINE_PACK : bundleName);
+    const toBundlePack = (publicName: string) => (publicName === ENGINE_PACK ? BUNDLE_ENGINE_PACK : publicName);
     // Each type carries its OWN engine state; a pack can be partly in the engine.
     const summary = (e: OnchainEventEntry, inEngine: Set<string> | null) => ({
-      id: e.id, pack: publicPack(e.pack), meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+      id: e.id, pack: toPublicPack(e.pack), meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
     });
     const withPackState = (id: string, inEngine: Set<string> | null) => ({
-      pack: publicPack(id), ...ONCHAIN_PACKS[id],
+      pack: toPublicPack(id), ...ONCHAIN_PACKS[id],
       inEngine: inEngine === null ? null : ONCHAIN_EVENTS.some((e) => e.pack === id && inEngine.has(e.id)),
       ...(id === BUNDLE_ENGINE_PACK ? {
-        missingFromOfflineCopy: 'the offline copy has only the engine\'s cost-basis types: MVRV, supply in profit, STH-SOPR, cohorts, dormancy, CDD and whale transfers are described only by the live API',
+        missingFromOfflineCopy: 'the engine\'s cohort-supply, dormancy, CDD and whale-transfer types are described only by the live API',
       } : {}),
     });
 
     if (eventType !== undefined) {
       const id = eventType.trim().split('#')[0];
       const entry = ONCHAIN_EVENTS.find((e) => e.id === id);
-      if (!entry) return usage(`no on-chain event type "${id}" in this package's offline copy. Search with { search: "…" } or list a pack.`);
+      // Not a usage error: the type may well exist, and only the live API (unreadable now) would know.
+      if (!entry) {
+        return reply(meta, { event: null, detailUnavailable: `"${id}" is not in this package's offline copy, and the live API could not be read (apiError)` });
+      }
       const inEngine = await engineTypes();
-      return reply(meta, {
-        event: { ...entry, pack: publicPack(entry.pack), inEngine: inEngine === null ? null : inEngine.has(entry.id) },
-        packState: withPackState(entry.pack, inEngine),
-      });
+      // The same shape as the live answer: the summary line as `event`, the full entry as `definition`.
+      return reply(meta, { event: summary(entry, inEngine), definition: { ...entry, pack: toPublicPack(entry.pack) }, packState: withPackState(entry.pack, inEngine) });
     }
     if (pack !== undefined) {
       const asked = pack.trim();
-      const id = bundlePack(Object.hasOwn(PACK_ALIASES, asked) ? PACK_ALIASES[asked] : asked);
+      const id = toBundlePack(Object.hasOwn(PACK_ALIASES, asked) ? PACK_ALIASES[asked] : asked);
       if (!Object.hasOwn(ONCHAIN_PACKS, id)) return usage(`unknown pack "${asked}"; one of ${[ENGINE_PACK, ...BUNDLE_PACKS].join(', ')}.`);
       const inEngine = await engineTypes();
       return reply(meta, {
