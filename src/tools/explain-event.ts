@@ -37,7 +37,7 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '(can this event\'s history change under you, and why: immutable / oracle / model / estimated), ' +
       '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
       'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
-      'changed, as three disjoint buckets placed by the day a row became knowable (`confirmedAt`; an on-chain row ' +
+      'changed, as three disjoint buckets placed by the day a row became knowable (`onchain.confirmedAt`; an on-chain row ' +
       'dated D is confirmed on D+1): `fired` (knowable on or after `since`), `published` (knowable before `since` but ' +
       'first served on or after it, e.g. a backfill: new to you, NOT a firing) and `revised` (served before `since`, ' +
       'restated on or after it). Each bucket is { count, firstDated, lastDated, rows (the newest), truncated }: quote ' +
