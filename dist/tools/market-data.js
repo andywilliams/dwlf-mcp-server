@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 const DEFAULT_CANDLE_LIMIT = 50;
@@ -275,7 +276,9 @@ export function registerMarketDataTools(server, client) {
                         page = await fetchPage(cursor);
                     }
                     catch (error) {
-                        if (client.remainingMs() < PAGE_BUDGET_MS) {
+                        // Only a page that ran out of time: a 429, a 401 or a 500 is the tool's error, not "stopped for time".
+                        const timedOut = axios.isAxiosError(error) && ['ECONNABORTED', 'ETIMEDOUT', 'ERR_CANCELED'].includes(error.code ?? '');
+                        if (timedOut && client.remainingMs() < PAGE_BUDGET_MS) {
                             stoppedForTime = true;
                             break;
                         }

@@ -11,7 +11,8 @@ import { BLOCK_TOOLS } from '../dist/profiles.js';
 import { DWLFClient } from '../dist/client.js';
 import { createTokenVerifier, AuthServerUnavailableError, InvalidTokenError } from '../dist/hosted/auth.js';
 import { logLine } from '../dist/hosted/lambda.js';
-import { errors } from 'jose';
+import { errors, createRemoteJWKSet, SignJWT, generateKeyPair } from 'jose';
+import { createServer } from 'node:http';
 
 // DWLF-622 hosted MCP: the pieces under the handler.
 
@@ -268,6 +269,31 @@ test('verifier: a JWKS timeout, a non-200 JWKS or a network failure → AuthServ
   }
   const noKey = createTokenVerifier(cfg, async () => { throw new errors.JWKSNoMatchingKey(); });
   await assert.rejects(noKey(token), InvalidTokenError);
+});
+
+test("verifier against jose's REAL remote key set: a 500, a non-JSON body and a hang are each 'unavailable', not 'invalid'", async () => {
+  // BND-2: the 503-vs-401 split leans on how jose reports a remote JWKS failure. Pin it on the real thing.
+  const modes = ['500', 'html', 'hang'];
+  let mode = '';
+  const server = createServer((req, res) => {
+    if (mode === '500') { res.writeHead(500); res.end('boom'); return; }
+    if (mode === 'html') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<html>'); return; }
+    // hang: never answer (the set's timeout fires)
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  try {
+    const { privateKey } = await generateKeyPair('ES256');
+    const cfg = { issuer: 'https://auth.test', jwksUri: 'https://unused', resource: 'https://mcp.test/mcp' };
+    const token = await new SignJWT({ client_id: 'c' }).setProtectedHeader({ alg: 'ES256', typ: 'at+jwt', kid: 'k1' })
+      .setIssuer(cfg.issuer).setAudience(cfg.resource).setSubject('s').setIssuedAt().setExpirationTime('5m').sign(privateKey);
+    for (mode of modes) {
+      const keys = createRemoteJWKSet(new URL(`http://127.0.0.1:${server.address().port}/jwks`), { timeoutDuration: 300, cooldownDuration: 0 });
+      await assert.rejects(createTokenVerifier(cfg, keys)(token), AuthServerUnavailableError, mode);
+    }
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
 });
 
 test('logLine: one bare JSON object per line, no runtime prefix', () => {

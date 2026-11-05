@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
@@ -319,7 +320,9 @@ export function registerMarketDataTools(
               // eslint-disable-next-line no-await-in-loop
               page = await fetchPage(cursor);
             } catch (error) {
-              if (client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
+              // Only a page that ran out of time: a 429, a 401 or a 500 is the tool's error, not "stopped for time".
+              const timedOut = axios.isAxiosError(error) && ['ECONNABORTED', 'ETIMEDOUT', 'ERR_CANCELED'].includes(error.code ?? '');
+              if (timedOut && client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
               throw error;
             }
             pagesFetched += 1;

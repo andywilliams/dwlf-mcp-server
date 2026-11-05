@@ -34,7 +34,15 @@ before(async () => {
     if (url.pathname.startsWith('/v2/regime/')) return json(res, 200, { regime: 'bull', symbol: url.pathname.split('/').pop() });
     if (url.pathname === '/v2/events') {
       const page = Number(url.searchParams.get('cursor')?.slice(1) ?? 0);
-      return setTimeout(() => json(res, 200, { events: [{ page }], cursor: `c${page + 1}` }), 700);
+      const scenario = url.searchParams.get('customEventId');
+      const next = { events: [{ page }], cursor: `c${page + 1}` };
+      // ce-slow2: page 1 is quick, page 2 hangs past any deadline. ce-429: page 2 is refused by the plan, late.
+      if (scenario === 'ce-slow2') return setTimeout(() => json(res, 200, next), page === 0 ? 50 : 10_000);
+      if (scenario === 'ce-429') {
+        if (page === 0) return setTimeout(() => json(res, 200, next), 50);
+        return setTimeout(() => json(res, 429, { error: 'Daily limit reached', upgradeUrl: 'https://block.dwlf.co.uk/pricing' }), 1700);
+      }
+      return setTimeout(() => json(res, 200, next), 700);
     }
     if (url.pathname === '/v2/quotes') {
       return json(res, 429, { success: false, error: 'Daily limit reached', upgradeUrl: 'https://block.dwlf.co.uk/pricing', plans: [] });
@@ -402,4 +410,25 @@ test('dwlf_get_events under the deadline: stops auto-paging in time and returns 
   assert.match(body.filtersApplied.paginationHint, /time limit/);
   assert.ok(body.cursor, 'a cursor to carry on from');
   assert.ok(body.events.length >= 2 && body.filtersApplied.pagesFetched === body.events.length);
+});
+
+test('dwlf_get_events: a page that runs out of time ends paging with what it has (the catch path)', async () => {
+  const { handler } = setup({ callDeadlineMs: 4500, upstreamTimeoutMs: 4000 });
+  const started = Date.now();
+  const res = await call(handler, 'dwlf_get_events', { customEventId: 'ce-slow2', days: 2000 }, { token: await sign() });
+  const body = JSON.parse(await textOf(res));
+  assert.ok(Date.now() - started < 4500, 'answered before the deadline');
+  assert.equal(body.filtersApplied.incomplete, true);
+  assert.match(body.filtersApplied.paginationHint, /time limit/);
+  assert.deepEqual(body.events, [{ page: 0 }]);
+  assert.equal(body.cursor, 'c1');
+});
+
+test('dwlf_get_events: a late 429 on a later page is the tool error (with the upgrade URL), not "stopped for time"', async () => {
+  const { handler } = setup({ callDeadlineMs: 4500, upstreamTimeoutMs: 4000 });
+  const res = await call(handler, 'dwlf_get_events', { customEventId: 'ce-429', days: 2000 }, { token: await sign() });
+  const text = await textOf(res);
+  assert.match(text, /HTTP 429/);
+  assert.match(text, /upgrade at https:\/\/block\.dwlf\.co\.uk\/pricing/);
+  assert.doesNotMatch(text, /time limit/);
 });
