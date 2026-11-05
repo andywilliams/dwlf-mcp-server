@@ -19,10 +19,9 @@ const PRICING_URL = 'https://block.dwlf.co.uk/pricing/';
 /** API calls an MCP tool makes, so a step can name the tool instead of an HTTP call the agent cannot send. */
 const TOOL_FOR_CALL: Record<string, string> = {
   'POST /v2/agent/register': 'dwlf_register_agent',
-  // No tool of its own: registering the same email again re-sends the activation email.
-  'POST /v2/agent/resend-activation': 'dwlf_register_agent (same email: it re-sends the activation email)',
+  // No tool of its own: registering the same email again (disclaimer accepted, as the first time) re-sends the email.
+  'POST /v2/agent/resend-activation': 'dwlf_register_agent (same email, disclaimerAccepted and disclaimerVersion as before: it re-sends the activation email)',
   'GET /v2/quotas/my': 'dwlf_get_quotas',
-  'GET /v2/me': 'dwlf_get_quotas',
   'GET /v2/subscriptions': 'dwlf_list_subscriptions',
   'POST /v2/subscriptions': 'dwlf_create_subscription',
 };
@@ -32,7 +31,7 @@ type Body = Record<string, unknown> | undefined;
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
-const isNextStep = (v: unknown): v is NextStep =>
+export const isNextStep = (v: unknown): v is NextStep =>
   Boolean(v) && typeof v === 'object' && typeof (v as NextStep).action === 'string';
 
 /**
@@ -74,7 +73,8 @@ export function nextStepFor(status: number, body: Body, deployment: Deployment =
     return {
       action:
         'Ask your user to open the activation email DWLF sent them and click the link, then retry. ' +
-        'If it did not arrive, call dwlf_register_agent again with the same email to resend it.',
+        'If it did not arrive, call dwlf_register_agent again with the same email, disclaimerAccepted and ' +
+        'disclaimerVersion as before: it re-sends the email and makes no new key.',
       call: 'dwlf_register_agent',
       url: GETTING_STARTED_URL,
     };

@@ -7,7 +7,8 @@ import { registrationBody, disclaimerFromError, describeRegistration } from '../
 import { registerCustomEventTools } from '../dist/tools/custom-events.js';
 import { registerExplainEventTools } from '../dist/tools/explain-event.js';
 import { registerSemanticTools } from '../dist/tools/semantic.js';
-import { searchText } from '../dist/tools/onchain-catalogue.js';
+import { registerOnchainCatalogueTools } from '../dist/tools/onchain-catalogue.js';
+import { DWLFClient } from '../dist/client.js';
 import { createCatalogueLoader, describeNodes } from '../dist/data/nodeCatalogue.js';
 import { STRATEGY_NODES } from '../dist/data/strategyNodeMetadata.js';
 import { PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
@@ -71,11 +72,13 @@ test('step 1: the API\'s disclaimer 400 becomes the text to show the user, and h
   assert.match(text, /do not accept on their behalf/);
   assert.match(text, /Not advice\./);
   assert.equal(disclaimerFromError(axios400({ error: 'Invalid email format' })), null);
+  assert.match(disclaimerFromError(axios400({ error: { code: 'DISCLAIMER_REQUIRED' }, disclaimer: { version: '2' } })), /"2"/, 'keyed on the payload, not the wording');
   assert.equal(disclaimerFromError(new Error('x')), null);
 });
 
 test('the register answer ends with what to do next', () => {
-  assert.match(describeRegistration({ apiKey: 'k', nextStep: { action: 'Save it.', call: 'GET /v2/me' } }), /Next: Save it\. Call: dwlf_get_quotas\./);
+  assert.match(describeRegistration({ apiKey: 'k', nextStep: { action: 'Save it.', call: 'GET /v2/me' } }), /Next: Save it\. Call: GET \/v2\/me\./);
+  assert.match(describeRegistration({ apiKey: 'k', nextStep: 'not a step' }), /activation link/, 'a malformed nextStep falls back');
   assert.match(describeRegistration({ apiKey: 'k' }), /activation link/);
   assert.match(describeRegistration({ activationStatus: 'pending_activation' }), /No new key/);
 });
@@ -153,23 +156,46 @@ test('category condition lists by name; catalogueCategory gives one family in fu
   assert.equal(full.nodes[0].description, 'd');
 });
 
-test('a pack (catalogue-only) on-chain type is not "Unknown nodeType": it says where it is described', async () => {
+test('a real catalogue-only on-chain type says where it is described; a made-up one is just unknown', async () => {
   const catalogue = await createCatalogueLoader(async () => catalogueBody)(0);
-  const { error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'onchain.fees.backlog.enter' });
+  const { error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'onchain.quantum.exposed_share.cross.above' });
   assert.match(error.error, /not a node the engine can evaluate/);
   assert.match(error.hint, /dwlf_explain_event/);
   assert.match(error.hint, /catalogueCategory: "onchain"/);
+  assert.match(describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'onchain.made.up' }).error.error, /Unknown nodeType/);
   assert.match(describeNodes({ local: STRATEGY_NODES, catalogue, nodeType: 'made.up' }).error.error, /Unknown nodeType/);
+});
+
+test('an unknown catalogueCategory names the families, rather than an empty list', async () => {
+  const catalogue = await createCatalogueLoader(async () => catalogueBody)(0);
+  const { error } = describeNodes({ local: STRATEGY_NODES, catalogue, category: 'condition', catalogueCategory: 'on-chain' });
+  assert.match(error.hint, /onchain/);
+});
+
+test('the client appends the Next: line to a refused call; hosted says reconnect', async () => {
+  const refuse = (c) => { c.http.defaults.adapter = async (config) => {
+    const e = new AxiosError('Request failed with status code 401', 'ERR_BAD_REQUEST', config);
+    e.response = { status: 401, data: { message: 'Unauthorized' }, headers: {}, statusText: '', config };
+    throw e;
+  }; return c; };
+  const stdio = await refuse(new DWLFClient({ apiKey: 'k' })).get('/x').catch((e) => e.message);
+  assert.match(stdio, /^HTTP 401 — Unauthorized\nNext: .*DWLF_API_KEY/s);
+  const hosted = await refuse(new DWLFClient({ apiKey: 'k', deployment: 'hosted' })).get('/x').catch((e) => e.message);
+  assert.match(hosted, /Next: .*reconnect DWLF/s);
 });
 
 // ---- search and instructions ------------------------------------------------------------------------------------
 
-test('describe search finds STH types by the words people use', () => {
-  const has = (id, q) => q.toLowerCase().split(/\s+/).every((w) => searchText(id, '').includes(w));
-  assert.ok(has('onchain.sth_sopr.lose', 'short-term holder'));
-  assert.ok(has('onchain.sth_sopr.lose', 'capitulation'));
-  assert.ok(has('onchain.sth_realised_price.cross.below', 'STH cost basis'));
-  assert.ok(!has('onchain.lth_realised_price.cross.below', 'short-term holder'));
+test('describe search finds STH types by the words people use, on the right side', async () => {
+  const tools = {};
+  const down = async () => { throw new Error('offline'); };
+  registerOnchainCatalogueTools({ tool: (n, _d, _s, fn) => { tools[n] = fn; } }, { get: down });
+  const ids = async (search) => JSON.parse((await tools.dwlf_describe_onchain_events({ search })).content[0].text).events.map((e) => e.id);
+  assert.ok((await ids('short-term holder')).includes('onchain.sth_sopr.lose'));
+  assert.ok((await ids('capitulation')).includes('onchain.sth_sopr.lose'));
+  assert.ok((await ids('STH cost basis')).includes('onchain.sth_realised_price.cross.below'));
+  assert.ok(!(await ids('selling at a loss')).includes('onchain.sth_sopr.reclaim'), 'a direction word stays on its side');
+  assert.ok(!(await ids('short-term holder')).includes('onchain.lth_realised_price.cross.below'));
 });
 
 test('the Block profile instructions carry the account and key facts in one place', () => {

@@ -26,8 +26,8 @@ const isUnknownType = (error: unknown) => {
   return data?.code === 'UNKNOWN_EVENT_TYPE' || data?.error?.code === 'UNKNOWN_EVENT_TYPE';
 };
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
-/** With `since`, rows listed per bucket unless the caller asks (DWLF-685: 50 rows ran to 60-65k characters). */
-export const SINCE_ROWS_DEFAULT = 10;
+/** With `since`, rows listed per bucket unless the caller asks: enough to read, small enough to fit (DWLF-685). */
+const SINCE_ROWS_DEFAULT = 10;
 
 const reply = (body: Json) => ({ content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }] });
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });

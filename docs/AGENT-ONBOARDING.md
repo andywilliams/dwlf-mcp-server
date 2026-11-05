@@ -133,7 +133,9 @@ The MCP server includes a `dwlf_register_agent` tool for programmatic account cr
 
 Two steps: the first call returns the disclaimer text for the user to read. Only if they accept, call again with
 `disclaimerAccepted: true` and the `disclaimerVersion` it named. That returns the API key (shown once); it works after
-the user clicks the emailed activation link. `product` defaults to `block`. Then reconfigure your MCP client with the key.
+the user clicks the emailed activation link. `product` defaults to the server's profile (`block` under `--profile block`,
+a classic DWLF account under the default `full`); pass `product: "block"` for a Block account. Then reconfigure your MCP
+client with the key.
 
 ## Authentication Flow
 
@@ -164,7 +166,7 @@ If `DWLF_API_KEY` is not set:
 
 2. **One API Key = One Account**: The API key determines which account you're using. Same key across REST and MCP = same account.
 
-3. **Email Verification**: While not required for basic features, verifying your email unlocks compute-intensive features like backtests and evaluations.
+3. **Activation**: the key refuses every call (403 `ACCOUNT_NOT_ACTIVATED`) until the user clicks the activation link emailed to them.
 
 4. **Security**: Never hardcode API keys in your code. Use environment variables or config files (excluded from version control).
 
@@ -204,17 +206,17 @@ This returns your account details including `accountId`.
 ```bash
 #!/bin/bash
 
-# Step 1: Register new agent account
+# Step 1: Register (the user must have read and accepted the disclaimer: see "Complete Onboarding Flow" above)
+DISCLAIMER_VERSION=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
+  -H "Content-Type: application/json" -d '{"email": "bot@example.com"}' | jq -r '.disclaimer.version')
 RESPONSE=$(curl -s -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "bot@example.com",
-    "agentId": "my-bot",
-    "purpose": "Trading automation"
-  }')
+  -d "{\"email\": \"bot@example.com\", \"agentId\": \"my-bot\", \"product\": \"block\",
+       \"disclaimerAccepted\": true, \"disclaimerVersion\": \"$DISCLAIMER_VERSION\"}")
 
-# Extract API key
-API_KEY=$(echo $RESPONSE | jq -r '.apiKey')
+# Extract API key (it works once the user clicks the emailed activation link)
+API_KEY=$(echo $RESPONSE | jq -r '.apiKey // empty')
+[ -n "$API_KEY" ] || { echo "No key: $RESPONSE"; exit 1; }
 echo "Registered with API key: $API_KEY"
 
 # Step 2: Configure MCP

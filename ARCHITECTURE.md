@@ -34,10 +34,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
   `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
   a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
-  accepts `{ apiKey, baseURL, timeoutMs }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
+  accepts `{ apiKey, baseURL, timeoutMs, deployment }` so the local hosted-MCP spike (`spike/`, not shipped) can build one client
   per caller. The shipped stdio server still builds exactly one client from the environment, so this boundary holds
   for everything published. A caller that passes `apiKey: undefined` gets NO key, never the operator's
-  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
+  `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`). *Since DWLF-685:* the client's error interceptor appends
+  one "Next:" line to a 401/403/429 (`src/errors.ts`): the API's own `nextStep` when it sends one, else a fallback;
+  `deployment` (`stdio` / `hosted`) picks the only deployment-specific one, a refused key. Output size is asked of
+  SPT, not cut here: `GET /custom-events?view=summary`, `/explain/occurrences?rows=`.
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
 - **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`

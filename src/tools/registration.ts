@@ -5,7 +5,7 @@
  * the flow, not an error: the tool hands the text to the agent to show its user.
  */
 import axios from 'axios';
-import { formatNextStep, NextStep } from '../errors.js';
+import { formatNextStep, isNextStep } from '../errors.js';
 
 export interface RegistrationInput {
   email: string;
@@ -32,16 +32,17 @@ export function registrationBody(input: RegistrationInput, defaultProduct: 'bloc
   return body;
 }
 
-const DISCLAIMER_ERRORS = new Set(['Disclaimer acceptance required', 'Disclaimer version mismatch']);
-
-/** Step 1's answer: the disclaimer to show the user and how to accept it, or null if `error` is anything else. */
+/**
+ * Step 1's answer: the disclaimer to show the user and how to accept it, or null if `error` is anything else. Keyed on
+ * the payload (a 400 carrying the disclaimer's version), not the error's wording.
+ */
 export function disclaimerFromError(error: unknown): string | null {
   if (!axios.isAxiosError(error) || error.response?.status !== 400) return null;
   const data = error.response.data as Record<string, any> | undefined;
-  if (!data || !DISCLAIMER_ERRORS.has(data.error) || !data.disclaimer?.version) return null;
+  if (!data?.disclaimer?.version) return null;
   const { version, title, content } = data.disclaimer;
   return [
-    'No account yet: your user must accept the DWLF disclaimer first. Show them the text below, word for word.',
+    'Your user must accept the DWLF disclaimer first. Show them the text below, word for word.',
     `If they say they accept, call dwlf_register_agent again with the same email, disclaimerAccepted: true and ` +
       `disclaimerVersion: "${version}". If they do not, stop: do not accept on their behalf.`,
     '',
@@ -53,7 +54,7 @@ export function disclaimerFromError(error: unknown): string | null {
 /** The 201/200 answer as text: the response, then what to do next. */
 export function describeRegistration(data: unknown): string {
   const obj = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
-  const step = (obj.nextStep as NextStep | undefined) || {
+  const step = isNextStep(obj.nextStep) ? obj.nextStep : {
     action: obj.apiKey
       ? 'Tell your user to keep the apiKey (it is shown once) and to click the activation link DWLF just emailed ' +
         'them. Until they do, calls return 403 ACCOUNT_NOT_ACTIVATED. Then set the key as this server\'s DWLF_API_KEY.'

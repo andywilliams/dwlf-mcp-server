@@ -99,8 +99,9 @@ const SEARCH_ALIASES: ReadonlyArray<readonly [string, string]> = [
   ['sth', 'short-term holder short term holders sth'],
   ['lth', 'long-term holder long term holders lth'],
   ['realised_price', 'realized price cost basis on-chain cost'],
-  ['sopr', 'spent output profit ratio selling at a loss profit taking'],
+  ['sopr', 'spent output profit ratio'],
   ['sth_sopr.lose', 'capitulation selling at a loss'],
+  ['sth_sopr.reclaim', 'profit taking selling at a profit'],
   ['mvrv', 'market value to realised value realized value valuation'],
   ['supply_in_profit', 'coins in profit supply in loss'],
   ['cohort.addr', 'whales whale addresses large holders'],
@@ -108,7 +109,7 @@ const SEARCH_ALIASES: ReadonlyArray<readonly [string, string]> = [
   ['cdd', 'coin days destroyed'],
 ];
 /** The text a search is matched against: id, meaning and label, plus the aliases for the id. */
-export const searchText = (id: string, meaning?: string | null, label?: string | null): string =>
+const searchText = (id: string, meaning?: string | null, label?: string | null): string =>
   [id, meaning ?? '', label ?? '', ...SEARCH_ALIASES.filter(([key]) => id.includes(key)).map(([, words]) => words)]
     .join(' ').toLowerCase();
 
