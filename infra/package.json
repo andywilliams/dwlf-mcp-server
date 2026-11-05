@@ -1,0 +1,19 @@
+{
+  "name": "@dwlf/mcp-server-hosted-infra",
+  "private": true,
+  "type": "module",
+  "description": "CDK stack for the hosted MCP endpoint (DWLF-622). Not published; deployed by hand only, with HOSTED_MCP_ENABLED off until launch.",
+  "scripts": {
+    "synth": "cdk synth",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.1139.0",
+    "aws-cdk-lib": "^2.164.0",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "@types/node": "^25.1.0"
+  }
+}

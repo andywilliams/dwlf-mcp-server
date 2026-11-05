@@ -1,6 +1,6 @@
 {
   "name": "@dwlf/mcp-server",
-  "version": "0.62.2",
+  "version": "0.63.0",
   "mcpName": "uk.co.dwlf/mcp-server",
   "description": "MCP server for DWLF market analysis platform — exposes market data, indicators, signals, strategies, backtests, portfolio, trade journal, and more as AI-accessible tools",
   "type": "module",
@@ -10,6 +10,7 @@
   },
   "files": [
     "dist",
+    "!dist/hosted",
     "README.md",
     "LICENSE"
   ],
@@ -18,7 +19,9 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:infra": "cd infra && npm ci && npm test",
+    "gen:spt-routes": "node scripts/gen-spt-routes.mjs"
   },
   "keywords": [
     "mcp",
@@ -53,7 +56,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1162.0",
+    "@aws-sdk/client-kms": "^3.1162.0",
+    "@aws-sdk/client-ssm": "^3.1162.0",
     "@types/node": "^25.1.0",
+    "jose": "^6.2.15",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }

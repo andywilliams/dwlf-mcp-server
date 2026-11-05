@@ -57,18 +57,31 @@ export function normalizeSymbol(input: string): string {
 
 export class DWLFClient {
   private http: AxiosInstance;
+  /** Epoch ms by which this client's caller must have answered (a host's per-call deadline), or null. */
+  private readonly deadlineAt: number | null;
 
   /**
-   * `options` overrides the environment for one client, so a multi-tenant host (the hosted-MCP spike, DWLF-622)
-   * can build one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server
-   * always has. Passing `apiKey` (even as undefined) means "this caller's key": the operator's env key is never
-   * used in its place. `timeoutMs` (default 30 s) lets a host keep each request under its gateway's limit.
+   * `options` overrides the environment for one client, so a multi-tenant host (the hosted MCP, DWLF-622) can build
+   * one client per caller. With no options it reads DWLF_API_URL / DWLF_API_KEY, as the stdio server always has.
+   * Passing `apiKey` (even as undefined) means "this caller's key": the operator's env key is never used in its
+   * place. `timeoutMs` (default 30 s) keeps each request under a gateway's limit; it must be a finite positive
+   * number, because axios reads 0 as "no timeout". `signal` aborts every request this client makes (a host's
+   * deadline), and `deadlineAt` (epoch ms) lets a multi-page tool stop paging in time (`remainingMs`). `quiet`
+   * drops the missing-key warning, for a host that builds keyless clients on purpose. `onErrorStatus` is told the
+   * status of every failed response (a host drops a managed key the API has revoked).
    */
-  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number } = {}) {
+  constructor(options: {
+    apiKey?: string; baseURL?: string; timeoutMs?: number; signal?: AbortSignal; deadlineAt?: number; quiet?: boolean;
+    onErrorStatus?: (status: number) => void;
+  } = {}) {
     const baseURL = options.baseURL || process.env.DWLF_API_URL || 'https://api.dwlf.co.uk';
     const apiKey = 'apiKey' in options ? options.apiKey : process.env.DWLF_API_KEY;
+    if (options.timeoutMs !== undefined && !(Number.isFinite(options.timeoutMs) && options.timeoutMs > 0)) {
+      throw new Error(`DWLFClient timeoutMs must be a finite positive number of milliseconds (got ${options.timeoutMs}).`);
+    }
+    this.deadlineAt = options.deadlineAt ?? null;
 
-    if (!apiKey) {
+    if (!apiKey && !options.quiet) {
       console.error(
         'Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.\n' +
         'For AI agents: Use the same API key from /v2/agent/register in your MCP config.\n' +
@@ -83,6 +96,7 @@ export class DWLFClient {
         ...(apiKey ? { Authorization: `ApiKey ${apiKey}` } : {}),
       },
       timeout: options.timeoutMs ?? 30000,
+      ...(options.signal ? { signal: options.signal } : {}),
     });
 
     // Surface the backend's error message, not just axios's bare "Request
@@ -95,6 +109,7 @@ export class DWLFClient {
       (error) => {
         if (axios.isAxiosError(error) && error.response) {
           const { status, data } = error.response;
+          options.onErrorStatus?.(status);
           const body = data as unknown;
           let detail: string | undefined;
           if (body && typeof body === 'object') {
@@ -108,6 +123,11 @@ export class DWLFClient {
             detail = body.slice(0, 300);
           }
           error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+          // A plan limit (DWLF-618): say where the human can raise it, so an agent can tell them. Only an https URL.
+          const upgradeUrl = (body as { upgradeUrl?: unknown } | null)?.upgradeUrl;
+          if (status === 429 && typeof upgradeUrl === 'string' && upgradeUrl.startsWith('https://')) {
+            error.message += `. This account's plan limit was reached; tell the user they can upgrade at ${upgradeUrl}`;
+          }
         }
         return Promise.reject(error);
       }
@@ -128,6 +148,11 @@ export class DWLFClient {
       }
     }
     return Object.keys(cleanParams).length > 0 ? { params: cleanParams } : {};
+  }
+
+  /** Milliseconds left before the host's deadline (Infinity with none). A paging tool stops when this runs low. */
+  remainingMs(now = Date.now()): number {
+    return this.deadlineAt === null ? Infinity : this.deadlineAt - now;
   }
 
   async get<T = unknown>(

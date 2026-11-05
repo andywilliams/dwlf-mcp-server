@@ -116,7 +116,11 @@ export function resolveProfile(argv: readonly string[], env: Record<string, stri
  * check that each profile tool exists.
  */
 export function profiledServer(server: McpServer, profile: ProfileName, registered: Set<string> = new Set()): McpServer {
-  const allowed = PROFILES[profile];
+  return filteredServer(server, PROFILES[profile], registered);
+}
+
+/** A view of `server` that registers only the tools in `allowed` (null = all). The hosted MCP's set is built on it. */
+export function filteredServer(server: McpServer, allowed: ReadonlySet<string> | null, registered: Set<string> = new Set()): McpServer {
   return new Proxy(server, {
     get(target, prop, receiver) {
       if (prop === 'tool') {

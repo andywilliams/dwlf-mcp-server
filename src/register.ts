@@ -28,9 +28,17 @@ import { registerSymbolsResource } from './resources/symbols.js';
 
 import { registerOnchainCatalogueTools } from './tools/onchain-catalogue.js';
 import { registerExplainEventTools } from './tools/explain-event.js';
+import type { CatalogueLoader } from './data/nodeCatalogue.js';
+import type { ExplainIndexLoader } from './tools/onchain-catalogue.js';
+
+/**
+ * Caches that hold nothing caller-specific, which a multi-tenant host builds once per process and passes to every
+ * per-request registration (DWLF-622). The stdio server passes none, and each module keeps its own, as before.
+ */
+export type SharedCaches = { catalogue?: CatalogueLoader; explainIndex?: ExplainIndexLoader };
 
 /** Registers every tool module and resource on `server` (which may be a profile's filtered view). */
-export function registerAll(server: McpServer, client: DWLFClient): void {
+export function registerAll(server: McpServer, client: DWLFClient, shared: SharedCaches = {}): void {
   // Register all tools — Phase 1 (read)
   registerMarketDataTools(server, client);
   registerRangeTools(server, client);
@@ -44,7 +52,7 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   registerSymbolTagTools(server, client);
 
   // Register all tools — Phase 2 (read + write)
-  registerStrategyTools(server, client);
+  registerStrategyTools(server, client, shared.catalogue);
   registerBacktestTools(server, client);
   registerPortfolioTools(server, client);
   registerTradeTools(server, client);
@@ -79,6 +87,6 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   registerSymbolsResource(server, client);
 
   // Block: the on-chain event catalogue (DWLF-621/646): definitions live from /v2/events/explain; bundled copy as the offline fallback
-  registerOnchainCatalogueTools(server, client);
+  registerOnchainCatalogueTools(server, client, shared);
   registerExplainEventTools(server, client);
 }

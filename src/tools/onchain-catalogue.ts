@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient } from '../client.js';
-import { createCatalogueLoader } from '../data/nodeCatalogue.js';
+import { createCatalogueLoader, type CatalogueLoader } from '../data/nodeCatalogue.js';
 import {
   ONCHAIN_EVENTS, ONCHAIN_PACKS, ONCHAIN_CATALOGUE_AS_OF, ONCHAIN_CATALOGUE_BRK_VERSION, type OnchainEventEntry,
 } from '../data/onchainCatalogue.js';
@@ -89,10 +89,15 @@ const reply = (meta: object, body: object) => ({ content: [{ type: 'text' as con
 const usage = (text: string) => ({ content: [{ type: 'text' as const, text: `Usage: ${text}` }], isError: true });
 const searchWords = (search: string) => search.toLowerCase().split(/\s+/).filter(Boolean);
 
-export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DWLFClient, 'get'>) {
-  // Per registration, cached in these closures.
-  const loadCatalogue = createCatalogueLoader((path) => client.get(path));
-  const loadIndex = createExplainIndexLoader((path) => client.get(path));
+export function registerOnchainCatalogueTools(
+  server: McpServer,
+  client: Pick<DWLFClient, 'get'>,
+  // Per registration, cached in these closures, unless a host passes process-wide loaders (DWLF-622): both read
+  // public, caller-independent data.
+  shared: { catalogue?: CatalogueLoader; explainIndex?: ExplainIndexLoader } = {},
+) {
+  const loadCatalogue = shared.catalogue ?? createCatalogueLoader((path) => client.get(path));
+  const loadIndex = shared.explainIndex ?? createExplainIndexLoader((path) => client.get(path));
   server.tool(
     'dwlf_describe_onchain_events',
     'What does a Bitcoin on-chain event mean? Describes the `onchain.*` event types: the plain-English condition, ' +

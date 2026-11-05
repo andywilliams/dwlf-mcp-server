@@ -25,3 +25,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# CDK (infra/, DWLF-622)
+cdk.out/
