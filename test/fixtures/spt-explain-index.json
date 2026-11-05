@@ -1,0 +1,1116 @@
+{
+ "generatedBy": "scripts/gen-spt-explain-fixture.mjs",
+ "source": "serverless-portfolio-tracker@49f1ffa src/services/eventExplain.js listExplainable()",
+ "catalogueAsOf": "2026-11-03",
+ "brkVersion": "0.12.2",
+ "packs": [
+  {
+   "id": "blockspace",
+   "title": "Blockspace demand",
+   "summary": "Who is using block space: OP_RETURN protocols (Runes, Omni, ...) by share of space and fees, and record days.",
+   "types": [
+    "onchain.blockspace.all.vsize_share_10.enter",
+    "onchain.blockspace.all.vsize_share_10.exit",
+    "onchain.blockspace.all.vsize_share_25.enter",
+    "onchain.blockspace.all.vsize_share_25.exit",
+    "onchain.blockspace.all.vsize_share_50.enter",
+    "onchain.blockspace.all.vsize_share_50.exit",
+    "onchain.blockspace.runes.vsize_share_10.enter",
+    "onchain.blockspace.runes.vsize_share_10.exit",
+    "onchain.blockspace.runes.vsize_share_25.enter",
+    "onchain.blockspace.runes.vsize_share_25.exit",
+    "onchain.blockspace.runes.vsize_share_50.enter",
+    "onchain.blockspace.runes.vsize_share_50.exit",
+    "onchain.blockspace.omni.vsize_share_10.enter",
+    "onchain.blockspace.omni.vsize_share_10.exit",
+    "onchain.blockspace.veri_block.vsize_share_10.enter",
+    "onchain.blockspace.veri_block.vsize_share_10.exit",
+    "onchain.blockspace.text.vsize_share_10.enter",
+    "onchain.blockspace.text.vsize_share_10.exit",
+    "onchain.blockspace.all.fee_share_25.enter",
+    "onchain.blockspace.all.fee_share_25.exit",
+    "onchain.blockspace.all.fee_share_50.enter",
+    "onchain.blockspace.all.fee_share_50.exit",
+    "onchain.blockspace.runes.fee_share_25.enter",
+    "onchain.blockspace.runes.fee_share_25.exit",
+    "onchain.blockspace.runes.fee_share_50.enter",
+    "onchain.blockspace.runes.fee_share_50.exit",
+    "onchain.blockspace.all.tx_high_90d",
+    "onchain.blockspace.runes.tx_high_90d",
+    "onchain.blockspace.omni.tx_high_90d",
+    "onchain.blockspace.veri_block.tx_high_90d",
+    "onchain.blockspace.text.tx_high_90d",
+    "onchain.blockspace.bare_hash.tx_high_90d",
+    "onchain.blockspace.stacks.tx_high_90d"
+   ]
+  },
+  {
+   "id": "dca",
+   "title": "DCA cohorts",
+   "summary": "Hypothetical regular-buying cohorts ('weekly since 2019'): their average buy price and when price crosses it.",
+   "types": [
+    "onchain.dca.cost_basis.cross.above",
+    "onchain.dca.cost_basis.cross.below"
+   ]
+  },
+  {
+   "id": "fees",
+   "title": "Fee windows",
+   "summary": "Per-block fee conditions for operators: cheap windows to consolidate, fee spikes, sustained backlogs.",
+   "types": [
+    "onchain.fees.consolidation_window.under_1.open",
+    "onchain.fees.consolidation_window.under_1.close",
+    "onchain.fees.consolidation_window.under_2.open",
+    "onchain.fees.consolidation_window.under_2.close",
+    "onchain.fees.consolidation_window.under_5.open",
+    "onchain.fees.consolidation_window.under_5.close",
+    "onchain.fees.spike.start",
+    "onchain.fees.spike.end",
+    "onchain.fees.backlog.start",
+    "onchain.fees.backlog.end"
+   ]
+  },
+  {
+   "id": "mining",
+   "title": "Mining",
+   "summary": "Hash rate stress, difficulty adjustments, miner revenue (Puell, hashprice, fee share) and pool concentration.",
+   "types": [
+    "onchain.mining.hash_rate.drawdown.enter",
+    "onchain.mining.hash_rate.drawdown.exit",
+    "onchain.mining.hash_rate.drop_30d.enter",
+    "onchain.mining.hash_rate.drop_30d.exit",
+    "onchain.mining.hash_ribbon.capitulation.enter",
+    "onchain.mining.hash_ribbon.capitulation.exit",
+    "onchain.mining.puell.low.enter",
+    "onchain.mining.puell.low.exit",
+    "onchain.mining.puell.high.enter",
+    "onchain.mining.puell.high.exit",
+    "onchain.mining.fee_share.high.enter",
+    "onchain.mining.fee_share.high.exit",
+    "onchain.mining.fee_share.low.enter",
+    "onchain.mining.fee_share.low.exit",
+    "onchain.mining.pool_dominance.top1_30.enter",
+    "onchain.mining.pool_dominance.top1_30.exit",
+    "onchain.mining.pool_dominance.top1_40.enter",
+    "onchain.mining.pool_dominance.top1_40.exit",
+    "onchain.mining.pool_dominance.top3_50.enter",
+    "onchain.mining.pool_dominance.top3_50.exit",
+    "onchain.mining.pool_hhi.above_015.enter",
+    "onchain.mining.pool_hhi.above_015.exit",
+    "onchain.mining.pool_hhi.above_018.enter",
+    "onchain.mining.pool_hhi.above_018.exit",
+    "onchain.mining.hashprice.low_365d",
+    "onchain.mining.difficulty.retarget",
+    "onchain.mining.difficulty.large_drop",
+    "onchain.mining.difficulty.large_rise"
+   ]
+  },
+  {
+   "id": "quantum",
+   "title": "Quantum-exposed supply",
+   "summary": "How much bitcoin sits where its public key is already visible on-chain, and when old exposed coins move.",
+   "types": [
+    "onchain.quantum.exposed_share.cross.above",
+    "onchain.quantum.exposed_share.cross.below",
+    "onchain.quantum.migration.enter",
+    "onchain.quantum.migration.exit",
+    "onchain.quantum.old_exposed_moved",
+    "onchain.quantum.old_reused_moved"
+   ]
+  },
+  {
+   "id": "regime",
+   "title": "Regime labels",
+   "summary": "BRK's ready-made market regime labels (Capital Sentiment, Rarity Meter, extremes) with change events.",
+   "types": [
+    "onchain.regime.capital_sentiment.changed",
+    "onchain.regime.capital_sentiment.raging_bull.enter",
+    "onchain.regime.capital_sentiment.bull.enter",
+    "onchain.regime.capital_sentiment.cautious_bull.enter",
+    "onchain.regime.capital_sentiment.hopeful_bull.enter",
+    "onchain.regime.capital_sentiment.early_bull.enter",
+    "onchain.regime.capital_sentiment.weak_bull.enter",
+    "onchain.regime.capital_sentiment.limbo.enter",
+    "onchain.regime.capital_sentiment.deep_bear.enter",
+    "onchain.regime.capital_sentiment.bear.enter",
+    "onchain.regime.capital_sentiment.early_bear.enter",
+    "onchain.regime.rarity.full.low.enter",
+    "onchain.regime.rarity.full.low.exit",
+    "onchain.regime.rarity.full.high.enter",
+    "onchain.regime.rarity.full.high.exit",
+    "onchain.regime.rarity.local.low.enter",
+    "onchain.regime.rarity.local.low.exit",
+    "onchain.regime.rarity.local.high.enter",
+    "onchain.regime.rarity.local.high.exit",
+    "onchain.regime.rarity.cycle.low.enter",
+    "onchain.regime.rarity.cycle.low.exit",
+    "onchain.regime.rarity.cycle.high.enter",
+    "onchain.regime.rarity.cycle.high.exit",
+    "onchain.regime.extreme.capitulation.enter",
+    "onchain.regime.extreme.capitulation.exit",
+    "onchain.regime.extreme.profit_taking.enter",
+    "onchain.regime.extreme.profit_taking.exit",
+    "onchain.regime.extreme.peak_regret.enter",
+    "onchain.regime.extreme.peak_regret.exit",
+    "onchain.regime.extreme.coins_in_loss.enter",
+    "onchain.regime.extreme.coins_in_loss.exit",
+    "onchain.regime.extreme.seller_exhaustion.enter",
+    "onchain.regime.extreme.seller_exhaustion.exit"
+   ]
+  }
+ ],
+ "typeSummaries": [
+  {
+   "type": "onchain.mvrv.deep_value.enter",
+   "pack": null,
+   "meaning": "MVRV (market value ÷ realised value, i.e. the close ÷ the average on-chain cost basis) closed below 1.0, from at or above 1.0 the day before: the close is below the average on-chain cost basis.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mvrv.deep_value.exit",
+   "pack": null,
+   "meaning": "MVRV (market value ÷ realised value, i.e. the close ÷ the average on-chain cost basis) closed back at or above 1.0, from below 1.0 the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mvrv.overheated.enter",
+   "pack": null,
+   "meaning": "MVRV (market value ÷ realised value, i.e. the close ÷ the average on-chain cost basis) closed above 3.5, from at or below 3.5 the day before: the close is more than 3.5 times the average on-chain cost basis.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mvrv.overheated.exit",
+   "pack": null,
+   "meaning": "MVRV (market value ÷ realised value, i.e. the close ÷ the average on-chain cost basis) closed back at or below 3.5, from above 3.5 the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.supply_in_profit.capitulation.enter",
+   "pack": null,
+   "meaning": "The share of supply whose creation price is below the close fell below 50%, from at or above 50% the day before: most coins are held below their creation price.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.supply_in_profit.capitulation.exit",
+   "pack": null,
+   "meaning": "The share of supply whose creation price is below the close closed back at or above 50%, from below 50% the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.sth_sopr.reclaim",
+   "pack": null,
+   "meaning": "7-day short-term-holder SOPR (value spent ÷ value at creation, outputs younger than 150 days, over a week) crossed from below 1 to at or above 1: in aggregate, short-term holders' spent coins moved at or above their creation value.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.sth_sopr.lose",
+   "pack": null,
+   "meaning": "7-day short-term-holder SOPR (value spent ÷ value at creation, outputs younger than 150 days, over a week) crossed from at or above 1 to below 1: in aggregate, short-term holders' spent coins moved below their creation value.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.realised_price.cross.above",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed above the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.realised_price.cross.below",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed below the realised price (realised cap ÷ supply: the average on-chain cost basis): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.sth_realised_price.cross.above",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed above the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.sth_realised_price.cross.below",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed below the STH realised price (the cost basis of outputs younger than 150 days): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.lth_realised_price.cross.above",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed above the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was below it, on this day at or above it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.lth_realised_price.cross.below",
+   "pack": null,
+   "meaning": "The symbol's daily close crossed below the LTH realised price (the cost basis of outputs 150 days and older): on the day before it was at or above it, on this day below it. Compared against the symbol's own stored daily close, decided by the on-chain validator from that close and the level on this day and the day before.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.addr_1k.supply_30d.rise",
+   "pack": null,
+   "meaning": "The supply held by addresses holding at least 1,000 BTC: its 30-day change crossed above its trailing-365-day 95th percentile (days strictly before this one). An address cohort, not entities: exchange and custodian wallets dominate it, and wallet consolidation moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.addr_1k.supply_30d.fall",
+   "pack": null,
+   "meaning": "The supply held by addresses holding at least 1,000 BTC: its 30-day change crossed below its trailing-365-day 5th percentile (days strictly before this one). An address cohort, not entities: exchange and custodian wallets dominate it, and wallet consolidation moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.addr_10k.supply_30d.rise",
+   "pack": null,
+   "meaning": "The supply held by addresses holding at least 10,000 BTC: its 30-day change crossed above its trailing-365-day 95th percentile (days strictly before this one). An address cohort, not entities: exchange and custodian wallets dominate it, and wallet consolidation moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.addr_10k.supply_30d.fall",
+   "pack": null,
+   "meaning": "The supply held by addresses holding at least 10,000 BTC: its 30-day change crossed below its trailing-365-day 5th percentile (days strictly before this one). An address cohort, not entities: exchange and custodian wallets dominate it, and wallet consolidation moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.utxo_1k.supply_30d.rise",
+   "pack": null,
+   "meaning": "The supply held by outputs (UTXOs) of at least 1,000 BTC: its 30-day change crossed above its trailing-365-day 95th percentile (days strictly before this one). An output (UTXO) cohort, not entities: one owner can hold many outputs, and consolidating or splitting them moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cohort.utxo_1k.supply_30d.fall",
+   "pack": null,
+   "meaning": "The supply held by outputs (UTXOs) of at least 1,000 BTC: its 30-day change crossed below its trailing-365-day 5th percentile (days strictly before this one). An output (UTXO) cohort, not entities: one owner can hold many outputs, and consolidating or splitting them moves it with no change of owner.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.dormant.awake.5y",
+   "pack": null,
+   "meaning": "The BTC value of spent outputs at least 5 years old was above its trailing-365-day 99th percentile (days strictly before this one). The amounts are exact chain records; calling the day a spike is statistical. It records that old coins moved, not who moved them or why.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.dormant.awake.10y",
+   "pack": null,
+   "meaning": "The BTC value of spent outputs at least 10 years old was above its trailing-365-day 99th percentile (days strictly before this one). The amounts are exact chain records; calling the day a spike is statistical. It records that old coins moved, not who moved them or why.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.cdd.spike",
+   "pack": null,
+   "meaning": "Coin-days destroyed (value × age, over every spent output) was above its trailing-365-day 99th percentile (days strictly before this one). The amounts are exact chain records; calling the day a spike is statistical.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.whale.large_transfer.spike",
+   "pack": null,
+   "meaning": "The day's activity in transactions whose inputs total at least 1,000 BTC was above its trailing-365-day 99th percentile (days strictly before this one). The amounts are exact chain records; calling the day a spike is statistical. Gross: change and exchange-internal moves count. Transactions, not entities: it says nothing about who sent them.",
+   "inEngine": true,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.exposed_share.cross.above",
+   "pack": "quantum",
+   "meaning": "The share of all bitcoin held in addresses whose public key is already on-chain has risen above a whole percentage point (e.g. 36 %).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.exposed_share.cross.below",
+   "pack": "quantum",
+   "meaning": "The share of all bitcoin held in addresses whose public key is already on-chain has fallen below a whole percentage point (e.g. 36 %).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.migration.enter",
+   "pack": "quantum",
+   "meaning": "Exposed bitcoin has fallen at least 3 % in 30 days: coins are leaving addresses with a visible key.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.migration.exit",
+   "pack": "quantum",
+   "meaning": "The 30-day fall in exposed bitcoin has eased back above -1.5 %.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.old_exposed_moved",
+   "pack": "quantum",
+   "meaning": "At least 1 BTC of pay-to-public-key coins untouched for 10+ years moved today (often Satoshi-era mining rewards).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.quantum.old_reused_moved",
+   "pack": "quantum",
+   "meaning": "At least 100 BTC of coins untouched for 10+ years moved today from ordinary (hashed) addresses whose public key was already visible because the address had spent before.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_rate.drawdown.enter",
+   "pack": "mining",
+   "meaning": "The network's 7-day hash rate is 20% or more below its all-time high.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_rate.drawdown.exit",
+   "pack": "mining",
+   "meaning": "Ended: has recovered to within 10% of its high.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_rate.drop_30d.enter",
+   "pack": "mining",
+   "meaning": "The 7-day hash rate fell 15% or more over 30 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_rate.drop_30d.exit",
+   "pack": "mining",
+   "meaning": "Ended: 30-day change back above -5%.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_ribbon.capitulation.enter",
+   "pack": "mining",
+   "meaning": "Hash ribbon capitulation: 30-day average hash rate fell below the 60-day average (miners switching off).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.hash_ribbon.capitulation.exit",
+   "pack": "mining",
+   "meaning": "Ended: 30-day average back above the 60-day (by 0.5 %).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.puell.low.enter",
+   "pack": "mining",
+   "meaning": "Puell multiple below 0.5: miners' daily issuance revenue is less than half its 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.puell.low.exit",
+   "pack": "mining",
+   "meaning": "Ended: Puell back to 0.75 or more.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.puell.high.enter",
+   "pack": "mining",
+   "meaning": "Puell multiple above 4: miners' daily issuance revenue is over 4x its 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.puell.high.exit",
+   "pack": "mining",
+   "meaning": "Ended: Puell back to 3.5 or less.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.fee_share.high.enter",
+   "pack": "mining",
+   "meaning": "Fees are 10 % or more of miners' block rewards over 7 days (block space in demand).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.fee_share.high.exit",
+   "pack": "mining",
+   "meaning": "Ended: fee share back under 7 %.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.fee_share.low.enter",
+   "pack": "mining",
+   "meaning": "Fees are under 1 % of miners' block rewards over 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.fee_share.low.exit",
+   "pack": "mining",
+   "meaning": "Ended: fee share back to 1.5 % or more.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top1_30.enter",
+   "pack": "mining",
+   "meaning": "One mining pool found 30 % or more of the last ~week's blocks (1,008).",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top1_30.exit",
+   "pack": "mining",
+   "meaning": "Ended: the largest pool is back under 25 %.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top1_40.enter",
+   "pack": "mining",
+   "meaning": "One mining pool found 40 % or more of the last ~week's blocks.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top1_40.exit",
+   "pack": "mining",
+   "meaning": "Ended: the largest pool is back under 35 %.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top3_50.enter",
+   "pack": "mining",
+   "meaning": "The three largest pools found half or more of the last ~week's blocks.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_dominance.top3_50.exit",
+   "pack": "mining",
+   "meaning": "Ended: top three back under 47 %.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_hhi.above_015.enter",
+   "pack": "mining",
+   "meaning": "Mining-pool concentration (Herfindahl index of the last ~week's blocks) reached 0.15 or more.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_hhi.above_015.exit",
+   "pack": "mining",
+   "meaning": "Pool concentration fell back below 0.14.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_hhi.above_018.enter",
+   "pack": "mining",
+   "meaning": "Mining-pool concentration (Herfindahl index of the last ~week's blocks) reached 0.18 or more — 'highly concentrated' under the 2023 US merger guidelines.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.pool_hhi.above_018.exit",
+   "pack": "mining",
+   "meaning": "Pool concentration fell back below 0.17.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.mining.hashprice.low_365d",
+   "pack": "mining",
+   "meaning": "Hashprice (what a petahash of mining earns per day, in USD, from subsidy plus fees) hit its lowest level in a year: miner margins are squeezed.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.difficulty.retarget",
+   "pack": "mining",
+   "meaning": "A difficulty adjustment happened (every 2,016 blocks); value = size of the change.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.difficulty.large_drop",
+   "pack": "mining",
+   "meaning": "Difficulty fell 5 % or more at a retarget (hash rate left the network).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.mining.difficulty.large_rise",
+   "pack": "mining",
+   "meaning": "Difficulty rose 10 % or more at a retarget.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_1.open",
+   "pack": "fees",
+   "meaning": "Cheap block space: the median fee has been under 1 sat/vB for 12 blocks in a row (~2 h); a window to consolidate UTXOs or batch payments.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_1.close",
+   "pack": "fees",
+   "meaning": "The cheap-fee window closed: the median fee was 1 sat/vB or more for 3 blocks.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_2.open",
+   "pack": "fees",
+   "meaning": "Cheap block space: the median fee has been under 2 sat/vB for 12 blocks in a row (~2 h); a window to consolidate UTXOs or batch payments.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_2.close",
+   "pack": "fees",
+   "meaning": "The cheap-fee window closed: the median fee was 2 sat/vB or more for 3 blocks.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_5.open",
+   "pack": "fees",
+   "meaning": "Cheap block space: the median fee has been under 5 sat/vB for 12 blocks in a row (~2 h); a window to consolidate UTXOs or batch payments.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.consolidation_window.under_5.close",
+   "pack": "fees",
+   "meaning": "The cheap-fee window closed: the median fee was 5 sat/vB or more for 3 blocks.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.spike.start",
+   "pack": "fees",
+   "meaning": "Fee spike: the 6-block median fee jumped to 4x or more the previous week's median (and at least 2 sat/vB).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.spike.end",
+   "pack": "fees",
+   "meaning": "The fee spike faded: below 2x the weekly median for 6 blocks.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.fees.backlog.start",
+   "pack": "fees",
+   "meaning": "A sustained backlog: blocks have been full for about a day while even their cheapest transactions paid 3x the recent fee floor and at least 2 sat/vB.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.fees.backlog.end",
+   "pack": "fees",
+   "meaning": "The backlog cleared: over the last day, cheap transactions got in again (or blocks were not full) in two of every three blocks.",
+   "inEngine": false,
+   "estimated": true
+  },
+  {
+   "type": "onchain.dca.cost_basis.cross.above",
+   "pack": "dca",
+   "meaning": "Price has risen back above the average purchase price of a regular-purchase cohort (e.g. 'weekly since 2019'): that cohort is back in profit.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.dca.cost_basis.cross.below",
+   "pack": "dca",
+   "meaning": "Price has fallen below the average purchase price of a regular-purchase cohort (e.g. 'weekly since 2019'): that cohort is now at a loss.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.changed",
+   "pack": "regime",
+   "meaning": "BRK's Capital Sentiment phase changed (raw, day to day). Phases place price against four references; see REGIMES.md.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.raging_bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Above all four, all-coin cost above trend' has held 3 days running (confirmed): Price is at or above all four references, and the all-coin cost basis is above the 1-year average. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Above all four' has held 3 days running (confirmed): Price is at or above all four references. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.cautious_bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Above short-term cost, under trend' has held 3 days running (confirmed): Price is at or above the short-term holders' cost basis but below the 1-year average. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.hopeful_bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Under short-term cost, above trend' has held 3 days running (confirmed): Price is below the short-term holders' cost basis but at or above the 1-year average. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.early_bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Above short-term cost and trend' has held 3 days running (confirmed): Price is at or above the short-term holders' cost basis and the 1-year average, but below a long-run cost basis. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.weak_bull.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Under short-term cost only' has held 3 days running (confirmed): Price is below the short-term holders' cost basis and at or above the other three references. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.limbo.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Between: two of four above' has held 3 days running (confirmed): Price is below the short-term holders' cost basis, with exactly two of the four references above it. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.deep_bear.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Below all four, long-term cost above all-coin' has held 3 days running (confirmed): Price is below all four references, and the long-term holders' cost basis is above the all-coin one. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.bear.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Below all four' has held 3 days running (confirmed): Price is below all four references. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.capital_sentiment.early_bear.enter",
+   "pack": "regime",
+   "meaning": "Capital Sentiment phase 'Slipping under long-run references' has held 3 days running (confirmed): The short-term holders' cost basis is the highest reference and price is below trend or a long-run cost basis; or price is below three of the four. References are value-weighted average purchase prices (capitalized prices) of all coins and of short- and long-term holders, plus the 1-year average.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.full.low.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (all models) says spot is unusually low against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.full.low.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (all models) no longer flags spot as unusually low.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.full.high.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (all models) says spot is unusually high against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.full.high.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (all models) no longer flags spot as unusually high.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.local.low.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (young-coin models) says spot is unusually low against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.local.low.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (young-coin models) no longer flags spot as unusually low.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.local.high.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (young-coin models) says spot is unusually high against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.local.high.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (young-coin models) no longer flags spot as unusually high.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.cycle.low.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (long-cycle models) says spot is unusually low against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.cycle.low.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (long-cycle models) no longer flags spot as unusually low.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.cycle.high.enter",
+   "pack": "regime",
+   "meaning": "BRK's Rarity Meter (long-cycle models) says spot is unusually high against its own history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.rarity.cycle.high.exit",
+   "pack": "regime",
+   "meaning": "The Rarity Meter (long-cycle models) no longer flags spot as unusually high.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.capitulation.enter",
+   "pack": "regime",
+   "meaning": "A rare extreme: a 24-hour realized loss among the rarest 0.1 % in history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.capitulation.exit",
+   "pack": "regime",
+   "meaning": "The 'capitulation' extreme ended.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.profit_taking.enter",
+   "pack": "regime",
+   "meaning": "A rare extreme: a 24-hour realized profit among the rarest 0.1 % in history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.profit_taking.exit",
+   "pack": "regime",
+   "meaning": "The 'profit taking' extreme ended.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.peak_regret.enter",
+   "pack": "regime",
+   "meaning": "A rare extreme: sellers forgoing more value vs their coins' past peaks than on 99.9 % of history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.peak_regret.exit",
+   "pack": "regime",
+   "meaning": "The 'peak regret' extreme ended.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.coins_in_loss.enter",
+   "pack": "regime",
+   "meaning": "A rare extreme: more coins underwater than at 99.9 % of history.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.coins_in_loss.exit",
+   "pack": "regime",
+   "meaning": "The 'coins in loss' extreme ended.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.seller_exhaustion.enter",
+   "pack": "regime",
+   "meaning": "A rare extreme: realized profit and loss unusually small relative to invested value (rarest 0.1 %).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.regime.extreme.seller_exhaustion.exit",
+   "pack": "regime",
+   "meaning": "The 'seller exhaustion' extreme ended.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_10.enter",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data took 10 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_10.exit",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data fell back below 8 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_25.enter",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data took 25 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_25.exit",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data fell back below 23 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_50.enter",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data took 50 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.vsize_share_50.exit",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data fell back below 48 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_10.enter",
+   "pack": "blockspace",
+   "meaning": "Runes took 10 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_10.exit",
+   "pack": "blockspace",
+   "meaning": "Runes fell back below 8 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_25.enter",
+   "pack": "blockspace",
+   "meaning": "Runes took 25 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_25.exit",
+   "pack": "blockspace",
+   "meaning": "Runes fell back below 23 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_50.enter",
+   "pack": "blockspace",
+   "meaning": "Runes took 50 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.vsize_share_50.exit",
+   "pack": "blockspace",
+   "meaning": "Runes fell back below 48 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.omni.vsize_share_10.enter",
+   "pack": "blockspace",
+   "meaning": "Omni (e.g. early Tether) took 10 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.omni.vsize_share_10.exit",
+   "pack": "blockspace",
+   "meaning": "Omni (e.g. early Tether) fell back below 8 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.veri_block.vsize_share_10.enter",
+   "pack": "blockspace",
+   "meaning": "VeriBlock took 10 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.veri_block.vsize_share_10.exit",
+   "pack": "blockspace",
+   "meaning": "VeriBlock fell back below 8 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.text.vsize_share_10.enter",
+   "pack": "blockspace",
+   "meaning": "plain-text messages took 10 % or more of block space over the last 7 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.text.vsize_share_10.exit",
+   "pack": "blockspace",
+   "meaning": "plain-text messages fell back below 8 % of block space (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.fee_share_25.enter",
+   "pack": "blockspace",
+   "meaning": "Transactions carrying all OP_RETURN data paid 25 % or more of all fees over 7 days (fee pressure).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.fee_share_25.exit",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data fell back below 23 % of fees (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.fee_share_50.enter",
+   "pack": "blockspace",
+   "meaning": "Transactions carrying all OP_RETURN data paid 50 % or more of all fees over 7 days (fee pressure).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.fee_share_50.exit",
+   "pack": "blockspace",
+   "meaning": "all OP_RETURN data fell back below 48 % of fees (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.fee_share_25.enter",
+   "pack": "blockspace",
+   "meaning": "Transactions carrying Runes paid 25 % or more of all fees over 7 days (fee pressure).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.fee_share_25.exit",
+   "pack": "blockspace",
+   "meaning": "Runes fell back below 23 % of fees (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.fee_share_50.enter",
+   "pack": "blockspace",
+   "meaning": "Transactions carrying Runes paid 50 % or more of all fees over 7 days (fee pressure).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.fee_share_50.exit",
+   "pack": "blockspace",
+   "meaning": "Runes fell back below 48 % of fees (7 days).",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.all.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most all OP_RETURN data transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.runes.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most Runes transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.omni.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most Omni (e.g. early Tether) transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.veri_block.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most VeriBlock transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.text.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most plain-text messages transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.bare_hash.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most hash commitments (incl. OpenTimestamps) transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  },
+  {
+   "type": "onchain.blockspace.stacks.tx_high_90d",
+   "pack": "blockspace",
+   "meaning": "Record activity: the most Stacks transactions in a day for at least 90 days.",
+   "inEngine": false,
+   "estimated": false
+  }
+ ]
+}

@@ -60,11 +60,19 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   A profile only hides tools. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
-- **`dwlf_describe_onchain_events` answers from bundled data, `src/data/onchainCatalogue.ts`, which is GENERATED**
-  from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs`: never edit it by hand, re-run the script.
-  The MEANINGS are per-release, dated by `asOf`. Whether a pack is in the engine (`inEngine`) is read live from
-  `GET /v2/node-types` (cached 15 min; `null` when unreadable), never bundled. ⚠️ **Accepted debt (DWLF-646):** the meanings
-  belong behind the API too, so they stop being per-release *(inferred from: `src/tools/onchain-catalogue.ts`)*.
+- **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
+  `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
+  state (`inEngine`) comes from the same API, and the engine's own types are a pseudo-pack, `engine` (the bundle's
+  `costBasis` is accepted as its alias). **The bundled copy is the offline fallback:** `src/data/onchainCatalogue.ts`,
+  GENERATED from the onchain-packs catalogue by `scripts/gen-onchain-catalogue.mjs` (never edit it by hand), used only when
+  the index can't be read or the API predates `typeSummaries`; then `inEngine` is read from `GET /v2/node-types` as before.
+  Every answer says which (`definitionSource`), and both paths name the engine's types `engine`. A failed or too-old
+  index read is remembered 2 minutes, so the fallback answers at once. `test/onchainCatalogue.test.mjs` checks the
+  bundle against what SPT serves (`test/fixtures/spt-explain-index.json`, from `scripts/gen-spt-explain-fixture.mjs`):
+  the pack types must match exactly. **An exception to invariant 2, scoped to this tool:** its listing, pack and search
+  answers are its own summary lines (`id`, `pack` flattened to an id, the `engine` pseudo-pack), not the index passed
+  through; one type's full definition IS passed through unchanged, as `definition` *(inferred from:
+  `src/tools/onchain-catalogue.ts`)*.
 - **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
   is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:
   `src/profiles.ts`)*.
@@ -103,6 +111,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `strategyNodeMetadata.ts` names it as "source of truth for the runtime behaviour" and must be
   re-synced when the executor changes *(inferred from: file header comment; doc-drift PRs #43, #44,
   #47, #48, #50)*.
+- **SPT `GET /v2/events/explain` and `GET /v2/events/{type}/explain`** (public: SPT's authorizer passes them without a key), read by `dwlf_describe_onchain_events` (DWLF-646) and `dwlf_explain_event`.
 - **SPT `GET /v2/node-types`** (public) for the condition nodes, read when a
   `dwlf_describe_strategy_nodes` request needs them (cached 15 minutes); a failed read answers from the static file and says so
   (`catalogueError`) *(DWLF-370)*.

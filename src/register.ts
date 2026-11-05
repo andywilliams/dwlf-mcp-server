@@ -78,7 +78,7 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   // Register resources
   registerSymbolsResource(server, client);
 
-  // Block: the on-chain event catalogue (DWLF-621): meanings bundled; engine state read from /v2/node-types
+  // Block: the on-chain event catalogue (DWLF-621/646): definitions live from /v2/events/explain; bundled copy as the offline fallback
   registerOnchainCatalogueTools(server, client);
   registerExplainEventTools(server, client);
 }
