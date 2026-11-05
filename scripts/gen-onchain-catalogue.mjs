@@ -14,6 +14,17 @@ if (!packsDir) {
 }
 const cat = JSON.parse(readFileSync(join(packsDir, 'catalogue.json'), 'utf8'));
 
+// What agents read is plain words (DWLF-685): references to files only the packs repo has (REGIMES.md, a job script)
+// point a reader nowhere, so they are dropped. The same rule as SPT's explain (src/services/eventExplain.js publicText),
+// so the bundle and the live index agree (test/onchainCatalogue.test.mjs parity).
+const INTERNAL_REFS = [/\s*\(jobs\/[^)]*\)/g, /[;,]?\s*[Ss]ee REGIMES\.md(?: §\d+)?\.?/g];
+const publicText = (v) => {
+  if (typeof v !== 'string') return v;
+  const out = INTERNAL_REFS.reduce((acc, re) => acc.replace(re, ''), v).trim();
+  if (!out) return null;
+  return v.trim().endsWith('.') && !/[.!?]$/.test(out) ? `${out}.` : out;
+};
+
 const firstParagraph = (md) => md.split('\n\n').map((p) => p.trim()).find((p) => p && !p.startsWith('#')) || '';
 const packIds = [...new Set(cat.types.map((t) => t.pack))];
 const packs = Object.fromEntries(packIds.map((id) => {
@@ -40,7 +51,7 @@ const COST_BASIS = [
   ['onchain.sth_sopr.reclaim', '7-day short-term-holder SOPR crossed back above 1 (coins moved by recent holders realised a profit on average).'],
   ['onchain.sth_sopr.lose', '7-day short-term-holder SOPR fell below 1 (coins moved by recent holders realised a loss on average).'],
 ].map(([id, meaning]) => ({
-  id, pack: 'costBasis', meaning, inputs: 'BRK realised-price, MVRV, supply-in-profit and SOPR series (onchain-export design §2)',
+  id, pack: 'costBasis', meaning, inputs: 'BRK realised-price, MVRV, supply-in-profit and SOPR series',
   historyStart: '2015-01-22', threshold: null, caveats: 'Thresholds are the common public bands, fitted to ~3 cycles.',
   granularity: 'daily', keySuffix: null, estimated: false, methodVersion: 1, frequency: null,
 }));

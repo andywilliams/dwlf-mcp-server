@@ -23,9 +23,12 @@ Result: Strategies created via MCP don't show up in REST API queries using the r
 curl -X POST https://api.dwlf.co.uk/v2/agent/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "your-agent@example.com",
+    "email": "you@example.com",
     "agentId": "my-trading-bot",
-    "purpose": "Autonomous trading agent"
+    "purpose": "Autonomous trading agent",
+    "product": "block",
+    "disclaimerAccepted": true,
+    "disclaimerVersion": "<the version from the disclaimer 400>"
   }'
 ```
 
@@ -34,7 +37,9 @@ Response:
 {
   "apiKey": "dwlf_sk_abc123...",
   "accountId": "user_xyz789",
-  "message": "Account created. Check your email to verify and unlock compute features."
+  "activationStatus": "pending_activation",
+  "message": "Check your email to activate your account",
+  "nextStep": { "action": "Save the apiKey now (it is shown once). Then ask your user to click the activation link…", "call": "GET /v2/me" }
 }
 ```
 
@@ -122,15 +127,13 @@ The MCP server includes a `dwlf_register_agent` tool for programmatic account cr
 ```typescript
 {
   tool: "dwlf_register_agent",
-  arguments: {
-    email: "your-agent@example.com",
-    agentId: "my-trading-bot",
-    purpose: "Autonomous trading agent"
-  }
+  arguments: { email: "you@example.com" }
 }
 ```
 
-This returns an API key immediately. You can then reconfigure your MCP client to use this key.
+Two steps: the first call returns the disclaimer text for the user to read. Only if they accept, call again with
+`disclaimerAccepted: true` and the `disclaimerVersion` it named. That returns the API key (shown once); it works after
+the user clicks the emailed activation link. `product` defaults to `block`. Then reconfigure your MCP client with the key.
 
 ## Authentication Flow
 

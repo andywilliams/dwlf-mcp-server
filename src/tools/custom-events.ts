@@ -2,6 +2,29 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient } from '../client.js';
 
+/**
+ * One line per custom event (DWLF-685: the full list ran to 130-150k characters, mostly graphs). Pure; anything that
+ * is not the expected `{ events: [...] }` passes through unchanged.
+ */
+export const summariseCustomEvents = (data: unknown): unknown => {
+  const events = (data as { events?: unknown })?.events;
+  if (!Array.isArray(events)) return data;
+  return {
+    count: events.length,
+    events: events.map((e: Record<string, any>) => ({
+      eventId: e.eventId,
+      name: e.name,
+      description: e.description || undefined,
+      timeframe: e.metadata?.timeframe,
+      nodeCount: Array.isArray(e.visual?.nodes) ? e.visual.nodes.length : undefined,
+      notifyOnFire: e.notifyOnFire,
+      executionTier: e.executionTier ?? undefined,
+      updatedAt: e.updatedAt ?? e.metadata?.lastModified,
+    })),
+    note: 'Summaries. dwlf_get_custom_event { eventId } returns one event in full.',
+  };
+};
+
 export function registerCustomEventTools(
   server: McpServer,
   client: DWLFClient
@@ -9,13 +32,20 @@ export function registerCustomEventTools(
   // 1. List custom events
   server.tool(
     'dwlf_list_custom_events',
-    "List the user's custom event definitions — user-created indicator-based events.",
-    {},
-    async () => {
+    "List the user's custom event definitions (user-built events). By default one line per event (id, name, " +
+      'description, timeframe, node count, alerts on fire, last change) so a long list fits; call ' +
+      'dwlf_get_custom_event for one event\'s full graph, or pass `detail: true` for every graph (large).',
+    {
+      detail: z.boolean().optional().describe('true = return each event in full, graph included (can be 100k+ characters).'),
+      limit: z.number().int().min(1).max(100).optional().describe('At most this many events (API default 50).'),
+      offset: z.number().int().min(0).optional().describe('Skip this many, for the next page.'),
+    },
+    async ({ detail, limit, offset }) => {
       try {
-        const data = await client.get('/custom-events');
+        const data = await client.get('/custom-events', { limit, offset });
+        const out = detail ? data : summariseCustomEvents(data);
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(out, null, 2) }],
         };
       } catch (error) {
         return {

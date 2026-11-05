@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { nextStepFor, formatNextStep } from './errors.js';
 
 /**
  * Normalize symbol input to DWLF's expected format.
@@ -107,7 +108,9 @@ export class DWLFClient {
           } else if (typeof body === 'string' && body.trim()) {
             detail = body.slice(0, 300);
           }
-          error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+          // DWLF-685: a refusal (401/403/429) also says what to do next: the call, the plan, a link.
+          const step = nextStepFor(status, body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined);
+          error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}${step ? `\n${formatNextStep(step)}` : ''}`;
         }
         return Promise.reject(error);
       }

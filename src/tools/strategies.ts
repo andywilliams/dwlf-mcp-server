@@ -28,7 +28,7 @@ export function registerStrategyTools(
       'regardless of what the visual node\'s data field says — this is what the SL-resolver bug in PR#220 exposed. ' +
       '`honoredByExecutor: null` means not verified (catalogue parameters reach the compiled strategy; their effect on the run is not checked here). ' +
       'Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
-      'minutes; an unfiltered call lists them by name, ask by nodeType or category "condition" for detail), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
+      'minutes; listed by name, including under category "condition": ask by nodeType, or by `catalogueCategory` (e.g. "onchain") for one family in full), the same list the strategy builder offers, marked `source: "catalogue"` with `label`, `direction`, ' +
       '`timeframes` (the only ones the node fires on) and `catalogueCategory`. A node with `engineIgnored` is one the ' +
       'engine cannot evaluate: do not use it. `engineIgnores` is the raw rule list ({ id } or { prefix }, with a reason). ' +
       '`catalogueError` means the catalogue could not be read and only the static nodes are listed.',
@@ -41,15 +41,20 @@ export function registerStrategyTools(
         .enum(['signal', 'stopLoss', 'takeProfit', 'logic', 'cancellation', 'condition', 'exit'])
         .optional()
         .describe('Return only nodes in this category.'),
+      catalogueCategory: z
+        .string()
+        .optional()
+        .describe('Return one catalogue family in full, e.g. "onchain" (the on-chain events you can build with). '
+          + 'Without it, catalogue nodes are listed by name.'),
     },
-    async ({ nodeType, category }) => {
+    async ({ nodeType, category, catalogueCategory }) => {
       try {
         // Condition nodes come from the (cached) node catalogue; a request the
         // local file answers alone does not wait for it.
-        const catalogue = needsCatalogue({ nodeType, category, local: STRATEGY_NODES })
+        const catalogue = catalogueCategory || needsCatalogue({ nodeType, category, local: STRATEGY_NODES })
           ? await loadCatalogue()
           : null;
-        const { result, error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType, category });
+        const { result, error } = describeNodes({ local: STRATEGY_NODES, catalogue, nodeType, category, catalogueCategory });
         if (error) {
           return { content: [{ type: 'text', text: JSON.stringify(error, null, 2) }], isError: true };
         }

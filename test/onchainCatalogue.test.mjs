@@ -1,3 +1,4 @@
+import { publicText } from '../dist/data/publicText.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -142,7 +143,7 @@ test('parity: the bundled copy matches what SPT serves (pack types exactly; cost
       continue;
     }
     if (a.pack !== e.pack) problems.push(`${e.id}: pack ${e.pack} vs ${a.pack}`);
-    if (a.meaning !== e.meaning) problems.push(`${e.id}: meaning differs`);
+    if (a.meaning !== publicText(e.meaning)) problems.push(`${e.id}: meaning differs`);
     if (a.estimated !== Boolean(e.estimated)) problems.push(`${e.id}: estimated differs`);
   }
   const bundledPackTypes = new Set(ONCHAIN_EVENTS.filter((e) => e.pack !== 'costBasis').map((e) => e.id));

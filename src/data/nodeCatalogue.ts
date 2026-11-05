@@ -127,13 +127,23 @@ export const needsCatalogue = ({ nodeType, category, local }: { nodeType?: strin
 };
 
 /** The tool's answer: `{ result }` to return, or `{ error }` for an unknown node type. */
-export const describeNodes = ({ local, catalogue, nodeType, category }: {
-  local: StrategyNode[]; catalogue: LoadedCatalogue | null; nodeType?: string; category?: string;
+export const describeNodes = ({ local, catalogue, nodeType, category, catalogueCategory }: {
+  local: StrategyNode[]; catalogue: LoadedCatalogue | null; nodeType?: string; category?: string; catalogueCategory?: string;
 }): { result?: Record<string, unknown>; error?: Record<string, unknown> } => {
   const all = mergeNodes(local, catalogue?.nodes ?? []);
   const catalogueError = catalogue?.error;
   if (nodeType) {
     const single = all.find((n) => n.nodeType === nodeType);
+    if (!single && !catalogueError && nodeType.startsWith('onchain.')) {
+      // DWLF-685: an on-chain id the node catalogue lacks is a research-catalogue type: real, but not evaluated.
+      return { error: {
+        error: `${nodeType} is not a node the engine can evaluate`,
+        hint: 'It is an on-chain catalogue type: dwlf_explain_event { eventType } describes it and its measured history. '
+          + 'The on-chain nodes you can build with are dwlf_describe_strategy_nodes { category: "condition", '
+          + 'catalogueCategory: "onchain" }.',
+        ...(catalogueError ? { catalogueError } : {}),
+      } };
+    }
     if (!single) {
       return { error: {
         error: `Unknown nodeType: ${nodeType}`,
@@ -150,10 +160,19 @@ export const describeNodes = ({ local, catalogue, nodeType, category }: {
   const brief = (n: (typeof all)[number]) => ('source' in n && n.source === 'catalogue'
     ? { nodeType: n.nodeType, category: n.category, label: n.label, catalogueCategory: n.catalogueCategory, timeframes: n.timeframes, ...(n.engineIgnored ? { engineIgnored: n.engineIgnored } : {}), source: n.source }
     : n);
-  const nodes = category ? all.filter((n) => n.category === category) : all.map(brief);
+  // DWLF-685: category "condition" alone was every catalogue node in full (130-150k characters). It is now brief, like
+  // the unfiltered list; `catalogueCategory` (e.g. "onchain") gives one family in full.
+  const inCategory = category ? all.filter((n) => n.category === category) : all;
+  const inFamily = catalogueCategory
+    ? inCategory.filter((n) => 'catalogueCategory' in n && n.catalogueCategory === catalogueCategory)
+    : inCategory;
+  const full = Boolean(catalogueCategory) || (Boolean(category) && category !== 'condition');
+  const nodes = full ? inFamily : inFamily.map(brief);
+  const families = [...new Set(all.flatMap((n) => ('catalogueCategory' in n && n.catalogueCategory ? [n.catalogueCategory] : [])))].sort();
   return { result: {
     count: nodes.length,
     nodes,
+    ...(full ? {} : { detail: 'Listed by name. For full detail ask by nodeType, or by catalogueCategory (one of: ' + families.join(', ') + ').' }),
     ...(catalogue && catalogue.unsupported.length ? { engineIgnores: catalogue.unsupported } : {}),
     ...(catalogueError ? { catalogueError } : {}),
   } };
