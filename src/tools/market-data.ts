@@ -309,11 +309,19 @@ export function registerMarketDataTools(
           let cursor = (record.cursor as string | null | undefined) ?? null;
           const MAX_PAGES = 40; // backstop (~8k scanned rows); real events never approach this
           // A hosted host's per-call deadline (DWLF-622): stop paging while there is still time to answer, and say so.
+          // A page's own timeout is capped at the time left (DWLFClient), so a page that runs out of time fails here
+          // and the pages already read are returned, marked incomplete.
           const PAGE_BUDGET_MS = 3000;
           while (cursor && pagesFetched < MAX_PAGES) {
             if (client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
-            // eslint-disable-next-line no-await-in-loop
-            const page = await fetchPage(cursor);
+            let page: unknown;
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              page = await fetchPage(cursor);
+            } catch (error) {
+              if (client.remainingMs() < PAGE_BUDGET_MS) { stoppedForTime = true; break; }
+              throw error;
+            }
             pagesFetched += 1;
             autoPaginated = true;
             if (page && typeof page === 'object' && !Array.isArray(page)) {

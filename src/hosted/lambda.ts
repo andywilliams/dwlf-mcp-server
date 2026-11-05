@@ -26,7 +26,14 @@ export type ProxyEvent = {
 
 export type ProxyResult = { statusCode: number; headers: Record<string, string>; body: string };
 
-const log = (entry: Record<string, unknown>) => console.log(JSON.stringify({ at: new Date().toISOString(), ...entry }));
+/**
+ * One bare JSON line per event, written to stdout directly. Lambda's text log format prefixes `console.*` lines with
+ * a timestamp, request id and level, which stops CloudWatch's JSON metric filters (`{ $.event = … }`, the stack's log
+ * alarms) from matching; raw stdout lines are not prefixed.
+ */
+export const logLine = (entry: Record<string, unknown>, write: (line: string) => void = (l) => { process.stdout.write(l); }) =>
+  write(`${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
+const log = (entry: Record<string, unknown>) => logLine(entry);
 
 /**
  * API Gateway's proxy event → a Request on the CANONICAL origin. The Host header the caller sent is never used to

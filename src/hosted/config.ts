@@ -23,8 +23,6 @@ export type HostedConfig = {
   issuer: string;
   /** Where its signing keys are published. */
   jwksUri: string;
-  /** Browser origins allowed to call the endpoint; any other present Origin is refused (DNS rebinding). */
-  allowedOrigins: ReadonlySet<string>;
   /** The DWLF API base URL (no /v2), which every tool calls with the account's managed key. */
   apiBaseUrl: string;
   /** The credential + limit table, and the KMS key that encrypts each stored managed key. */
@@ -84,10 +82,6 @@ export function loadHostedSettings(env: Env): HostedSettings {
   const resource = httpsUrl(env, 'HOSTED_MCP_RESOURCE');
   // RFC 8707 resource indicators: an absolute URI with no fragment. Compared byte for byte against `aud`.
   if (new URL(resource).hash) throw new Error('Hosted MCP: HOSTED_MCP_RESOURCE must not carry a fragment.');
-  const origins = (env.HOSTED_MCP_ALLOWED_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean);
-  for (const o of origins) {
-    if (new URL(o).origin !== o) throw new Error(`Hosted MCP: "${o}" in HOSTED_MCP_ALLOWED_ORIGINS is not a bare origin.`);
-  }
   const callDeadlineMs = positiveInt(env, 'HOSTED_MCP_CALL_DEADLINE_MS', 24000);
   const upstreamTimeoutMs = positiveInt(env, 'HOSTED_MCP_UPSTREAM_TIMEOUT_MS', 20000);
   if (upstreamTimeoutMs >= callDeadlineMs) {
@@ -99,7 +93,6 @@ export function loadHostedSettings(env: Env): HostedSettings {
     resource,
     issuer: httpsUrl(env, 'HOSTED_MCP_ISSUER'),
     jwksUri: httpsUrl(env, 'HOSTED_MCP_JWKS_URI'),
-    allowedOrigins: new Set(origins),
     apiBaseUrl: httpsUrl(env, 'HOSTED_MCP_API_BASE_URL'),
     tableName: required(env, 'HOSTED_MCP_TABLE'),
     kmsKeyId: required(env, 'HOSTED_MCP_KMS_KEY_ID'),

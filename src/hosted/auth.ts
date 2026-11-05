@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { createRemoteJWKSet, errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { HostedConfig } from './config.js';
 import { HOSTED_SCOPES } from './scopes.js';
 
@@ -9,7 +9,9 @@ import { HOSTED_SCOPES } from './scopes.js';
  * - from the configured issuer, and audience-bound to this server's canonical URI (RFC 8707): a token minted for
  *   any other resource, including DWLF's own API, is refused, which is what stops token passthrough;
  * - in date, and naming a subject (`sub`, the SPT account) and a client (`client_id`, RFC 9068 §2.2).
- * Every refusal is a 401 with the same body; the reason goes to the log, never to the caller.
+ * Every refusal is a 401 with the same body; the reason goes to the log, never to the caller. A failure to READ the
+ * issuer's keys is not a refusal: it throws `AuthServerUnavailableError` (the handler's 503), because a 401 would
+ * tell every client to throw its token away during an outage of the authorization server.
  */
 
 export type Caller = {
@@ -22,11 +24,21 @@ export type Caller = {
   scopes: ReadonlySet<string>;
   /** Seconds since the epoch. */
   expiresAt: number;
+  /** When the token was issued (seconds since the epoch): orders a client's tokens, so an older one never re-mints. */
+  issuedAt: number;
 };
 
 export type TokenVerifier = (token: string) => Promise<Caller>;
 
 export class InvalidTokenError extends Error {}
+/** The issuer's keys could not be read (timeout, network, a non-200 or malformed JWKS): not the token's fault. */
+export class AuthServerUnavailableError extends Error {}
+
+const JWKS_UNAVAILABLE = new Set([errors.JWKSTimeout.code, errors.JWKSInvalid.code]);
+const isKeyFetchFailure = (error: unknown) =>
+  !(error instanceof errors.JOSEError) // fetch itself failed (DNS, connection, TLS)
+  || JWKS_UNAVAILABLE.has(error.code)
+  || (error.code === errors.JOSEError.code && /JSON Web Key Set/.test(error.message)); // the JWKS answered non-200
 
 /** A verifier against the issuer's published keys (fetched lazily, cached and re-fetched on an unknown `kid` by jose). */
 export function createTokenVerifier(
@@ -45,14 +57,18 @@ export function createTokenVerifier(
         clockTolerance: 30,
       }));
     } catch (error) {
-      throw new InvalidTokenError(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      if (isKeyFetchFailure(error)) throw new AuthServerUnavailableError(message);
+      throw new InvalidTokenError(message);
     }
-    const { iss, sub, client_id: clientId, scope, exp } = payload as { iss?: string; sub?: unknown; client_id?: unknown; scope?: unknown; exp?: number };
+    const { iss, sub, client_id: clientId, scope, exp, iat } = payload as {
+      iss?: string; sub?: unknown; client_id?: unknown; scope?: unknown; exp?: number; iat?: number;
+    };
     if (typeof sub !== 'string' || !sub) throw new InvalidTokenError('sub is not a non-empty string');
     if (typeof clientId !== 'string' || !clientId) throw new InvalidTokenError('client_id is not a non-empty string');
     if (scope !== undefined && typeof scope !== 'string') throw new InvalidTokenError('scope is not a string');
     const scopes = new Set((scope ?? '').split(' ').filter(Boolean));
-    return { issuer: iss as string, sub, clientId, scopes, expiresAt: exp as number };
+    return { issuer: iss as string, sub, clientId, scopes, expiresAt: exp as number, issuedAt: iat as number };
   };
 }
 

@@ -36,7 +36,6 @@ export type HostedMcpStackProps = cdk.StackProps & {
   revocationUrl?: string;
   exchangeClientId?: string;
   apiBaseUrl?: string;
-  allowedOrigins?: string[];
   /** Package version, reported in `initialize`. */
   version?: string;
   /** Who hears about the alarms (an email subscription to the stack's topic). Unset = the topic, with no subscriber yet. */
@@ -52,6 +51,7 @@ export const LOG_ALARMS: readonly { event: string; why: string }[] = [
   { event: 'hosted-mcp-limits-unavailable', why: 'the limit table could not be reached, so the MCP-level limits failed open' },
   { event: 'hosted-mcp-key-revoke-failed', why: 'a managed key could not be revoked and may still be live at SPT' },
   { event: 'hosted-mcp-credential-failed', why: 'a caller could not get a managed key (the token exchange or KMS failed)' },
+  { event: 'hosted-mcp-jwks-unavailable', why: "the authorization server's keys could not be read, so every caller gets 503" },
 ];
 
 /** Requests per 5 minutes per IP before WAF blocks it (every path). Agents batch; a human-driven client never nears it. */
@@ -113,7 +113,6 @@ export class HostedMcpStack extends cdk.Stack {
         HOSTED_MCP_EXCHANGE_CLIENT_ID: props.exchangeClientId ?? 'dwlf-hosted-mcp',
         HOSTED_MCP_EXCHANGE_CLIENT_SECRET_PARAM: EXCHANGE_SECRET_PARAM,
         HOSTED_MCP_API_BASE_URL: props.apiBaseUrl ?? 'https://api.dwlf.co.uk',
-        HOSTED_MCP_ALLOWED_ORIGINS: (props.allowedOrigins ?? []).join(','),
         HOSTED_MCP_TABLE: this.table.tableName,
         HOSTED_MCP_KMS_KEY_ID: key.keyArn,
         HOSTED_MCP_VERSION: props.version ?? 'unknown',

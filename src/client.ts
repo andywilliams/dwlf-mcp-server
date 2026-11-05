@@ -99,6 +99,16 @@ export class DWLFClient {
       ...(options.signal ? { signal: options.signal } : {}),
     });
 
+    // Under a host deadline, no request may outlive it: each one's timeout is capped at the time left (less a second
+    // to answer in), so a multi-page tool can still return what it has.
+    if (this.deadlineAt !== null) {
+      this.http.interceptors.request.use((config) => {
+        const left = this.remainingMs() - 1000;
+        config.timeout = Math.max(1, Math.min(config.timeout || Infinity, left));
+        return config;
+      });
+    }
+
     // Surface the backend's error message, not just axios's bare "Request
     // failed with status code N". Every request method goes through this.http,
     // so enriching here makes ALL tools report the real reason (e.g. a 400's

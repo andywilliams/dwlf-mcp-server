@@ -19,8 +19,11 @@ export type CredentialRecord = CredentialId & {
   keyId: string;
   /** The managed API key, KMS-encrypted with an encryption context naming this (sub, client). */
   ciphertext: Uint8Array;
-  /** The scopes the key was minted with: always exactly the grant it was minted for. */
+  /** The scopes the key itself carries (the AS may mint narrower than the grant, never broader). */
   scopes: readonly string[];
+  /** The GRANT it was minted for: the minting token's scopes and issue time (s). Reuse is decided on these. */
+  grantScopes: readonly string[];
+  grantIssuedAt: number;
   /** Bumped on every replacement: the conditional write that makes concurrent re-mints safe. */
   version: number;
   updatedAt: number;
@@ -122,6 +125,8 @@ export class DynamoStore implements HostedStore {
       keyId: Item.keyId.S,
       ciphertext: Item.ciphertext.B,
       scopes: Item.scopes?.L?.map((s) => s.S ?? '').filter(Boolean) ?? [],
+      grantScopes: Item.grantScopes?.L?.map((s) => s.S ?? '').filter(Boolean) ?? [],
+      grantIssuedAt: Number(Item.grantIssuedAt?.N ?? 0),
       version: Number(Item.version.N),
       updatedAt: Number(Item.updatedAt?.N ?? 0),
     };
@@ -138,6 +143,8 @@ export class DynamoStore implements HostedStore {
           keyId: { S: record.keyId },
           ciphertext: { B: record.ciphertext },
           scopes: { L: record.scopes.map((s) => ({ S: s })) },
+          grantScopes: { L: record.grantScopes.map((s) => ({ S: s })) },
+          grantIssuedAt: { N: String(record.grantIssuedAt) },
           version: { N: String(record.version) },
           updatedAt: { N: String(record.updatedAt) },
           expiresAt: { N: String(Math.ceil(record.expiresAt / 1000)) },

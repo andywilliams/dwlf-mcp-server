@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates test/fixtures/spt-routes.json: SPT's /v2 route → permission table, read from SPT's unifiedApi.js (DWLF-622).
-// test/hostedScopes.test.mjs checks every hosted tool's calls against it, so the tool → scope table can't drift
+// test/hostedUnits.test.mjs checks every hosted tool's calls against it, so the tool → scope table can't drift
 // silently from what SPT enforces. Re-run when SPT's routes or permissions change:
 //
 //   node scripts/gen-spt-routes.mjs ../serverless-portfolio-tracker

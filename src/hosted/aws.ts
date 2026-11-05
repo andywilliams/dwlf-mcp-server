@@ -1,7 +1,7 @@
 import { DecryptCommand, EncryptCommand, KMSClient } from '@aws-sdk/client-kms';
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import type { CredentialId } from './store.js';
-import type { KeyMinter, KeySealer, MintedKey } from './credentials.js';
+import { GrantRefusedError, type KeyMinter, type KeySealer, type MintedKey } from './credentials.js';
 
 /**
  * The deployed adapters behind the hosted MCP's seams (DWLF-622): KMS for the stored keys, and the authorization
@@ -72,7 +72,10 @@ export class ExchangeMinter implements KeyMinter {
     });
     // The error body is the AS's (RFC 6749 §5.2: `error`, `error_description`); never echo the token.
     const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
-    if (!res.ok) throw new Error(`token exchange refused: HTTP ${res.status} ${typeof body?.error === 'string' ? body.error : ''}`.trim());
+    const code = typeof body?.error === 'string' ? body.error : '';
+    // RFC 6749 §5.2 / RFC 8693 §2.2.2: the grant behind the token is gone. The client re-authorises; nobody is paged.
+    if (res.status === 400 && (code === 'invalid_grant' || code === 'invalid_token')) throw new GrantRefusedError(code);
+    if (!res.ok) throw new Error(`token exchange refused: HTTP ${res.status} ${code}`.trim());
     const { access_token: apiKey, issued_token_type: type, key_id: keyId, scope, expires_in: expiresIn } = body ?? {};
     if (type !== API_KEY_TOKEN_TYPE || typeof apiKey !== 'string' || !apiKey || typeof keyId !== 'string' || !keyId || typeof scope !== 'string'
       || typeof expiresIn !== 'number' || !Number.isFinite(expiresIn) || expiresIn <= 0) {

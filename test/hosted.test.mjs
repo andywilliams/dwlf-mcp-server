@@ -32,6 +32,10 @@ before(async () => {
     if (url.pathname === '/v2/regime/SLOW') return setTimeout(() => json(res, 200, { slow: true }), 3000);
     if (url.pathname === '/v2/regime/REVOKED') return json(res, 401, { error: 'Unauthorized' });
     if (url.pathname.startsWith('/v2/regime/')) return json(res, 200, { regime: 'bull', symbol: url.pathname.split('/').pop() });
+    if (url.pathname === '/v2/events') {
+      const page = Number(url.searchParams.get('cursor')?.slice(1) ?? 0);
+      return setTimeout(() => json(res, 200, { events: [{ page }], cursor: `c${page + 1}` }), 700);
+    }
     if (url.pathname === '/v2/quotes') {
       return json(res, 429, { success: false, error: 'Daily limit reached', upgradeUrl: 'https://block.dwlf.co.uk/pricing', plans: [] });
     }
@@ -58,7 +62,6 @@ const configFor = (overrides = {}) => ({
   resource: RESOURCE,
   issuer: ISSUER,
   jwksUri: `${ISSUER}/jwks`,
-  allowedOrigins: new Set(['https://claude.ai']),
   apiBaseUrl: apiBase,
   tableName: 't',
   kmsKeyId: 'k',
@@ -99,14 +102,13 @@ const fakeSealer = {
   },
 };
 
-const setup = (configOverrides = {}) => {
+const setup = (configOverrides = {}, { minter = fakeMinter(), verify } = {}) => {
   const config = configFor(configOverrides);
   const store = new MemoryStore();
-  const minter = fakeMinter();
   const logs = [];
   const log = (e) => logs.push(e);
   const handler = createHostedHandler(config, {
-    verify: createTokenVerifier(config, jwks),
+    verify: verify ?? createTokenVerifier(config, jwks),
     credentials: new UpstreamCredentials(store, minter, fakeSealer, log),
     limiter: new CallLimiter(store, config.limits, 5000, log),
     shared: {},
@@ -152,14 +154,15 @@ test('RFC 9728 metadata at the path-suffixed and the root well-known path', asyn
   }
 });
 
-test('GET/DELETE on /mcp → 405; an unknown path → 404; a foreign Origin → 403', async () => {
+test('GET/DELETE on /mcp → 405; an unknown path → 404; any Origin → 403 (server-side clients only)', async () => {
   const { handler } = setup();
   assert.equal((await handler(new Request(RESOURCE, { method: 'GET' }))).status, 405);
   assert.equal((await handler(new Request(RESOURCE, { method: 'DELETE' }))).status, 405);
   assert.equal((await handler(new Request('https://mcp.test/other', { method: 'POST' }))).status, 404);
   const token = await sign();
   assert.equal((await post(handler, { method: 'ping' }, { token, origin: 'https://evil.example' })).status, 403);
-  assert.equal((await post(handler, { method: 'ping' }, { token, origin: 'https://claude.ai' })).status, 200);
+  assert.equal((await post(handler, { method: 'ping' }, { token, origin: 'https://claude.ai' })).status, 403);
+  assert.equal((await post(handler, { method: 'ping' }, { token })).status, 200);
 });
 
 test('no token → 401 with a resource_metadata challenge and the default scopes', async () => {
@@ -315,7 +318,8 @@ test('the call deadline answers a tool error (never a gateway timeout) and abort
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.result.isError, true);
-  assert.match(body.result.content[0].text, /longer than 0 s|longer than \d+ s/);
+  // Either the host's deadline answer, or the tool's own timeout (its request is capped at the time left): both in time.
+  assert.match(body.result.content[0].text, /took longer than|timeout of \d+ms exceeded/);
 });
 
 test('oversized body → 413; a batch → 400; malformed JSON → 400', async () => {
@@ -344,4 +348,58 @@ test('lambda adapter: the URL is built on the canonical origin, never the Host h
   assert.equal(await req.text(), '{"x":1}');
   const out = await toResult(new Response('{"ok":true}', { status: 201, headers: { 'x-a': 'b' } }));
   assert.deepEqual(out, { statusCode: 201, headers: { 'x-a': 'b', 'content-type': 'text/plain;charset=UTF-8' }, body: '{"ok":true}' });
+});
+
+test('the hosted server registers no resources or prompts (nothing but a scoped, keyed tool reaches the API)', async () => {
+  const { handler } = setup();
+  const token = await sign();
+  seen.length = 0;
+  const res = await (await post(handler, { method: 'resources/read', params: { uri: 'dwlf://symbols' } }, { token })).json();
+  assert.ok(res.error, 'resources/read is not served');
+  const init = await (await post(handler, { method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } }, { token })).json();
+  assert.equal(init.result.capabilities.resources, undefined);
+  assert.equal(seen.length, 0, 'no upstream request');
+});
+
+test('an outage of the AS keys → 503 with Retry-After, never 401 (clients keep their tokens)', async () => {
+  const { handler, logs } = setup({}, { verify: async () => { const { AuthServerUnavailableError } = await import('../dist/hosted/auth.js'); throw new AuthServerUnavailableError('timeout'); } });
+  const res = await post(handler, { method: 'ping' }, { token: 'abc.def.ghi' });
+  assert.equal(res.status, 503);
+  assert.equal(res.headers.get('retry-after'), '30');
+  assert.equal(res.headers.get('www-authenticate'), null);
+  assert.ok(logs.some((l) => l.event === 'hosted-mcp-jwks-unavailable'));
+});
+
+test('a refused grant at the exchange (disconnected client) → 401 invalid_token, logged as an ordinary event', async () => {
+  const { GrantRefusedError } = await import('../dist/hosted/credentials.js');
+  const minter = { ...fakeMinter(), async exchange() { throw new GrantRefusedError('invalid_grant'); } };
+  const { handler, logs } = setup({}, { minter });
+  const res = await call(handler, 'dwlf_get_regime', { symbol: 'BTC' }, { token: await sign() });
+  assert.equal(res.status, 401);
+  assert.match(res.headers.get('www-authenticate'), /error="invalid_token"/);
+  assert.ok(logs.some((l) => l.event === 'hosted-mcp-grant-refused'));
+  assert.ok(!logs.some((l) => l.event === 'hosted-mcp-credential-failed'), 'not the alarmed event');
+});
+
+test('the deadline runs from arrival: slow credential work leaves the tool less time, and the answer still comes in time', async () => {
+  const slowMinter = fakeMinter();
+  const exchange = slowMinter.exchange.bind(slowMinter);
+  slowMinter.exchange = async (t) => { await new Promise((r) => setTimeout(r, 400)); return exchange(t); };
+  const { handler } = setup({ callDeadlineMs: 600, upstreamTimeoutMs: 5000 }, { minter: slowMinter });
+  const started = Date.now();
+  const body = await (await call(handler, 'dwlf_get_regime', { symbol: 'SLOW' }, { token: await sign() })).json();
+  assert.ok(Date.now() - started < 1200, `answered by the deadline (${Date.now() - started} ms)`);
+  assert.equal(body.result.isError, true);
+});
+
+test('dwlf_get_events under the deadline: stops auto-paging in time and returns what it has, marked incomplete', async () => {
+  const { handler } = setup({ callDeadlineMs: 5000, upstreamTimeoutMs: 4000 });
+  const started = Date.now();
+  const res = await call(handler, 'dwlf_get_events', { customEventId: 'ce-1', days: 2000 }, { token: await sign() });
+  const body = JSON.parse(await textOf(res));
+  assert.ok(Date.now() - started < 5000);
+  assert.equal(body.filtersApplied.incomplete, true);
+  assert.match(body.filtersApplied.paginationHint, /time limit/);
+  assert.ok(body.cursor, 'a cursor to carry on from');
+  assert.ok(body.events.length >= 2 && body.filtersApplied.pagesFetched === body.events.length);
 });

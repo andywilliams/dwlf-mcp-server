@@ -9,9 +9,12 @@ import { credentialKey } from './store.js';
  * KMS-encrypted, and used for every call this client makes for this account. So SPT's per-key limits, licensing,
  * metering and scopes apply unchanged, and "what did this agent do" is one usage query.
  *
- * The key follows the grant: when the token's scopes differ from the key's (a step-up, or a narrowed grant), a new key
- * is exchanged for and swapped in under a conditional write on the record's version, then the old key is revoked.
- * Two requests racing to re-mint: one write wins and the loser revokes the key it just got (no orphaned live key).
+ * The key follows the LATEST grant. Each record remembers the grant it was minted for (the minting token's scopes and
+ * issue time). A token with those scopes reuses it; so does an OLDER token (issued before that grant), since a client
+ * can hold a pre-step-up token for a few minutes and must not flip the key back. A NEWER token with different scopes
+ * (a step-up or a narrowed grant) re-mints: the new key is swapped in under a conditional write on the record's
+ * version, then the old key is revoked. Two requests racing to re-mint: one write wins, and the loser revokes the key
+ * it just got (no orphaned live key). The tool's own scopes are checked against the presented token, never the key.
  */
 
 /** A managed key as the AS returns it. It expires at SPT when the grant would (`expiresAt`, epoch ms). */
@@ -32,8 +35,13 @@ export interface KeySealer {
 }
 
 export class CredentialUnavailableError extends Error {}
+/** The AS refused the exchange because the grant is gone (revoked, expired): the client must re-authorise. */
+export class GrantRefusedError extends Error {}
 
 const sameScopes = (a: readonly string[], b: ReadonlySet<string>) => a.length === b.size && a.every((s) => b.has(s));
+/** Whether `record` serves this caller's token (see the header). */
+const serves = (record: CredentialRecord, caller: Caller) =>
+  sameScopes(record.grantScopes, caller.scopes) || caller.issuedAt < record.grantIssuedAt;
 
 /** How long an opened key is kept in this instance's memory, to spare a KMS call per request. */
 const OPEN_CACHE_MS = 5 * 60 * 1000;
@@ -54,7 +62,7 @@ export class UpstreamCredentials {
   async resolve(caller: Caller, accessToken: string): Promise<{ apiKey: string; keyId: string }> {
     const id = { issuer: caller.issuer, sub: caller.sub, clientId: caller.clientId };
     const record = await this.store.getCredential(id);
-    if (record && sameScopes(record.scopes, caller.scopes)) return { apiKey: await this.openRecord(record), keyId: record.keyId };
+    if (record && serves(record, caller)) return { apiKey: await this.openRecord(record), keyId: record.keyId };
 
     const minted = await this.minter.exchange(accessToken);
     if (!(minted.expiresAt > this.clock())) {
@@ -71,6 +79,8 @@ export class UpstreamCredentials {
       keyId: minted.keyId,
       ciphertext: await this.sealer.seal(minted.apiKey, id),
       scopes: [...minted.scopes].sort(),
+      grantScopes: [...caller.scopes].sort(),
+      grantIssuedAt: caller.issuedAt,
       version: (record?.version ?? 0) + 1,
       updatedAt: this.clock(),
       expiresAt: minted.expiresAt,
@@ -80,7 +90,7 @@ export class UpstreamCredentials {
       // Another request swapped a key in first. Ours is surplus: revoke it, and use theirs if it fits this grant.
       await this.revokeQuietly(minted.apiKey, 'lost-mint-race');
       const winner = await this.store.getCredential(id);
-      if (winner && sameScopes(winner.scopes, caller.scopes)) return { apiKey: await this.openRecord(winner), keyId: winner.keyId };
+      if (winner && serves(winner, caller)) return { apiKey: await this.openRecord(winner), keyId: winner.keyId };
       throw new CredentialUnavailableError('the managed key changed during this request; retry');
     }
     this.remember(next, minted.apiKey);

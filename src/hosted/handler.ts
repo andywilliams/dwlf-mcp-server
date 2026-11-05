@@ -3,9 +3,11 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { DWLFClient } from '../client.js';
 import { filteredServer, PROFILE_INSTRUCTIONS } from '../profiles.js';
 import { registerAll, type SharedCaches } from '../register.js';
-import { bearerToken, challenge, InvalidTokenError, metadataPath, protectedResourceMetadata, type Caller, type TokenVerifier } from './auth.js';
+import {
+  AuthServerUnavailableError, bearerToken, challenge, InvalidTokenError, metadataPath, protectedResourceMetadata, type Caller, type TokenVerifier,
+} from './auth.js';
 import type { HostedConfig, HostedSettings } from './config.js';
-import { CredentialUnavailableError } from './credentials.js';
+import { CredentialUnavailableError, GrantRefusedError } from './credentials.js';
 import type { CallLimiter } from './limits.js';
 import { HOSTED_TOOLS, missingScopes, TOOL_SCOPES } from './scopes.js';
 import { accountHash } from './store.js';
@@ -14,9 +16,14 @@ import { accountHash } from './store.js';
  * The hosted MCP endpoint (DWLF-622; docs/HOSTED-MCP.md): Streamable HTTP, stateless, POST only, JSON responses,
  * as a Web-standard `Request → Response` function, so the Lambda adapter and the tests drive the same code.
  *
- * Per request, in order: the flag (off = 404 everywhere) → Origin → the RFC 9728 metadata → method → body cap →
- * the bearer token (401) → for `tools/call`: the tool's scopes (403 step-up), the MCP-level limits, the account's
- * managed key → a fresh McpServer + DWLFClient for this caller, under the call deadline.
+ * Per request, in order: the flag (off = 404 everywhere) → Origin → the RFC 9728 metadata → method → the bearer
+ * token (401; checked BEFORE the body is read, so an unauthenticated caller's body never is) → body cap → for
+ * `tools/call`: the tool's scopes (403 step-up), the MCP-level limits, the account's managed key → a fresh McpServer +
+ * DWLFClient for this caller. The call deadline runs from the moment the request arrived, so the token check and the
+ * credential work count against it and the host still answers before the Lambda's own timeout.
+ *
+ * Server-side clients only in v1: any request carrying an Origin header is refused (DNS rebinding, browser CSRF), and
+ * there is no CORS. Browser clients would need both an allowlist and CORS (OPTIONS routes, exposed headers).
  *
  * The hosted server never sends the caller's token anywhere but the authorization server's token exchange, and makes
  * no policy: SPT enforces plans, scopes, licensing and quotas on the managed key (charter invariant).
@@ -91,9 +98,9 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
   return async (req: Request): Promise<Response> => {
     const started = now();
     const url = new URL(req.url);
-    const origin = req.headers.get('origin');
-    // DNS rebinding / browser CSRF: a present, unknown Origin is refused (MCP transport spec: MUST).
-    if (origin && !config.allowedOrigins.has(origin)) return rpcError(403, -32000, 'Origin not allowed');
+    // DNS rebinding / browser CSRF (MCP transport spec: an invalid Origin MUST be refused). No browser origin is valid
+    // in v1 (see the header), so any Origin is refused.
+    if (req.headers.get('origin')) return rpcError(403, -32000, 'Origin not allowed');
 
     if (prmPaths.has(url.pathname)) {
       if (req.method !== 'GET') return json(405, { error: 'method_not_allowed' }, { Allow: 'GET' });
@@ -109,6 +116,11 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
     try {
       caller = await deps.verify(token);
     } catch (error) {
+      if (error instanceof AuthServerUnavailableError) {
+        // Not the token's fault: a 401 would make every client discard its token during an AS outage.
+        deps.log({ event: 'hosted-mcp-jwks-unavailable', error: error.message });
+        return rpcError(503, -32000, 'Authorization server unavailable; retry shortly', null, { 'Retry-After': '30' });
+      }
       if (!(error instanceof InvalidTokenError)) throw error;
       deps.log({ event: 'hosted-mcp-token-refused', reason: error.message });
       return unauthorized('invalid_token');
@@ -135,8 +147,10 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
     };
 
     // Only a call to a hosted tool needs a credential or counts against the limits. Anything else (initialize,
-    // tools/list, ping, an unknown tool) is answered by the server with a keyless client that is never used.
-    if (!tool || !HOSTED_TOOLS.has(tool)) return done('protocol', await serve(message, null, caller));
+    // tools/list, ping, an unknown tool) is answered by the server itself: the hosted server registers tools only
+    // (no resources or prompts), so nothing but a tool ever calls the DWLF API, and its client here has no key.
+    const deadlineAt = started + config.callDeadlineMs;
+    if (!tool || !HOSTED_TOOLS.has(tool)) return done('protocol', await serve(message, null, caller, deadlineAt));
 
     if (!Object.hasOwn(TOOL_SCOPES, tool)) {
       // A hosted tool with no scope entry is a build mistake (the scope test catches it): refuse, never guess.
@@ -161,22 +175,29 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
       try {
         key = await deps.credentials.resolve(caller, token);
       } catch (error) {
+        if (error instanceof GrantRefusedError) {
+          // The user disconnected the client, or the grant lapsed: re-authorise. An ordinary event, so not alarmed.
+          deps.log({ event: 'hosted-mcp-grant-refused', ...who, error: error.message });
+          return done('grant_refused', unauthorized('invalid_token', 'the authorization behind this token has been revoked or has expired'));
+        }
         deps.log({ event: 'hosted-mcp-credential-failed', ...who, error: (error as Error).message });
         const text = error instanceof CredentialUnavailableError
           ? `Could not get this connection's DWLF credential (${error.message}).`
           : 'Could not get this connection\'s DWLF credential. Try again shortly; if it persists, reconnect the DWLF connector.';
         return done('credential_failed', toolError(id, text));
       }
-      return done('called', await serve(message, key, caller));
+      if (now() >= deadlineAt) {
+        return done('deadline', toolError(id, `Getting this connection's DWLF credential took too long. Try again.`));
+      }
+      return done('called', await serve(message, key, caller, deadlineAt));
     } finally {
       await admission.release();
     }
   };
 
   /** One message, through a fresh server for this caller, under the call deadline for a tool call. */
-  async function serve(message: JsonRpcRequest, key: { apiKey: string; keyId: string } | null, caller: Caller): Promise<Response> {
+  async function serve(message: JsonRpcRequest, key: { apiKey: string; keyId: string } | null, caller: Caller, deadlineAt: number): Promise<Response> {
     const controller = new AbortController();
-    const deadlineAt = now() + config.callDeadlineMs;
     let revoked = false;
     const client = new DWLFClient({
       apiKey: key?.apiKey,
@@ -191,7 +212,7 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
     });
     const instructions = PROFILE_INSTRUCTIONS.block;
     const server = new McpServer({ name: 'dwlf', version: deps.version }, instructions ? { instructions } : undefined);
-    registerAll(filteredServer(server, HOSTED_TOOLS), client, deps.shared);
+    registerAll(filteredServer(server, HOSTED_TOOLS, new Set(), { toolsOnly: true }), client, deps.shared);
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     let timer: NodeJS.Timeout | undefined;
     try {
@@ -203,7 +224,7 @@ function hostedHandler(config: HostedConfig, deps: HostedDeps) {
       });
       const handled = transport.handleRequest(request, { parsedBody: message });
       if (message.method !== 'tools/call') return await handled;
-      const expired = new Promise<'expired'>((resolve) => { timer = setTimeout(() => resolve('expired'), config.callDeadlineMs); });
+      const expired = new Promise<'expired'>((resolve) => { timer = setTimeout(() => resolve('expired'), Math.max(0, deadlineAt - now())); });
       const outcome = await Promise.race([handled, expired]);
       if (outcome === 'expired') {
         controller.abort(); // stops the tool's upstream requests, so nothing runs on after we answer

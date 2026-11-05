@@ -9,6 +9,9 @@ import { UpstreamCredentials, CredentialUnavailableError } from '../dist/hosted/
 import { MemoryStore, accountHash, credentialKey } from '../dist/hosted/store.js';
 import { BLOCK_TOOLS } from '../dist/profiles.js';
 import { DWLFClient } from '../dist/client.js';
+import { createTokenVerifier, AuthServerUnavailableError, InvalidTokenError } from '../dist/hosted/auth.js';
+import { logLine } from '../dist/hosted/lambda.js';
+import { errors } from 'jose';
 
 // DWLF-622 hosted MCP: the pieces under the handler.
 
@@ -44,8 +47,6 @@ test('config: on, a missing or non-https setting is a startup error, not a defau
   assert.throws(() => loadHostedSettings({ ...ENV, HOSTED_MCP_RESOURCE: 'https://mcp.block.dwlf.co.uk/mcp#x' }), /fragment/);
   assert.throws(() => loadHostedSettings({ ...ENV, HOSTED_MCP_CALLS_PER_MINUTE: '0' }), /positive integer/);
   assert.throws(() => loadHostedSettings({ ...ENV, HOSTED_MCP_UPSTREAM_TIMEOUT_MS: '24000' }), /below/);
-  assert.throws(() => loadHostedSettings({ ...ENV, HOSTED_MCP_ALLOWED_ORIGINS: 'https://claude.ai/path' }), /bare origin/);
-  assert.deepEqual([...loadHostedSettings({ ...ENV, HOSTED_MCP_ALLOWED_ORIGINS: 'https://claude.ai, https://chatgpt.com' }).allowedOrigins], ['https://claude.ai', 'https://chatgpt.com']);
 });
 
 // ── scopes ──────────────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ test('limits: a lapsed in-flight lease is free again (a crashed request does not
 const sealer = { seal: async (k) => Buffer.from(k), open: async (c) => Buffer.from(c).toString() };
 const ISS = 'https://api.dwlf.co.uk';
 const ID = { issuer: ISS, sub: 'acct-1', clientId: 'cli' };
-const caller = (scopes, issuer = ISS) => ({ issuer, sub: 'acct-1', clientId: 'cli', scopes: new Set(scopes), expiresAt: 0 });
+const caller = (scopes, issuedAt = 1000, issuer = ISS) => ({ issuer, sub: 'acct-1', clientId: 'cli', scopes: new Set(scopes), expiresAt: 0, issuedAt });
 const minterWith = (scopesFor) => {
   let n = 0;
   return { minted: [], revoked: [], expiresIn: 86_400_000, async exchange() { n += 1; const k = { apiKey: `k${n}`, keyId: `id${n}`, scopes: scopesFor(n), expiresAt: Date.now() + this.expiresIn }; this.minted.push(k); return k; }, async revoke(k) { this.revoked.push(k); } };
@@ -194,7 +195,7 @@ test('credentials: a narrowed grant re-mints too (the key is never broader than 
   const creds = new UpstreamCredentials(store, minter, sealer, () => {});
   await creds.resolve(caller(scopes), 't');
   scopes = ['markets:read'];
-  const narrowed = await creds.resolve(caller(scopes), 't');
+  const narrowed = await creds.resolve(caller(scopes, 2000), 't');
   assert.equal(narrowed.keyId, 'id2');
   assert.deepEqual(minter.revoked, ['k1']);
   assert.equal((await store.getCredential(ID)).version, 2);
@@ -222,6 +223,7 @@ test('credentials: an expired record is absent, and the next call re-mints over 
   const creds = new UpstreamCredentials(store, { ...minter, exchange: async () => { const k = await minter.exchange(); return { ...k, expiresAt: now + 60_000 }; }, revoke: (k) => minter.revoke(k) }, sealer, () => {}, () => now);
   await creds.resolve(caller(['markets:read']), 't');
   now += 61_000;
+  // (an expired record is absent whatever the token)
   assert.equal(await store.getCredential(ID), null);
   const again = await creds.resolve(caller(['markets:read']), 't');
   assert.equal(again.keyId, 'id2');
@@ -233,6 +235,47 @@ test('credentials: a key that arrives already expired is refused and revoked', a
   const creds = new UpstreamCredentials(new MemoryStore(), minter, sealer, () => {});
   await assert.rejects(creds.resolve(caller(['markets:read']), 't'), /already expired/);
   assert.deepEqual(minter.revoked, ['k1']);
+});
+
+test('credentials: an OLDER token (pre-step-up, still valid) reuses the newer grant\'s key; no flip-flop', async () => {
+  const store = new MemoryStore();
+  const minter = minterWith(() => ['markets:read', 'strategies:read']);
+  const creds = new UpstreamCredentials(store, minter, sealer, () => {});
+  await creds.resolve(caller(['markets:read', 'strategies:read'], 2000), 't'); // the step-up token
+  for (let i = 0; i < 3; i += 1) {
+    await creds.resolve(caller(['markets:read'], 1000), 't'); // the older token, still live
+    await creds.resolve(caller(['markets:read', 'strategies:read'], 2000), 't');
+  }
+  assert.equal(minter.minted.length, 1);
+  assert.deepEqual(minter.revoked, []);
+});
+
+test('credentials: an AS that mints narrower than the grant is reused, not re-minted on every call', async () => {
+  const minter = minterWith(() => ['markets:read']); // e.g. it drops a scope it doesn't map
+  const creds = new UpstreamCredentials(new MemoryStore(), minter, sealer, () => {});
+  for (let i = 0; i < 3; i += 1) await creds.resolve(caller(['markets:read', 'openid']), 't');
+  assert.equal(minter.minted.length, 1);
+});
+
+// ── auth: an outage of the AS's keys is not an invalid token ───────────────
+test('verifier: a JWKS timeout, a non-200 JWKS or a network failure → AuthServerUnavailableError (503, not 401)', async () => {
+  const cfg = { issuer: 'https://auth.test', jwksUri: 'https://auth.test/jwks', resource: 'https://mcp.test/mcp' };
+  // A well-formed but unverifiable JWT: the key lookup is where each case fails.
+  const token = 'eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6ImsxIn0.eyJzdWIiOiJ4In0.c2ln';
+  for (const failure of [new errors.JWKSTimeout(), new errors.JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response'), new TypeError('fetch failed')]) {
+    const verify = createTokenVerifier(cfg, async () => { throw failure; });
+    await assert.rejects(verify(token), AuthServerUnavailableError);
+  }
+  const noKey = createTokenVerifier(cfg, async () => { throw new errors.JWKSNoMatchingKey(); });
+  await assert.rejects(noKey(token), InvalidTokenError);
+});
+
+test('logLine: one bare JSON object per line, no runtime prefix', () => {
+  let out = '';
+  logLine({ event: 'hosted-mcp-unhandled', x: 1 }, (l) => { out += l; });
+  assert.ok(out.endsWith('\n'));
+  const parsed = JSON.parse(out);
+  assert.equal(parsed.event, 'hosted-mcp-unhandled');
 });
 
 // ── client options the host relies on ───────────────────────────────────────

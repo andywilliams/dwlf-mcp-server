@@ -180,7 +180,7 @@ OAuth scopes are SPT's API-key scopes, so one vocabulary does both jobs. `scopes
 | Unauthenticated floods on `/mcp`, `/authorize`, `/token`, `/register` | API Gateway throttles plus WAF rate-based rules per IP. `/register` and CIMD fetches get their own tighter buckets. |
 | Agent loops (the same tool and arguments, many times a minute) | Loop guard: an identical `(tool, args)` hash > 10/min per client answers a tool error explaining the repeat. It is counted, never silent. |
 | Oversized or slow requests | Body cap (256 KB, as in the spike). Each `tools/call` runs under a **host deadline of 24 s** (an `AbortController` around the handler): on expiry the host returns an `isError` tool result ("took too long; try a narrower request"), never a gateway 504. Each upstream request gets `DWLFClient({ timeoutMs: 20000 })` (the option exists now; the stdio default stays 30 s). Multi-page tools (`dwlf_get_events` follows up to 40 pages; `dwlf_get_setup_transitions` up to 50 requests) need the remaining deadline passed into their loops, so they stop paging and say they were truncated. That is a build-step change to those two tools. If 24 s proves too tight, a Lambda Function URL (no 29 s cap) is the fallback. |
-| DNS rebinding / browser CSRF | `Origin` validated on every request (`403` when present and unknown). No cookies on `/mcp`. |
+| DNS rebinding / browser CSRF | Server-side clients only in v1: any request carrying `Origin` is refused (`403`), and there is no CORS. Browser clients would need an allowlist plus CORS. No cookies on `/mcp`. |
 | CIMD SSRF, metadata poisoning | The fetch guards in §4.4. Redirect URIs must match the document exactly. Consent always shows the redirect host. |
 | Consent phishing (a lookalike client name) | The verified host is shown. Clients previously denied are blocked per user. Staff can block a client id globally. |
 | Token theft | Short access tokens (~15 min, identity's default), rotating refresh tokens, audience binding, revocation on grant removal. Tokens are never logged; logs hold `sub` hashes. |
@@ -275,20 +275,31 @@ What exists, behind `HOSTED_MCP_ENABLED` (off unless exactly `true`; off, every 
   refuses to every key but the owner's).
 - **`auth.ts`:** tokens verified locally against the issuer's JWKS: ES256, `typ: at+jwt` (RFC 9068), `iss`, `aud` =
   the canonical URI, `sub` and `client_id` required. 401 (never 403) with `resource_metadata`; RFC 9728 metadata at
-  both well-known paths.
+  both well-known paths. A failure to read the JWKS is a 503 with `Retry-After`, never a 401, so an outage of the
+  authorization server doesn't make every client throw its token away.
+- **Tools only:** the hosted server registers no resources or prompts, so nothing but a scoped, limited, keyed tool
+  call ever reaches the DWLF API.
 - **`scopes.ts`:** the tool → scope table. `test/hostedUnits.test.mjs` reads each tool's calls from its source and
   checks them against SPT's route → permission table (`test/fixtures/spt-routes.json`, from
   `npm run gen:spt-routes -- <SPT checkout>`). A missing scope answers 403 `insufficient_scope` naming the held and
   the needed scopes.
-- **`credentials.ts` + `aws.ts`:** the managed key (§4.2): exchanged, KMS-sealed with an encryption context naming
-  (account, client), cached opened for 5 minutes per instance, re-minted when the grant's scopes change under a
-  conditional write (the loser of a race revokes its own key), dropped on SPT's 401.
+- **`credentials.ts` + `aws.ts`:** the managed key (§4.2).
+  - It's exchanged, then KMS-sealed with an encryption context naming (issuer, account, client), and cached opened
+    for 5 minutes per instance.
+  - Each record remembers the grant it was minted for: the token's scopes and `iat`. A newer token with other scopes
+    re-mints under a conditional write, and the loser of a race revokes its own key. An older token reuses the newer
+    key rather than flipping it back.
+  - A key is dropped on SPT's 401. An exchange the AS refuses with `invalid_grant` answers 401 `invalid_token` (the
+    client re-authorises), logged as an ordinary event and not alarmed.
 - **`limits.ts`:** on the table, all as tool errors: 60 calls a minute and 10 identical calls a minute (the loop
   guard) per (account, client); 4 in flight per account (leases that lapse on their own). A table outage lets calls through (SPT's
   plan limits still hold) and is logged.
-- **Deadline:** each `tools/call` races a 24 s host deadline; on expiry the host aborts the caller's upstream requests
-  (`DWLFClient({ signal })`) and answers an `isError` result. `dwlf_get_events` stops auto-paging 3 s before it
-  (`client.remainingMs()`) and says it stopped for time. Upstream requests time out at 20 s.
+- **Deadline:** 24 s from the request's arrival, so the token check and the credential work count against it.
+  - A `tools/call` races it. On expiry the host aborts the caller's upstream requests (`DWLFClient({ signal })`) and
+    answers an `isError` result.
+  - Each upstream request's timeout is capped at the time left, less 1 s (and at 20 s anyway).
+  - `dwlf_get_events` stops auto-paging when under 3 s remain, or when a page runs out of time, and returns the pages
+    it has, marked `incomplete`, with a cursor.
 - **SPT's plan 429** reaches the agent as a tool error carrying `upgradeUrl` (the stdio package too).
 - **Shared caches:** one node-catalogue loader per instance, on a client with no key (filed item 2 from #102).
   `DWLFClient` now refuses a non-finite or non-positive `timeoutMs` (filed item 3).
@@ -301,7 +312,8 @@ What exists, behind `HOSTED_MCP_ENABLED` (off unless exactly `true`; off, every 
     rotates.
   - Alarms to an SNS topic (`-c alarmEmail=…` subscribes) on Lambda errors, throttles and API 5xx, and on the log
     events that mean degraded-but-answering: an unexpected 500, the limits failing open, a revocation that failed,
-    and a caller who couldn't get a key.
+    a caller who couldn't get a key, and an unreadable JWKS. The handler writes bare JSON lines to stdout, which
+    `console.log` would prefix, so the JSON metric filters match.
   - `npm run test:infra` synthesises it, bundling included, and the new PR workflow (`.github/workflows/ci.yml`)
     runs it with the package tests.
 

@@ -5,7 +5,7 @@ import { BLOCK_TOOLS } from '../profiles.js';
  * one vocabulary does both jobs: a tool's entry is the permissions SPT checks on the routes it calls. Each inner list
  * is a set of alternatives (SPT's `requireAnyPermission`); every requirement must be met by one of them.
  *
- * `test/hostedScopes.test.mjs` reads each tool's source for the routes it calls and checks them against SPT's route
+ * `test/hostedUnits.test.mjs` reads each tool's source for the routes it calls and checks them against SPT's route
  * table (`test/fixtures/spt-routes.json`, generated from SPT by `scripts/gen-spt-routes.mjs`): a tool that calls a route this table doesn't cover fails the
  * build. The MCP checks the table BEFORE calling SPT, so the step-up challenge names the scope up front; SPT still
  * enforces it on the managed key, so this table is never the security boundary.
