@@ -252,3 +252,24 @@ test('index loader: a too-old verdict lasts the short TTL, then the live index i
   await load(1100);
   assert.equal(reads, 3);
 });
+
+test('index loader: a failed refresh keeps serving the last good index (stale beats the bundle), and retries later', async () => {
+  const { createExplainIndexLoader } = await import('../dist/tools/onchain-catalogue.js');
+  let reads = 0;
+  const good = { packs: [], typeSummaries: [{ type: 'onchain.x', meaning: 'm' }] };
+  const get = async () => { reads += 1; if (reads === 2) throw new Error('blip'); return good; };
+  const load = createExplainIndexLoader(get, 1000, 100);
+  assert.ok('index' in await load(0));
+  assert.ok('index' in await load(1000), 'the refresh failed, the last good index still answers');
+  assert.ok('index' in await load(1050));
+  assert.equal(reads, 2, 'no re-try inside the short TTL');
+  await load(1100);
+  assert.equal(reads, 3);
+});
+
+test('fallback lines carry `estimated` like live ones (pool attribution types are estimated)', async () => {
+  const { body } = await setup().call({ pack: 'mining' });
+  const pool = body.events.find((e) => e.id.startsWith('onchain.mining.pool_dominance'));
+  assert.equal(pool.estimated, true);
+  assert.deepEqual(Object.keys(pool).sort(), ['estimated', 'id', 'inEngine', 'label', 'meaning', 'pack', 'revisionClass']);
+});

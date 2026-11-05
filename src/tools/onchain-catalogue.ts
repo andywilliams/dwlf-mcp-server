@@ -51,21 +51,28 @@ const isIndex = (body: unknown): body is ExplainIndex => {
 
 /**
  * A loader for the explain index: a good read is cached 15 minutes; a failure, or an API without per-type lines, for 2
- * (so the offline copy answers at once meanwhile, and the live index is picked up soon after it appears).
+ * (so the offline copy answers at once meanwhile, and the live index is picked up soon after it appears). Once there
+ * has been a good read, a failed refresh keeps serving it (stale beats a release-old bundle) and retries after 2
+ * minutes; the bundle answers only when no good read has happened yet.
  */
 export const createExplainIndexLoader = (get: (path: string) => Promise<unknown>, ttlMs = TTL_MS, negativeTtlMs = NEGATIVE_TTL_MS): ExplainIndexLoader => {
-  let cached: { at: number; result: { index: ExplainIndex } | { error: string } } | null = null;
+  let good: { at: number; index: ExplainIndex } | null = null;
+  let failure: { at: number; error: string } | null = null;
   return async (now = Date.now()) => {
-    if (cached && now - cached.at < ('index' in cached.result ? ttlMs : negativeTtlMs)) return cached.result;
-    let result: { index: ExplainIndex } | { error: string };
+    if (good && now - good.at < ttlMs) return { index: good.index };
+    if (failure && now - failure.at < negativeTtlMs) return good ? { index: good.index } : { error: failure.error };
     try {
       const body = await get('/events/explain');
-      result = isIndex(body) ? { index: body } : { error: 'GET /events/explain has no per-type lines (an API older than this tool)' };
+      if (isIndex(body)) {
+        good = { at: now, index: body };
+        failure = null;
+        return { index: body };
+      }
+      failure = { at: now, error: 'GET /events/explain has no per-type lines (an API older than this tool)' };
     } catch (error) {
-      result = { error: `GET /events/explain failed: ${error instanceof Error ? error.message : String(error)}` };
+      failure = { at: now, error: `GET /events/explain failed: ${error instanceof Error ? error.message : String(error)}` };
     }
-    cached = { at: now, result };
-    return result;
+    return good ? { index: good.index } : { error: failure.error };
   };
 };
 
@@ -191,8 +198,10 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
     const toPublicPack = (bundleName: string) => (bundleName === BUNDLE_ENGINE_PACK ? ENGINE_PACK : bundleName);
     const toBundlePack = (publicName: string) => (publicName === ENGINE_PACK ? BUNDLE_ENGINE_PACK : publicName);
     // Each type carries its OWN engine state; a pack can be partly in the engine.
+    // The live summary line's shape (lineOf); the bundle has no label or revision class.
     const summary = (e: OnchainEventEntry, inEngine: Set<string> | null) => ({
-      id: e.id, pack: toPublicPack(e.pack), meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+      id: e.id, pack: toPublicPack(e.pack), label: null, meaning: e.meaning, inEngine: inEngine === null ? null : inEngine.has(e.id),
+      estimated: Boolean(e.estimated), revisionClass: null,
     });
     const withPackState = (id: string, inEngine: Set<string> | null) => ({
       pack: toPublicPack(id), ...ONCHAIN_PACKS[id],
