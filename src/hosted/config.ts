@@ -100,7 +100,7 @@ export function loadHostedSettings(env: Env): HostedSettings {
     revocationUrl: httpsUrl(env, 'HOSTED_MCP_REVOCATION_URL'),
     exchangeClientId: required(env, 'HOSTED_MCP_EXCHANGE_CLIENT_ID'),
     exchangeClientSecretParam: required(env, 'HOSTED_MCP_EXCHANGE_CLIENT_SECRET_PARAM'),
-    defaultScopes: ['markets:read', 'events:read'],
+    defaultScopes: ['block:read'],
     limits: {
       callsPerMinute: positiveInt(env, 'HOSTED_MCP_CALLS_PER_MINUTE', DEFAULT_LIMITS.callsPerMinute),
       repeatsPerMinute: positiveInt(env, 'HOSTED_MCP_REPEATS_PER_MINUTE', DEFAULT_LIMITS.repeatsPerMinute),

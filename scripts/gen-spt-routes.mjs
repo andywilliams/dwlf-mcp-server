@@ -29,11 +29,18 @@ for (let m = re.exec(src); m; m = re.exec(src)) {
 }
 if (routes.length < 100) { console.error(`only ${routes.length} routes found in ${file}: has its shape changed?`); process.exit(1); }
 
+// The public OAuth scopes and the SPT permissions each expands to (SPT src/oauth/scopes.js, HOSTED-MCP §9.6): the
+// hosted tool table is written in these, and the scope test expands them before checking a route's permission.
+const { createRequire } = await import('node:module');
+const { PUBLIC_SCOPES } = createRequire(import.meta.url)(path.resolve(sptRoot, 'src/oauth/scopes.js'));
+const scopeMap = Object.fromEntries(Object.entries(PUBLIC_SCOPES).map(([k, v]) => [k, [...v.permissions]]));
+
 // One route per line, so a regeneration diffs as the routes that changed.
 const out = `{
   "generatedBy": "scripts/gen-spt-routes.mjs",
   "source": ${JSON.stringify(`serverless-portfolio-tracker@${sha} src/handlers/unifiedApi.js`)},
   "note": "permissions: any one of them is required; null = no permission middleware (public, session-only, or checked in the handler)",
+  "publicScopes": ${JSON.stringify(scopeMap)},
   "routes": [
 ${routes.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}
   ]

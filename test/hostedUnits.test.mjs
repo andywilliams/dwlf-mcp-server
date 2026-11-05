@@ -55,7 +55,7 @@ test('scopes: every hosted tool has an entry; the hosted set is the Block profil
   for (const tool of HOSTED_TOOLS) assert.ok(Object.hasOwn(TOOL_SCOPES, tool), `${tool} has no scope entry`);
   for (const tool of Object.keys(HOSTED_EXCLUDED)) assert.ok(BLOCK_TOOLS.has(tool) && !HOSTED_TOOLS.has(tool));
   assert.equal(HOSTED_TOOLS.size, BLOCK_TOOLS.size - Object.keys(HOSTED_EXCLUDED).length);
-  assert.ok(!HOSTED_SCOPES.includes('markets:candles'), 'no owner-only scope is advertised');
+  assert.deepEqual([...HOSTED_SCOPES], ['block:alerts', 'block:build', 'block:read'], 'only the public scopes (§9.6), never an SPT permission name');
 });
 
 /**
@@ -83,7 +83,10 @@ function toolCalls() {
 }
 
 test("scopes: every route a hosted tool calls is in SPT's route table, and the tool's entry covers its permission", () => {
-  const { routes, source } = JSON.parse(fs.readFileSync(new URL('./fixtures/spt-routes.json', import.meta.url), 'utf8'));
+  const { routes, source, publicScopes } = JSON.parse(fs.readFileSync(new URL('./fixtures/spt-routes.json', import.meta.url), 'utf8'));
+  // Every scope the table uses is one SPT's authorization server knows, and the PRM advertises exactly those.
+  for (const s of HOSTED_SCOPES) assert.ok(Object.hasOwn(publicScopes, s), `${s} is not a public scope at SPT`);
+  const expand = (scope) => publicScopes[scope] ?? [];
   const toRe = (p) => new RegExp(`^${p.replace(/:[A-Za-z_]+/g, '[^/]+')}$`);
   const calls = toolCalls();
   // Tools that call no DWLF route through the caller's client: the academy CDN and the public node catalogue.
@@ -104,7 +107,8 @@ test("scopes: every route a hosted tool calls is in SPT's route table, and the t
       const route = candidates.find((r) => !r.path.includes(':')) ?? candidates[0];
       if (!route) { problems.push(`${tool}: ${c.method} ${c.path} matches no SPT route (${source})`); continue; }
       if (!route.permissions) continue; // public, or checked in the handler
-      const covered = TOOL_SCOPES[tool].some((alts) => alts.some((s) => route.permissions.includes(s)));
+      // The tool's public scopes, expanded by SPT's map, must grant one of the route's permissions.
+      const covered = TOOL_SCOPES[tool].some((alts) => alts.some((s) => expand(s).some((p) => route.permissions.includes(p))));
       if (!covered) problems.push(`${tool}: ${c.method} ${route.path} needs one of ${route.permissions.join('|')}; table has ${JSON.stringify(TOOL_SCOPES[tool])}`);
     }
   }
@@ -112,10 +116,11 @@ test("scopes: every route a hosted tool calls is in SPT's route table, and the t
 });
 
 test('missingScopes: one entry per unmet requirement, alternatives honoured', () => {
-  assert.deepEqual(missingScopes('dwlf_get_regime', new Set(['markets:read'])), []);
-  assert.deepEqual(missingScopes('dwlf_get_regime', new Set()), ['markets:read']);
-  assert.deepEqual(missingScopes('dwlf_evaluate_strategy', new Set(['strategies:write'])), []);
-  assert.deepEqual(missingScopes('dwlf_evaluate_strategy', new Set(['strategies:read'])), ['evaluations:write']);
+  assert.deepEqual(missingScopes('dwlf_get_regime', new Set(['block:read'])), []);
+  assert.deepEqual(missingScopes('dwlf_get_regime', new Set()), ['block:read']);
+  assert.deepEqual(missingScopes('dwlf_evaluate_strategy', new Set(['block:build'])), []);
+  assert.deepEqual(missingScopes('dwlf_evaluate_strategy', new Set(['block:read'])), ['block:build']);
+  assert.deepEqual(missingScopes('dwlf_create_subscription', new Set(['block:read', 'block:build'])), ['block:alerts']);
   assert.deepEqual(missingScopes('dwlf_search_academy', new Set()), []);
   assert.deepEqual(missingScopes('no_such_tool', new Set()), []);
 });

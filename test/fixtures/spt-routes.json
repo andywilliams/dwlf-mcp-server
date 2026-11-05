@@ -1,7 +1,8 @@
 {
   "generatedBy": "scripts/gen-spt-routes.mjs",
-  "source": "serverless-portfolio-tracker@aa7c917 src/handlers/unifiedApi.js",
+  "source": "serverless-portfolio-tracker@78098a5 src/handlers/unifiedApi.js",
   "note": "permissions: any one of them is required; null = no permission middleware (public, session-only, or checked in the handler)",
+  "publicScopes": {"block:read":["markets:read","events:read","signals:read","strategies:read","evaluations:read","quotas:my:read"],"block:build":["events:write","strategies:write","evaluations:write"],"block:alerts":["settings:read","settings:write"]},
   "routes": [
     {"method":"GET","path":"/v2/openapi.json","permissions":null,"auth":"none"},
     {"method":"GET","path":"/v2/openapi.yaml","permissions":null,"auth":"none"},
@@ -126,6 +127,11 @@
     {"method":"GET","path":"/v2/markets/cot","permissions":["markets:read"],"auth":"permission"},
     {"method":"GET","path":"/v2/events","permissions":["events:read"],"auth":"permission"},
     {"method":"GET","path":"/v2/onchain/events/as-of","permissions":["events:read"],"auth":"permission"},
+    {"method":"GET","path":"/v2/oauth/jwks","permissions":null,"auth":"none"},
+    {"method":"POST","path":"/v2/oauth/token","permissions":null,"auth":"none"},
+    {"method":"POST","path":"/v2/oauth/revoke","permissions":null,"auth":"none"},
+    {"method":"GET","path":"/v2/oauth/grants","permissions":["settings:read"],"auth":"permission"},
+    {"method":"DELETE","path":"/v2/oauth/grants","permissions":["settings:write"],"auth":"permission"},
     {"method":"GET","path":"/v2/events/explain","permissions":null,"auth":"none"},
     {"method":"GET","path":"/v2/events/:type/explain","permissions":null,"auth":"none"},
     {"method":"GET","path":"/v2/events/:type/explain/occurrences","permissions":["events:read"],"auth":"permission"},

@@ -106,10 +106,11 @@ export class HostedMcpStack extends cdk.Stack {
       environment: {
         HOSTED_MCP_ENABLED: props.enabled ? 'true' : 'false',
         HOSTED_MCP_RESOURCE: props.resource ?? 'https://mcp.block.dwlf.co.uk/mcp',
-        HOSTED_MCP_ISSUER: props.issuer ?? 'https://api.dwlf.co.uk',
-        HOSTED_MCP_JWKS_URI: props.jwksUri ?? 'https://api.dwlf.co.uk/.well-known/jwks.json',
-        HOSTED_MCP_TOKEN_EXCHANGE_URL: props.tokenExchangeUrl ?? 'https://api.dwlf.co.uk/oauth/token',
-        HOSTED_MCP_REVOCATION_URL: props.revocationUrl ?? 'https://api.dwlf.co.uk/oauth/revoke',
+        // SPT's authorization server (§9.1 B; SPT #745): its own issuer host, endpoints on the API.
+        HOSTED_MCP_ISSUER: props.issuer ?? 'https://auth.dwlf.co.uk',
+        HOSTED_MCP_JWKS_URI: props.jwksUri ?? 'https://api.dwlf.co.uk/v2/oauth/jwks',
+        HOSTED_MCP_TOKEN_EXCHANGE_URL: props.tokenExchangeUrl ?? 'https://api.dwlf.co.uk/v2/oauth/token',
+        HOSTED_MCP_REVOCATION_URL: props.revocationUrl ?? 'https://api.dwlf.co.uk/v2/oauth/revoke',
         HOSTED_MCP_EXCHANGE_CLIENT_ID: props.exchangeClientId ?? 'dwlf-hosted-mcp',
         HOSTED_MCP_EXCHANGE_CLIENT_SECRET_PARAM: EXCHANGE_SECRET_PARAM,
         HOSTED_MCP_API_BASE_URL: props.apiBaseUrl ?? 'https://api.dwlf.co.uk',

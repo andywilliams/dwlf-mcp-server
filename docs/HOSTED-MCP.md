@@ -129,9 +129,7 @@ POST {revocation endpoint}       token=<managed API key>&token_type_hint=urn:dwl
 
 ### 4.3 Scopes
 
-OAuth scopes are SPT's API-key scopes, so one vocabulary does both jobs. `scopes_supported` lists the minimum:
-`markets:read`, `events:read`. Writes are requested on demand: `strategies:write`, `backtests:run`,
-`subscriptions:write`.
+**Decided (§9.6, 5-Nov): three PUBLIC scopes**, `block:read`, `block:build` and `block:alerts`. They are defined, and expanded to SPT permissions, by the authorization server (SPT `src/oauth/scopes.js`), so a client never holds an SPT permission name, and SPT can rename or split a permission without breaking a grant. `scopes_supported` lists all three; the 401 challenge asks for `block:read`, and the others are stepped up to.
 - A tool that needs more answers `403` + `WWW-Authenticate: Bearer error="insufficient_scope", scope="…",
   resource_metadata="…"`, and the client steps up.
 - **Which scope each tool needs** is a tool → scope table in this repo, generated from SPT's route → permission map
@@ -223,7 +221,7 @@ OAuth scopes are SPT's API-key scopes, so one vocabulary does both jobs. `scopes
 - the "Not for: hosting a remote endpoint" line goes;
 - a new invariant: **the hosted server never forwards a client's token and never makes policy; SPT does**.
 
-## 9 · Decisions for Andy
+## 9 · Decisions for Andy: **decided 5-Nov 10:15, `1B 2A 3A 4A 5A 6A`** (Telegram confirm c-89a4), all as recommended
 
 1. Authorization server: A (dwlf-identity), **B (SPT-native)** or C (managed). **Recommended B since 5-Nov** (§4.1:
    Block accounts have no sign-in, and identity can't know them before BA-41). The resource server takes any
@@ -318,7 +316,9 @@ What exists, behind `HOSTED_MCP_ENABLED` (off unless exactly `true`; off, every 
     runs it with the package tests.
 
 **Not built here, and why:**
-- **The authorization server** (§4.1): it waits on §9.1, and under B it is an SPT PR.
+- **The authorization server** (§4.1, decided B): SPT #745 (token endpoint, exchange, revocation, metadata, JWKS,
+  grants; issuer `https://auth.dwlf.co.uk`, endpoints under `https://api.dwlf.co.uk/v2/oauth`), then a second SPT PR
+  for sign-in and consent, DCR and CIMD. This stack's defaults point at those.
 - The custom domain and certificate: they wait on §9.3.
 - The per-tool annotations (§7).
 - The SDK release with 2026-07-28: not out yet.

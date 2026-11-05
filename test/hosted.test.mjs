@@ -55,7 +55,7 @@ before(async () => {
 
 after(() => api.close());
 
-const sign = async ({ scope = 'markets:read events:read', sub = 'acct-1', clientId = 'https://client.example/meta.json', aud = RESOURCE, iss = ISSUER, typ = 'at+jwt', exp = '10m', omit = [] } = {}) => {
+const sign = async ({ scope = 'block:read', sub = 'acct-1', clientId = 'https://client.example/meta.json', aud = RESOURCE, iss = ISSUER, typ = 'at+jwt', exp = '10m', omit = [] } = {}) => {
   const claims = { scope, client_id: clientId };
   for (const k of omit) delete claims[k];
   let jwt = new SignJWT(claims).setProtectedHeader({ alg: 'ES256', typ, kid: 'k1' }).setIssuedAt().setExpirationTime(exp);
@@ -77,7 +77,7 @@ const configFor = (overrides = {}) => ({
   revocationUrl: `${ISSUER}/revoke`,
   exchangeClientId: 'hosted-mcp',
   exchangeClientSecretParam: '/p',
-  defaultScopes: ['markets:read', 'events:read'],
+  defaultScopes: ['block:read'],
   limits: { callsPerMinute: 60, repeatsPerMinute: 10, maxInFlight: 4 },
   callDeadlineMs: 2000,
   upstreamTimeoutMs: 1500,
@@ -179,7 +179,7 @@ test('no token → 401 with a resource_metadata challenge and the default scopes
   assert.equal(res.status, 401);
   const www = res.headers.get('www-authenticate');
   assert.match(www, /^Bearer resource_metadata="https:\/\/mcp\.test\/\.well-known\/oauth-protected-resource\/mcp"/);
-  assert.match(www, /scope="markets:read events:read"/);
+  assert.match(www, /scope="block:read"/);
 });
 
 test('a token for another audience, issuer, type, or expired, or without client_id → 401 invalid_token (never 403)', async () => {
@@ -232,20 +232,22 @@ test('a tool call runs on the managed key, never the bearer token; the key is mi
 
 test('a tool needing a scope the token lacks → 403 insufficient_scope naming the held and the needed scopes', async () => {
   const { handler, minter } = setup();
-  const token = await sign({ scope: 'markets:read' });
-  const res = await call(handler, 'dwlf_list_strategies', {}, { token });
+  const token = await sign({ scope: 'block:read' });
+  const res = await call(handler, 'dwlf_create_strategy', { name: 'x' }, { token });
   assert.equal(res.status, 403);
   const www = res.headers.get('www-authenticate');
   assert.match(www, /error="insufficient_scope"/);
-  assert.match(www, /scope="markets:read strategies:read"/);
+  assert.match(www, /scope="block:read block:build"/);
   assert.match(www, /resource_metadata=/);
   assert.equal(minter.minted.length, 0);
 });
 
 test('a step-up re-mints a key with the new scopes, swaps it in, then revokes the old one', async () => {
   const { handler, minter } = setup();
-  await call(handler, 'dwlf_get_regime', { symbol: 'BTC' }, { token: await sign({ scope: 'markets:read' }) });
-  await call(handler, 'dwlf_get_regime', { symbol: 'BTC' }, { token: await sign({ scope: 'markets:read strategies:read' }) });
+  await call(handler, 'dwlf_get_regime', { symbol: 'BTC' }, { token: await sign({ scope: 'block:read' }) });
+  // A newer token (the step-up), issued a second later.
+  await new Promise((r) => setTimeout(r, 1100));
+  await call(handler, 'dwlf_get_regime', { symbol: 'BTC' }, { token: await sign({ scope: 'block:read block:build' }) });
   assert.equal(minter.minted.length, 2);
   assert.deepEqual(minter.revoked, ['dwlf_sk_managed_1']);
 });
