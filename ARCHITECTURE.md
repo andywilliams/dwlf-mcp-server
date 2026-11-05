@@ -49,10 +49,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 25 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
+- **~100 `dwlf_*` tools** grouped in 26 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
-  subscriptions, onchain-catalogue), each wired by `registerAll` in `src/register.ts` via a
+  subscriptions, onchain-catalogue, explain-event), each wired by `registerAll` in `src/register.ts` via a
   `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
   *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
 - **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
@@ -83,6 +83,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   and a node the catalogue marks unsupported carries `engineIgnored`. The catalogue is cached 15 minutes,
   a request the static file answers alone does not fetch it, and an unfiltered call lists catalogue
   nodes by name only *(from: `src/data/nodeCatalogue.ts`, DWLF-370)* *(inferred from: `src/data/strategyNodeMetadata.ts`, added by PR #40)*.
+- **"Explain this event"** (`dwlf_explain_event`, DWLF-646): the definition from `GET /v2/events/{type}/explain`
+  and, for engine types, `/explain/occurrences`, each returned as the backend sends it under `definition` /
+  `occurrences`. The tool JOINS the two calls and derives nothing (an exception to invariant 2's single-call
+  pass-through, scoped to this tool). The API decides which types exist: its 404 `code: UNKNOWN_EVENT_TYPE` is a
+  usage error. Only an untagged 404 (an API without the route) falls back to the bundled catalogue, labelled
+  `definitionSource: "bundled"`, with `revision`/`measuredHistory` null (unknown) and no occurrence read; any other
+  failure is the tool's error.
 
 **Depends on**
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:
