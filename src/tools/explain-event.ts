@@ -37,10 +37,11 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '(can this event\'s history change under you, and why: immutable / oracle / model / estimated), ' +
       '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
       'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
-      'changed, as three buckets placed by the day a row became knowable (`confirmedAt`): `fired` (it happened on or ' +
-      'after it), `published` (knowable earlier but first served on or after it, e.g. a backfill: new to you, NOT a ' +
-      'firing) and `revised` (already served, restated on or after it). Each bucket is { count, firstDated, lastDated, ' +
-      'rows (the newest 50), truncated }: quote `count`, not the rows listed. Neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
+      'changed, as three disjoint buckets placed by the day a row became knowable (`confirmedAt`; an on-chain row ' +
+      'dated D is confirmed on D+1): `fired` (knowable on or after `since`), `published` (knowable before `since` but ' +
+      'first served on or after it, e.g. a backfill: new to you, NOT a firing) and `revised` (served before `since`, ' +
+      'restated on or after it). Each bucket is { count, firstDated, lastDated, rows (the newest), truncated }: quote ' +
+      '`count`, not the rows listed. Neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
       'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
       '⚠️ Read before you report:\n' +
       '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
@@ -53,7 +54,9 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       'another way.\n' +
       '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.\n' +
       '- `published` rows are history DWLF served late (a backfill): never report them as recent firings.\n' +
-      '- Check `occurrences.responseVersion` (2 = the bucket shape above).',
+      '- Check `occurrences.responseVersion`. 2 = the bucket shape above. MISSING = an older DWLF API, where `fired` ' +
+      'and `revised` are plain arrays and `fired` mixes real firings with late-published history (a backfill): then ' +
+      'report only the `fired` rows whose `date` is on or after `since` as firings, and say that the API is older.',
     {
       eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose (a `#…` row-key suffix is ignored)'),
       date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
