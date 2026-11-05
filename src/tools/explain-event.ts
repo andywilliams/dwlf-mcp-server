@@ -37,8 +37,10 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '(can this event\'s history change under you, and why: immutable / oracle / model / estimated), ' +
       '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
       'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
-      'changed: `fired` (rows dated or first served on or after it) and `revised` (older rows DWLF restated on or ' +
-      'after it); neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
+      'changed, as three buckets placed by the day a row became knowable (`confirmedAt`): `fired` (it happened on or ' +
+      'after it), `published` (knowable earlier but first served on or after it, e.g. a backfill: new to you, NOT a ' +
+      'firing) and `revised` (already served, restated on or after it). Each bucket is { count, firstDated, lastDated, ' +
+      'rows (the newest 50), truncated }: quote `count`, not the rows listed. Neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
       'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
       '⚠️ Read before you report:\n' +
       '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
@@ -49,11 +51,13 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '"it has not fired" from it.\n' +
       '- `priceWithheld: true` on a row means this key may not receive the close (data licensing): do not ask for it ' +
       'another way.\n' +
-      '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.',
+      '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.\n' +
+      '- `published` rows are history DWLF served late (a backfill): never report them as recent firings.\n' +
+      '- Check `occurrences.responseVersion` (2 = the bucket shape above).',
     {
       eventType: z.string().describe('An onchain.* event type id, e.g. onchain.sth_sopr.lose (a `#…` row-key suffix is ignored)'),
       date: z.string().optional().describe('YYYY-MM-DD: explain the occurrence on this day'),
-      since: z.string().optional().describe('YYYY-MM-DD: what fired or was restated on or after this day'),
+      since: z.string().optional().describe('YYYY-MM-DD: what fired, was first published, or was restated on or after this day'),
     },
     async ({ eventType, date, since }) => {
       try {
