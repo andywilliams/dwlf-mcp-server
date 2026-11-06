@@ -32,6 +32,11 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_get_intelligence',
   'dwlf_get_support_resistance',
   'dwlf_get_cycle_setups',
+  // The engine's technical analysis on BTCOC/USD, viewable on every Block plan (Andy's TA decision): trend lines with
+  // their anchors, the stored daily moving averages, and range context from cycle pivots.
+  'dwlf_get_trendlines',
+  'dwlf_get_indicators',
+  'dwlf_get_ranges',
   // Custom events: build, check, evaluate, activate
   'dwlf_describe_strategy_nodes',
   'dwlf_list_custom_events',
