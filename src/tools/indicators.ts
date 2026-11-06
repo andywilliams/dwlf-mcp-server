@@ -101,7 +101,9 @@ export function registerIndicatorTools(
     'Get the automatically detected trendlines for a symbol on one timeframe (daily by default; weekly; ' +
       'hourly only for symbols with 1h data). Each line carries its type (support/resistance), its two anchors ' +
       '(date + price), slope and whether it is still active. Breaks of these lines are the ' +
-      '`trendline_break_*` / `trendline_breach_*` events in dwlf_get_events.',
+      '`trendline_break_*` / `trendline_breach_*` events in dwlf_get_events. ' +
+      'Weekly lines are not stored for every symbol yet (BTCOC/USD has daily lines only): an empty weekly list means ' +
+      '"none stored", not "no trend", so check the weekly `trendline_break_*` events instead.',
     {
       symbol: z
         .string()

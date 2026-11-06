@@ -10,8 +10,8 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
  */
 export const CONDITIONS_ASSETS = ['btc'] as const;
 
-// The symbols the route answers for, in the dash form it is sent in. BTCOC (DWLF's on-chain price) is not a
-// KNOWN_PAIRED base, so its bare and concatenated spellings are mapped here rather than in the shared normaliser.
+// The symbols the route answers for, in the dash form it is sent in. BTCOC is a KNOWN_PAIRED base now (client.ts); the
+// local mapping below is kept as a belt-and-braces for this route's two-symbol check.
 const CONDITIONS_SYMBOLS = new Set(['BTC-USD', 'BTCOC-USD']);
 const toConditionsSymbol = (input: string): string => {
   const s = normalizeSymbol(input);
