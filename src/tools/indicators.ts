@@ -103,7 +103,8 @@ export function registerIndicatorTools(
       '(date + price), slope and whether it is still active. Breaks of these lines are the ' +
       '`trendline_break_*` / `trendline_breach_*` events in dwlf_get_events. ' +
       'Weekly lines are not stored for every symbol yet (BTCOC/USD has daily lines only): an empty weekly list means ' +
-      '"none stored", not "no trend", so check the weekly `trendline_break_*` events instead.',
+      '"none stored", not "no trend". The engine\'s weekly detection still emits weekly `trendline_break_*` events ' +
+      '(for BTCOC/USD too), so read those with dwlf_get_events.',
     {
       symbol: z
         .string()
