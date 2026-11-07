@@ -10,13 +10,8 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
  */
 export const CONDITIONS_ASSETS = ['btc'] as const;
 
-// The symbols the route answers for, in the dash form it is sent in. BTCOC (DWLF's on-chain price) is not a
-// KNOWN_PAIRED base, so its bare and concatenated spellings are mapped here rather than in the shared normaliser.
+// The symbols the route answers for, in the dash form it is sent in (normalizeSymbol maps every BTC and BTCOC spelling).
 const CONDITIONS_SYMBOLS = new Set(['BTC-USD', 'BTCOC-USD']);
-const toConditionsSymbol = (input: string): string => {
-  const s = normalizeSymbol(input);
-  return s === 'BTCOC' || s === 'BTCOCUSD' ? 'BTCOC-USD' : s;
-};
 
 export function registerConditionsTools(server: McpServer, client: DWLFClient) {
   server.tool(
@@ -74,7 +69,7 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
         const params: Record<string, string | number> = {};
         if (symbol) {
           // Dash form, which the route reads back as slash form (BTC-USD → BTC/USD).
-          const s = toConditionsSymbol(symbol);
+          const s = normalizeSymbol(symbol);
           if (!CONDITIONS_SYMBOLS.has(s)) {
             return {
               content: [{ type: 'text', text: `Usage: symbol must be BTC/USD or BTCOC/USD for asset btc (got "${symbol}").` }],

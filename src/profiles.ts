@@ -32,6 +32,11 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_get_intelligence',
   'dwlf_get_support_resistance',
   'dwlf_get_cycle_setups',
+  // Technical analysis reads, for BTCOC/USD above all (DWLF-722): trend lines with their anchors, the stored daily
+  // moving averages, and range context from cycle pivots. What a plan may read is the API's decision, not this list's.
+  'dwlf_get_trendlines',
+  'dwlf_get_indicators',
+  'dwlf_get_ranges',
   // Custom events: build, check, evaluate, activate
   'dwlf_describe_strategy_nodes',
   'dwlf_list_custom_events',
