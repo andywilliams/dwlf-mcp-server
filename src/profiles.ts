@@ -95,7 +95,8 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     'to find an on-chain event and dwlf_explain_event to learn what it means, whether its history can change and ' +
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
     'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
-    'PLANS: a plan reads some event families in full (which ones: GET /v2/public/block/pricing, `families`). Below ' +
+    'PLANS: a plan reads some event families in full (which ones: https://api.dwlf.co.uk/v2/public/block/pricing, ' +
+    '`families` and each plan\'s `families`; give your human that link, or fetch it if you can). Below ' +
     'that plan an event row is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning), a conditions section is ' +
     '`{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, and a state read of that family fails with HTTP 403 ' +
     'naming `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`. Tell your human what is locked and which plan ' +
