@@ -95,10 +95,11 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     'to find an on-chain event and dwlf_explain_event to learn what it means, whether its history can change and ' +
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
     'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
-    'PLANS: what a plan reads in full is its families (Free: cost basis and simple TA; Block and Builder: everything). ' +
-    'Below that plan an event row or a conditions section comes back with `locked: true`, `lockedFamily` and ' +
-    '`requiredPlan`, and a state read of that family is a 403 PLAN_REQUIRED with `family` and `requiredPlan`. Tell your ' +
-    'human what is locked and which plan unlocks it (`pricingUrl`); never guess a locked value.',
+    'PLANS: a plan reads some event families in full (which ones: GET /v2/public/block/pricing, `families`). Below ' +
+    'that plan an event row is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning), a conditions section is ' +
+    '`{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, and a state read of that family fails with HTTP 403 ' +
+    'naming `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`. Tell your human what is locked and which plan ' +
+    'unlocks it (`pricingUrl`); never guess a locked value.',
 };
 
 /** The profile named by `--profile X` / `--profile=X`, else `DWLF_TOOL_PROFILE`, else `full`. Throws on an unknown name. */

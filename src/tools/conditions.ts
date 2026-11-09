@@ -25,7 +25,8 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'instead of stitching dwlf_get_regime, dwlf_get_stage, dwlf_get_cycle_windows and dwlf_get_events together. ' +
       'It carries the on-chain cost basis, the on-chain bands, the cycle windows and CFTC positioning in one read; ' +
       'use dwlf_get_support_resistance for BTC\'s S/R levels.\n\n' +
-      'SHAPE (responseVersion 3; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
+      'SHAPE (responseVersion 3; the response carries `responseVersion`, so check it; 1 and 2 are the same shape ' +
+      'from an older DWLF API, which never locks a section): `{ kind: "conditions", ' +
       'asset, responseVersion, framing, symbol, asOf, price, regime: { daily, weekly, stage, onchain: ' +
       '{ status, bands[] } }, costBasisLadder: { status, onchainSymbol, sideBasis, levelsPending, rungs: [{ key, ' +
       'side, level, distancePct, since }], counts }, cycleWindows: { weekly, daily }, recentEvents: { days, ' +
@@ -48,8 +49,8 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       '- Cycle windows carry `verification` (currently unverified): treat them as rough timing, not a forecast.\n' +
       '- LOCKED (responseVersion 3, DWLF Block plans): a section the plan does not read (`regime.daily`, ' +
       '`regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, ' +
-      'and an event row of such a family keeps only `eventType`, `date`, `locked: true`, `lockedFamily` and ' +
-      '`requiredPlan`. Say the reading exists and which plan unlocks it; never infer its value.',
+      'and an event row of such a family is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning). ' +
+      'Say the reading exists and which plan unlocks it; never infer its value.',
     {
       asset: z
         .enum(CONDITIONS_ASSETS)

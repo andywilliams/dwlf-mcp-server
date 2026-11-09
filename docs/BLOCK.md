@@ -82,15 +82,14 @@ key (403 `NOT_ON_BLOCK`). For Bitcoin, `dwlf_get_conditions` carries the same pi
 
 ## What your plan reads
 
-What a plan reads in full is its families (`GET https://api.dwlf.co.uk/v2/public/block/pricing`, `families`). Free reads
-cost basis (realised prices, MVRV, SOPR, supply in profit) and simple TA. Block and Builder read everything: cycles,
-levels, COT, whales and cohorts, quantum, mining, the computed regime, fee windows, DCA and blockspace. Below the plan:
+What a plan reads in full is its families: `GET https://api.dwlf.co.uk/v2/public/block/pricing` lists them (`families`,
+and each plan's `families`) and is the source of truth. Below the plan:
 
-- an event row comes back locked: `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }`, with
-  no price, levels or values;
+- an event row comes back locked: `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what
+  fired and when; no price, levels, values or meaning);
 - a conditions section (`regime.daily`, `regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, … }`;
-- a state read of that family (stage, regime, cycle windows, levels, COT) is `403 PLAN_REQUIRED` with `family` and
-  `requiredPlan`;
+- a state read of that family (stage, regime, cycle windows, levels, COT) is `403 PLAN_REQUIRED`; the tool's error ends
+  `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`;
 - an alert on that family is refused.
 
 Your assistant is told to say what is locked and which plan unlocks it, never to guess a locked value. The profile

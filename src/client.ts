@@ -57,6 +57,22 @@ export function normalizeSymbol(input: string): string {
   return s;
 }
 
+/**
+ * The plan facts of a refusal (SPT: a DWLF Block plan, quota or family refusal is flat JSON carrying `error`, `family`,
+ * `requiredPlan`, `upgradeUrl`, `pricingUrl`), as a suffix on the error message: every tool reports `error.message`,
+ * and the agent is told to say which plan unlocks a locked family, so these must reach it, not only the message.
+ */
+export function planFacts(body: unknown): string {
+  if (!body || typeof body !== 'object') return '';
+  const obj = body as Record<string, unknown>;
+  const code = typeof obj.error === 'string' ? obj.error : typeof obj.code === 'string' ? obj.code : undefined;
+  const facts = ([['family', obj.family], ['requiredPlan', obj.requiredPlan], ['pricingUrl', obj.pricingUrl]] as const)
+    .filter(([, v]) => typeof v === 'string' && v)
+    .map(([k, v]) => `${k}=${v}`);
+  if (!facts.length) return '';
+  return ` [${[code, ...facts].filter(Boolean).join('; ')}]`;
+}
+
 export class DWLFClient {
   private http: AxiosInstance;
 
@@ -109,7 +125,7 @@ export class DWLFClient {
           } else if (typeof body === 'string' && body.trim()) {
             detail = body.slice(0, 300);
           }
-          error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+          error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}${planFacts(body)}`;
         }
         return Promise.reject(error);
       }

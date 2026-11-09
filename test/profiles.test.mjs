@@ -64,10 +64,15 @@ test('no Block tool sends the agent to a tool the profile hides', () => {
 });
 
 test('block leaves out the retail, metals and trade-journal tools', () => {
-  for (const t of ['dwlf_create_trade', 'dwlf_get_portfolio', 'dwlf_get_daily_briefing', 'dwlf_add_to_watchlist', 'dwlf_get_holdings']) {
+  // dwlf_get_intelligence: SPT refuses it to a Block key (403 NOT_ON_BLOCK; DWLF-686 decision D).
+  for (const t of ['dwlf_create_trade', 'dwlf_get_portfolio', 'dwlf_get_daily_briefing', 'dwlf_add_to_watchlist', 'dwlf_get_holdings',
+    'dwlf_get_intelligence']) {
     assert.equal(BLOCK_TOOLS.has(t), false, t);
   }
   assert.match(PROFILE_INSTRUCTIONS.block, /conditions, not calls/i);
+  // The plan→family map is the API's (G22): the instructions point to it and never restate it.
+  assert.match(PROFILE_INSTRUCTIONS.block, /\/v2\/public\/block\/pricing/);
+  assert.doesNotMatch(PROFILE_INSTRUCTIONS.block, /Free: |cost basis and simple TA/);
   assert.equal(PROFILE_INSTRUCTIONS.full, null);
 });
 
