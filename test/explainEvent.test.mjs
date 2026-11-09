@@ -150,5 +150,6 @@ test('the description frames conditions, not calls, and names the fallback and w
   // SPT#743's since buckets: a backfill is never a firing, and an older API (no responseVersion) is handled.
   assert.match(s.description(), /new to you, NOT a firing/);
   assert.match(s.description(), /never report them as recent firings/);
-  assert.match(s.description(), /responseVersion`\. 2 = the bucket shape[^.]*\. MISSING = an older DWLF API/);
+  assert.match(s.description(), /responseVersion`\. 2 or 3 = the bucket shape above \(3: rows may be locked\)\. MISSING = an older DWLF API/);
+  assert.match(s.description(), /locked: true/);
 });

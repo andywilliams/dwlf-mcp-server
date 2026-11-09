@@ -14,7 +14,8 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       '`since` (when the stage became knowable) and the recent transitions. Use it for "is X basing or ' +
       'advancing?", "how long has X been in Stage 2?" and, with `group` or several `symbols`, for sector breadth ' +
       '("what share of metals are in Stage 2?"). This is the platform\'s market-cycle read: dwlf_get_regime ' +
-      'carries no cycle phase, and dwlf_get_intelligence returns this same stage as `stage`.\n\n' +
+      'carries no cycle phase. On a DWLF Block key the stage is the Cycles family: below the Block plan it is a 403 ' +
+      'PLAN_REQUIRED naming `requiredPlan`.\n\n' +
       'SHAPE (one symbol): `{ symbol, stage, stageName, weeksInStage, since, rulesVersion, verification, ' +
       'history: [{ to, from, baseline, knowableFrom, close }] }`. `stage: null` with `reason: "no-stage"` = too ' +
       'little weekly history. SHAPE (many): `{ verification, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +

@@ -23,10 +23,9 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'windows with today\'s `position` against their dates; every event on the symbol in the last `days` (price, ' +
       'cycle, CFTC positioning `cot.*`, on-chain `onchain.*`); and provenance. For BITCOIN, call this first, ' +
       'instead of stitching dwlf_get_regime, dwlf_get_stage, dwlf_get_cycle_windows and dwlf_get_events together. ' +
-      'It carries what dwlf_get_intelligence does not: the on-chain cost basis, the on-chain bands, the cycle ' +
-      'windows and CFTC positioning. Use dwlf_get_intelligence for any other symbol, and for BTC\'s S/R levels, ' +
-      'FSM state and signal quality.\n\n' +
-      'SHAPE (responseVersion 1; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
+      'It carries the on-chain cost basis, the on-chain bands, the cycle windows and CFTC positioning in one read; ' +
+      'use dwlf_get_support_resistance for BTC\'s S/R levels.\n\n' +
+      'SHAPE (responseVersion 3; the response carries `responseVersion`, so check it): `{ kind: "conditions", ' +
       'asset, responseVersion, framing, symbol, asOf, price, regime: { daily, weekly, stage, onchain: ' +
       '{ status, bands[] } }, costBasisLadder: { status, onchainSymbol, sideBasis, levelsPending, rungs: [{ key, ' +
       'side, level, distancePct, since }], counts }, cycleWindows: { weekly, daily }, recentEvents: { days, ' +
@@ -46,7 +45,11 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'staleness is visible.\n' +
       '- `price.withheld: true` means this API key may not receive the vendor\'s raw close (data licensing). ' +
       'Sides and states are unaffected; do not ask for the close another way.\n' +
-      '- Cycle windows carry `verification` (currently unverified): treat them as rough timing, not a forecast.',
+      '- Cycle windows carry `verification` (currently unverified): treat them as rough timing, not a forecast.\n' +
+      '- LOCKED (responseVersion 3, DWLF Block plans): a section the plan does not read (`regime.daily`, ' +
+      '`regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, ' +
+      'and an event row of such a family keeps only `eventType`, `date`, `locked: true`, `lockedFamily` and ' +
+      '`requiredPlan`. Say the reading exists and which plan unlocks it; never infer its value.',
     {
       asset: z
         .enum(CONDITIONS_ASSETS)

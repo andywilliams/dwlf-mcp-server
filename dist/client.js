@@ -21,6 +21,8 @@ const KNOWN_PAIRED = new Set([
     'XRP', 'DOGE', 'LTC', 'BCH', 'ATOM', 'FIL', 'NEAR', 'ALGO', 'ICP', 'TRX',
     'XLM', 'XMR', 'INJ', 'OP', 'ARB', 'TIA', 'SEI', 'PEPE', 'SHIB', 'BNB',
     'TON', 'APT', 'SUI', 'STX', 'KAS', 'RNDR', 'FTM', 'HBAR', 'CRO', 'VET',
+    // DWLF's own on-chain BTC price (BTCOC/USD, Block): BTCOC and BTCOCUSD mean BTCOC-USD for every tool.
+    'BTCOC',
     // Commodity / FX pairs that DWLF treats with the same shape
     'XAU', 'XAG', 'XPT', 'XPD',
     'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD',
