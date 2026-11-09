@@ -54,7 +54,9 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       'another way.\n' +
       '- `revised` rows changed after they were first served: quote the revision, and `revision.why`.\n' +
       '- `published` rows are history DWLF served late (a backfill): never report them as recent firings.\n' +
-      '- Check `occurrences.responseVersion`. 2 = the bucket shape above. MISSING = an older DWLF API, where `fired` ' +
+      '- A row with `locked: true` is of a family the plan does not read (DWLF Block): `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning). ' +
+      '`requiredPlan` unlocks the detail. Counts and dates outside the rows are real.\n' +
+      '- Check `occurrences.responseVersion`. 2 or 3 = the bucket shape above (3: rows may be locked). MISSING = an older DWLF API, where `fired` ' +
       'and `revised` are plain arrays and `fired` mixes real firings with late-published history (a backfill): then ' +
       'report as firings only the `fired` rows whose `onchain.confirmedAt` (else `date`) is on or after `since`, the same ' +
       'rule as version 2, and say that the API is older.',

@@ -89,6 +89,7 @@ test('the description carries the framing and the reading rules agents must foll
   assert.match(d, /unavailable/);
   assert.match(d, /withheld/);
   assert.match(d, /unscored/);
-  assert.match(d, /dwlf_get_intelligence/);
-  assert.match(d, /responseVersion 1/);
+  assert.doesNotMatch(d, /dwlf_get_intelligence/, 'a Block tool never points to a tool the Block profile hides');
+  assert.match(d, /responseVersion 3/);
+  assert.match(d, /locked: true/);
 });

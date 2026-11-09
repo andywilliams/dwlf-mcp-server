@@ -29,9 +29,10 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_get_quote',
   'dwlf_get_price_picture',
   'dwlf_get_market_data',
-  'dwlf_get_intelligence',
   'dwlf_get_support_resistance',
   'dwlf_get_cycle_setups',
+  // dwlf_get_intelligence is not here: it is a DWLF retail read (any symbol, families mixed), and a Block account's key
+  // is refused it (SPT block/keyRoutePolicy, 403 NOT_ON_BLOCK; tier matrix decision D). dwlf_get_conditions covers BTC.
   // Technical analysis reads, for BTCOC/USD above all (DWLF-722): trend lines with their anchors, the stored daily
   // moving averages, and range context from cycle pivots. What a plan may read is the API's decision, not this list's.
   'dwlf_get_trendlines',
@@ -93,7 +94,13 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     '(regime, cost-basis ladder, cycle windows, recent events, provenance), and use dwlf_describe_onchain_events ' +
     'to find an on-chain event and dwlf_explain_event to learn what it means, whether its history can change and ' +
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
-    'into buy, sell or hold recommendations. Nothing here is scored as a predictor.',
+    'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
+    'PLANS: a plan reads some event families in full (which ones: https://api.dwlf.co.uk/v2/public/block/pricing, ' +
+    '`families` and each plan\'s `families`; give your human that link, or fetch it if you can). Below ' +
+    'that plan an event row is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning), a conditions section is ' +
+    '`{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, and a state read of that family fails with HTTP 403 ' +
+    'naming `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`. Tell your human what is locked and which plan ' +
+    'unlocks it (`pricingUrl`); never guess a locked value.',
 };
 
 /** The profile named by `--profile X` / `--profile=X`, else `DWLF_TOOL_PROFILE`, else `full`. Throws on an unknown name. */
