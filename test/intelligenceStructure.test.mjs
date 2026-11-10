@@ -9,8 +9,10 @@ registerSemanticTools({ tool: (name, desc) => { descriptions[name] = desc; } }, 
 const d = descriptions.dwlf_get_intelligence;
 
 test('the description names every supersession field the route serves', () => {
-  for (const field of ['`structure`', '`structureWeekly`', '`supersededBy`', '`supersededKept`', '`supersessionTracked`', '`finalAfter`', '`structureIncomplete`', '`agentHints.structure`']) {
-    assert.ok(d.includes(field), field);
+  // each field in backticks, alone or as `field: value`
+  for (const field of ['structure', 'structureWeekly', 'supersededBy', 'supersededKept', 'supersessionTracked', 'finalAfter',
+    'structureIncomplete', 'agentHints.structure']) {
+    assert.match(d, new RegExp(`\`${field.replace('.', '\\.')}[\`:]`), field);
   }
   assert.match(d, /`status`[^.]*"active"[^;]*;[^;]*"superseded"/, 'status and both of its string values');
 });
