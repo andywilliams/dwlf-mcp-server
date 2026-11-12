@@ -27,11 +27,13 @@ test('every filter reaches the query; symbols in dash form, confluence de-duplic
     symbols: 'BTC-USD,AAPL', timeframe: 'all', confluence: 'cycle,smc', confluenceDays: '5', minLayers: '2', includeRetired: 'true', explain: 'true' });
 });
 
-test('minLayers without confluence is a usage error, before any request', async () => {
+test('minLayers above the distinct layers requested (or without confluence) is a usage error, before any request', async () => {
   const { calls, call } = setup();
-  const r = await call({ minLayers: 2 });
-  assert.equal(r.isError, true);
+  assert.equal((await call({ minLayers: 2 })).isError, true);
+  assert.equal((await call({ confluence: ['cycle', 'cycle'], minLayers: 2 })).isError, true);
   assert.deepEqual(calls, []);
+  await call({ confluence: ['cycle', 'smc'], minLayers: 2 });
+  assert.equal(calls[0].params.minLayers, '2');
 });
 
 test('the answer is passed through unchanged; a backend failure is a tool error, never an empty list', async () => {

@@ -10,7 +10,7 @@
     {
       "id": "explain-and-show",
       "q": "Explain the most recent bullish divergence to a beginner, and show me where it is on a chart.",
-      "expect": { "mustCall": ["dwlf_get_divergences"], "mustMention": ["https?://\\S+"] }
+      "expect": { "mustCall": ["dwlf_get_divergences"], "mustMention": ["https?://(?:www\\.)?dwlf\\.co\\.uk/(?!v2/public/block/pricing)\\S*chart\\S*"] }
     },
     {
       "id": "trap-buy-signal",

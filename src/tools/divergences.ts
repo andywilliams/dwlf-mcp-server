@@ -54,8 +54,11 @@ export function registerDivergenceTools(server: McpServer, client: DWLFClient): 
       explain: z.boolean().optional().describe('Add `definitions` to a plain (version 1) read; version 2 always has them.'),
     },
     async (args) => {
-      if (args.minLayers !== undefined && args.minLayers > 0 && !(args.confluence && args.confluence.length)) {
-        return { isError: true, content: [{ type: 'text', text: 'minLayers needs `confluence`: name the layers to count.' }] };
+      const layers = [...new Set(args.confluence ?? [])];
+      if (args.minLayers !== undefined && args.minLayers > layers.length) {
+        return { isError: true, content: [{ type: 'text', text: layers.length
+          ? `minLayers (${args.minLayers}) is more than the ${layers.length} distinct layer(s) requested in \`confluence\`.`
+          : 'minLayers needs `confluence`: name the layers to count.' }] };
       }
       const params: Record<string, string> = { limit: String(args.limit ?? DEFAULT_LIMIT) };
       if (args.days !== undefined) params.days = String(args.days);
@@ -64,7 +67,7 @@ export function registerDivergenceTools(server: McpServer, client: DWLFClient): 
       if (args.direction) params.direction = args.direction;
       if (args.symbols && args.symbols.length) params.symbols = args.symbols.map((s) => normalizeSymbol(s)).join(',');
       if (args.timeframe) params.timeframe = args.timeframe;
-      if (args.confluence && args.confluence.length) params.confluence = [...new Set(args.confluence)].join(',');
+      if (layers.length) params.confluence = layers.join(',');
       if (args.confluenceDays !== undefined) params.confluenceDays = String(args.confluenceDays);
       if (args.minLayers !== undefined) params.minLayers = String(args.minLayers);
       if (args.includeRetired !== undefined) params.includeRetired = String(args.includeRetired);
