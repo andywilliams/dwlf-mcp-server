@@ -1,7 +1,7 @@
 # DWLF Block: connect your agent
 
-DWLF Block is Bitcoin conditions, not calls: on-chain cost basis, regime, cycle timing and events you can combine,
-backtest and alert on. This server's `block` profile gives your agent just the tools for that.
+DWLF Block is Bitcoin conditions, not calls: on-chain cost basis, regime, cycle timing and events you can combine
+into your own custom events and alert on. This server's `block` profile gives your agent just the tools for that.
 
 You need a DWLF API key (`dwlf_sk_…`). An agent can get one itself with `dwlf_register_agent` (`POST
 /v2/agent/register`), and the human confirms by email. Replace `dwlf_sk_your_key_here` below.
@@ -59,7 +59,7 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 
 1. "What are Bitcoin's on-chain conditions today?"
 2. "Alert me when price crosses the short-term-holder realised price."
-3. "Backtest: price below the short-term-holder realised price AND inside a weekly cycle-low window."
+3. "Make a custom event: price below the short-term-holder realised price AND inside a weekly cycle-low window. When did it last happen?"
 
 ## What the `block` profile includes
 
@@ -72,8 +72,10 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 - **Technical analysis (BTCOC/USD and the rest):** `dwlf_get_trendlines` (the engine's trend lines, daily; weekly lines
   for BTCOC/USD are not stored yet), `dwlf_get_indicators` (daily SMA/EMA 10–200 values), `dwlf_get_ranges` (where
   price sits in its range, from cycle pivots). The TA events themselves come through `dwlf_get_events`.
-- **Build and test:** custom events, strategies (including `dwlf_evaluate_strategy` and `dwlf_get_recent_signals`)
-  and backtests, with `dwlf_describe_strategy_nodes` for the node catalogue.
+- **Build:** custom events (create, compile, activate, evaluate, read their fires), with `dwlf_describe_strategy_nodes`
+  for the condition-node catalogue.
+- **Not in Block** (Andy, 12-Nov-2026, DWLF-835): strategy signals, strategies and backtests, with their signal/entry/exit
+  vocabulary. They stay in the `full` profile, and Block revisits them with the builder in v1.1.
 - **Alerts:** subscriptions (`dwlf_create_subscription` and friends).
 - **Learning and account:** the academy, `dwlf_get_quotas`, `dwlf_register_agent`.
 

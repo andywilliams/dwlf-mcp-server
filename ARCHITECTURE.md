@@ -56,8 +56,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
   *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
 - **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
-  `block` (the Bitcoin subset, `BLOCK_TOOLS` in `src/profiles.ts`), applied by a filtering view over `server.tool`.
-  A profile only hides tools. It is never a permission boundary, because every call carries the same key to the same
+  `block` (the Bitcoin subset, `BLOCK_TOOLS` in `src/profiles.ts`), applied by a view over `server.tool`.
+  A profile hides tools, and `block` also sends its own wording for some shared ones (description, input schema, and
+  the node catalogue's answer limited to condition nodes and logic gates; `src/blockDescriptions.ts`, DWLF-835). It still never widens
+  what a call can do. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
@@ -150,6 +152,12 @@ A reviewer should be able to test a diff against each of these:
 5. **The docstring is the contract.** A change to a tool's behaviour, default, or backend semantics
    must change its `description` in the same diff *(inferred from: PR #62 "auto-paginate … + document
    the footgun", #50 "doc-drift audit", #39 "echo filtersApplied so the 7-day default is visible")*.
+   ⚠️ **A tool can have TWO contracts since DWLF-835 (12-Nov-2026):** the shared one, and its Block wording in
+   `src/blockDescriptions.ts` (description, input schema, and for the node catalogue a handler that answers with
+   condition nodes and logic gates only), which `profiledServer` sends for the `block` profile (Block describes conditions, never calls,
+   and has no strategies, signals or backtests). A behaviour change updates BOTH. A test reads what the built server
+   lists under `--profile block` (descriptions and input schemas) and keeps it free of strategy/backtest/entry-exit
+   vocabulary and of references to hidden tools.
 6. **A new tool file is not shipped until it is registered in `registerAll` (`src/register.ts`)**, and **the same
    PR decides whether it is in the `block` profile** (`BLOCK_TOOLS`, `src/profiles.ts`). Those are the two wiring
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
