@@ -42,12 +42,13 @@ test('a recorded fixture is replayed exactly as recorded', async () => {
   const { writeFileSync } = await import('node:fs');
   const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
   const key = fixtureKey('GET', '/v2/conditions/btc?days=7');
-  writeFileSync(fixtureFile(dir, key), JSON.stringify({ key, status: 200, body: { recorded: 'yes' } }));
+  writeFileSync(fixtureFile(dir, key), JSON.stringify({ key, status: 200, recordedAt: new Date().toISOString(), body: { recorded: 'yes' } }));
   const fixtures = await startFixtureServer({ dir });
   try {
     const res = await fetch(`${fixtures.url}/v2/conditions/btc?days=7`);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { recorded: 'yes' });
+    assert.deepEqual([...fixtures.stale], [], 'a fresh, dated fixture is not stale');
   } finally { await fixtures.close(); }
 });
 
@@ -59,4 +60,29 @@ test('recording never writes to prod: a non-GET is refused before anything goes 
     assert.equal(res.status, 403);
     assert.equal((await res.json()).error, 'EVAL_RECORD_WRITE_REFUSED');
   } finally { await fixtures.close(); }
+});
+
+test('recording does not save an outage: a 5xx/401/429 upstream answer is passed on, not written', async () => {
+  const { createServer } = await import('node:http');
+  const { readdirSync } = await import('node:fs');
+  const up = createServer((req, res) => { res.writeHead(503, { 'content-type': 'application/json' }); res.end('{"error":"down"}'); });
+  await new Promise((r) => up.listen(0, '127.0.0.1', r));
+  const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
+  const fixtures = await startFixtureServer({ dir, mode: 'record', apiKey: 'dummy', upstream: `http://127.0.0.1:${up.address().port}` });
+  try {
+    const res = await fetch(`${fixtures.url}/v2/conditions/btc`);
+    assert.equal(res.status, 503);
+    assert.deepEqual(readdirSync(dir), []);
+    assert.equal(fixtures.transient.length, 1);
+  } finally { await fixtures.close(); await new Promise((r) => up.close(r)); }
+});
+
+test('an undated fixture is reported stale', async () => {
+  const { fixtureKey, fixtureFile } = await import('../eval/fixture-server.mjs');
+  const { writeFileSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
+  const key = fixtureKey('GET', '/v2/x');
+  writeFileSync(fixtureFile(dir, key), JSON.stringify({ key, status: 200, body: {} }));
+  const fixtures = await startFixtureServer({ dir });
+  try { await fetch(`${fixtures.url}/v2/x`); assert.deepEqual([...fixtures.stale], [key]); } finally { await fixtures.close(); }
 });

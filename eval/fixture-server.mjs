@@ -34,14 +34,15 @@ const readBody = (req) => new Promise((resolve, reject) => {
 
 /**
  * Starts the server on a free local port. `mode`: 'replay' | 'record'. `upstream` (record only): the real API origin.
- * Returns `{ url, close, misses, stale }`: the keys replay could not answer, and those answered from a recording
- * older than STALE_AFTER_DAYS.
+ * Returns `{ url, close, misses, stale, transient }`: the keys replay could not answer; those answered from a recording
+ * older than STALE_AFTER_DAYS (or undated); and, when recording, the upstream failures that were not saved.
  */
 export const startFixtureServer = async ({ dir, mode = 'replay', upstream = 'https://api.dwlf.co.uk', apiKey } = {}) => {
   if (mode === 'record' && !apiKey) { throw new Error('record mode needs DWLF_API_KEY (a read-only Block test key)'); }
   mkdirSync(dir, { recursive: true });
   const misses = [];
   const stale = new Set();
+  const transient = [];
   const server = createServer(async (req, res) => {
     try {
       const body = req.method === 'GET' || req.method === 'HEAD' ? '' : await readBody(req);
@@ -55,7 +56,9 @@ export const startFixtureServer = async ({ dir, mode = 'replay', upstream = 'htt
           return;
         }
         const f = JSON.parse(readFileSync(file, 'utf8'));
-        if (f.recordedAt && Date.now() - Date.parse(f.recordedAt) > STALE_AFTER_DAYS * 86400000) { stale.add(key); }
+        // No date, an unreadable date or an old one: all reported. A hand-written fixture carries the date it was written.
+        const age = Date.now() - Date.parse(f.recordedAt);
+        if (!(age <= STALE_AFTER_DAYS * 86400000)) { stale.add(key); }
         res.writeHead(f.status, { 'content-type': 'application/json' });
         res.end(JSON.stringify(f.body));
         return;
@@ -73,6 +76,14 @@ export const startFixtureServer = async ({ dir, mode = 'replay', upstream = 'htt
       const text = await up.text();
       let parsed;
       try { parsed = JSON.parse(text); } catch { parsed = { nonJson: text.slice(0, 2000) }; }
+      // A transient or credential failure is not a recording: answer it, never save it (it would replay an outage as
+      // truth). Real answers are kept, refusals included (400, 403 plan locks, 404).
+      if (up.status === 401 || up.status === 408 || up.status === 429 || up.status >= 500) {
+        transient.push(`${up.status} ${key}`);
+        res.writeHead(up.status, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(parsed));
+        return;
+      }
       writeFileSync(file, `${JSON.stringify({ key, status: up.status, recordedAt: new Date().toISOString(), body: parsed }, null, 1)}\n`);
       res.writeHead(up.status, { 'content-type': 'application/json' });
       res.end(JSON.stringify(parsed));
@@ -83,5 +94,5 @@ export const startFixtureServer = async ({ dir, mode = 'replay', upstream = 'htt
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
-  return { url: `http://127.0.0.1:${port}`, misses, stale, close: () => new Promise((resolve) => server.close(resolve)) };
+  return { url: `http://127.0.0.1:${port}`, misses, stale, transient, close: () => new Promise((resolve) => server.close(resolve)) };
 };

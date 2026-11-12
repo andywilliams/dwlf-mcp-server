@@ -28,6 +28,9 @@ const root = join(here, '..');
 const MODEL = process.env.EVAL_MODEL || 'claude-opus-5-5';
 const JUDGE_MODEL = process.env.EVAL_JUDGE_MODEL || 'claude-opus-5-5';
 const MAX_TURNS = 12;
+// Tools that fetch a host the fixture server cannot stand in for (the Academy CDN, hardcoded base: charter invariant
+// 3). A case for one would make live calls during replay, so it is refused until the tool takes a base-URL override.
+const UNREPLAYABLE_TOOLS = new Set(['dwlf_search_academy', 'dwlf_list_academy_tracks', 'dwlf_get_academy_lesson']);
 // The agent knows nothing but the tools: a fresh user's assistant, told only that it has DWLF Block's tools.
 const AGENT_SYSTEM = 'You are an assistant helping a user with Bitcoin market information. You have DWLF Block\'s tools. '
   + 'Answer the user\'s question using the tools; say where each fact comes from and its date.';
@@ -128,14 +131,19 @@ const main = async () => {
     for (const file of caseFiles) {
       const suite = JSON.parse(readFileSync(join(here, 'cases', file), 'utf8'));
       if (!listed.find((t) => t.name === suite.tool)) { throw new Error(`${file}: ${suite.tool} is not a Block-profile tool`); }
+      if (UNREPLAYABLE_TOOLS.has(suite.tool)) { throw new Error(`${file}: ${suite.tool} fetches a host replay cannot serve; it needs a base-URL override first`); }
       for (const question of suite.questions) {
         // Flake policy: a question that fails ONLY on the judge (the deterministic grader passed) gets one fresh re-run;
         // both attempts are kept. A deterministic failure (a call made, the trap not refused, a required tool not
         // called) is never retried: that is the answer the agent gave.
         const attempts = [];
         for (let attempt = 0; attempt < 2; attempt += 1) {
+          const missesBefore = fixtures.misses.length;
           const run = await askAgent({ anthropic, mcp, tools, question });
           const det = grade({ question, answer: run.answer, toolCalls: run.toolCalls });
+          // A request with no recording fails THIS question: the answer rests on an error the recording never had.
+          const missed = fixtures.misses.slice(missesBefore);
+          if (missed.length) { det.pass = false; det.failures.push(...missed.map((k) => `fixture missing: ${k}`)); }
           const verdict = await judge({ anthropic, question, run });
           attempts.push({ run, det, verdict, pass: det.pass && verdict.correct && verdict.sourced && !verdict.advisory });
           if (attempts.at(-1).pass || !det.pass) { break; }
@@ -155,7 +163,7 @@ const main = async () => {
     await fixtures.close();
   }
   const summary = { version, model: MODEL, judgeModel: JUDGE_MODEL, mode: flag('--record') ? 'record' : 'replay',
-    total: results.length, passed: results.filter((r) => r.pass).length, fixtureMisses: fixtures.misses, staleFixtures: [...fixtures.stale],
+    total: results.length, passed: results.filter((r) => r.pass).length, fixtureMisses: fixtures.misses, staleFixtures: [...fixtures.stale], unsavedUpstreamFailures: fixtures.transient,
     failed: results.filter((r) => !r.pass).map((r) => `${r.tool}.${r.id}`) };
   writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify(summary, null, 1)}\n`);
   console.log(JSON.stringify(summary));
