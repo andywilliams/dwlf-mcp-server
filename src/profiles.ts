@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { BLOCK_DESCRIPTIONS } from './blockDescriptions.js';
+import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS } from './blockDescriptions.js';
 
 /**
  * Tool profiles (DWLF-621). `full` (the default) registers every tool, exactly as before. `block` registers the
@@ -9,7 +9,8 @@ import { BLOCK_DESCRIPTIONS } from './blockDescriptions.js';
  * Selected by `--profile <name>` or `DWLF_TOOL_PROFILE`; the flag wins. An unknown name is a startup error, never a
  * silent fallback to `full`: an agent configured for Block must not quietly get the whole catalogue.
  *
- * A profile only HIDES tools. Every request still goes through the same API key and the same backend
+ * A profile HIDES tools and, for `block`, rewords some (description, input schema, and the node catalogue's answer:
+ * src/blockDescriptions.ts, DWLF-835). Every request still goes through the same API key and the same backend
  * permissions, quotas and licensing, so a profile is never a security boundary.
  */
 export type ProfileName = 'full' | 'block';
@@ -113,6 +114,28 @@ export function resolveProfile(argv: readonly string[], env: Record<string, stri
  * through unchanged. `registered` collects every tool name offered, including the hidden ones, so a test can
  * check that each profile tool exists.
  */
+/**
+ * A shared tool's registration as the Block profile sends it (DWLF-835): its Block description, input schema and
+ * handler where it has them. Registrations are `server.tool(name, description, shape, handler)`; any other form is
+ * refused here rather than passed through unchanged, so an override can never be silently skipped.
+ */
+function blockArgs(name: string, args: unknown[]): unknown[] {
+  const text = BLOCK_DESCRIPTIONS[name];
+  const schema = BLOCK_SCHEMAS[name];
+  const handler = BLOCK_HANDLERS[name];
+  if (text === undefined && schema === undefined && handler === undefined) return args;
+  if (args.length !== 4 || typeof args[1] !== 'string' || typeof args[2] !== 'object' || typeof args[3] !== 'function') {
+    throw new Error(`${name}: has Block wording, but is not registered as tool(name, description, shape, handler)`);
+  }
+  const [, description, shape, fn] = args as [string, string, Record<string, never>, (...a: never[]) => unknown];
+  return [
+    name,
+    typeof text === 'function' ? text(description) : (text ?? description),
+    schema ? schema(shape) : shape,
+    handler ? handler(fn as never) : fn,
+  ];
+}
+
 export function profiledServer(server: McpServer, profile: ProfileName, registered: Set<string> = new Set()): McpServer {
   const allowed = PROFILES[profile];
   return new Proxy(server, {
@@ -122,10 +145,7 @@ export function profiledServer(server: McpServer, profile: ProfileName, register
           const name = String(args[0]);
           registered.add(name);
           if (allowed && !allowed.has(name)) return undefined;
-          // Block wording for a shared tool (DWLF-835): the description argument is replaced, nothing else.
-          const blockText = profile === 'block' ? BLOCK_DESCRIPTIONS[name] : undefined;
-          const callArgs = blockText !== undefined && typeof args[1] === 'string' ? [args[0], blockText, ...args.slice(2)] : args;
-          return (target.tool as (...a: unknown[]) => unknown).apply(target, callArgs);
+          return (target.tool as (...a: unknown[]) => unknown).apply(target, profile === 'block' ? blockArgs(name, args) : args);
         };
       }
       const value = Reflect.get(target, prop, receiver);

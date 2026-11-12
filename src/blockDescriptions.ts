@@ -1,11 +1,26 @@
+import { z } from 'zod';
+
 /**
- * Block-profile tool descriptions (DWLF-835; Andy, 12-Nov-2026 17:53). Block describes conditions, never calls, and
+ * Block-profile tool wording (DWLF-835; Andy, 12-Nov-2026 17:53). Block describes conditions, never calls, and
  * its profile has no strategies, strategy signals or backtests. A shared tool whose `full` description speaks of
  * strategy entries/exits, stop-losses, backtests or "triggers" gets its Block wording here; `profiledServer` sends it
  * in place of the shared one when the profile is `block`. The shared description, which retail still uses, is unchanged.
- * A test keeps every Block-visible description free of that vocabulary and of references to tools Block hides.
+ * Parameters say things too, so a tool can also have its Block input schema (BLOCK_SCHEMAS: strategy-only parameters
+ * removed, wording changed) and, where its OUTPUT would carry strategy nodes, a Block handler (BLOCK_HANDLERS).
+ * A test reads what the built server actually lists under `--profile block` and keeps all of it free of that
+ * vocabulary and of references to tools Block hides.
  */
-export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freeze({
+type Shape = Record<string, z.ZodTypeAny>;
+type Handler = (args: Record<string, unknown>, extra: unknown) => unknown;
+
+/** A string replaces the shared description; a function rewrites it (for a one-phrase change). */
+export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: string) => string)>> = Object.freeze({
+  dwlf_update_subscription:
+    'Update an existing alert subscription (PATCH). Only the fields you supply change; everything else is kept. ' +
+    'Most used: toggle `enabled` to pause/resume without losing the subscription\'s history. Editable fields: enabled, ' +
+    'symbols, timeframes, channels, quietHours, dedupeWindowMinutes, and customEventId (custom_event subscriptions ' +
+    'only). `eventTypeId` is NOT patchable: switching what an alert listens for means delete + recreate.',
+  dwlf_get_ranges: (shared: string) => shared.replace(' "at the TOP of the range — think twice about entering here",', ' "at the TOP of the range",'),
   dwlf_create_subscription:
     'Create an alert subscription: get told when an event fires. Two shapes, distinguished by `eventTypeId`:\n' +
     '  - any event id (e.g. `onchain.mvrv.cross_above_1`, `cycle.low.confirmed`, `swing_low_break`): fires when that event is recorded;\n' +
@@ -21,7 +36,8 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freez
     'minutes; an unfiltered call lists them by name, ask by nodeType or category "condition" for detail), marked ' +
     '`source: "catalogue"` with `label`, `direction`, `timeframes` (the only ones the node fires on) and ' +
     '`catalogueCategory`. When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine ' +
-    'uses. A node with `engineIgnored` is one the engine cannot evaluate: do not use it. `engineIgnores` is the raw rule ' +
+    'uses; `honoredByExecutor: null` means not verified (the parameter reaches the compiled event; its effect is not ' +
+    'checked here). A node with `engineIgnored` is one the engine cannot evaluate: do not use it. `engineIgnores` is the raw rule ' +
     'list ({ id } or { prefix }, with a reason). `catalogueError` means the catalogue could not be read and only the ' +
     'static nodes are listed.',
   dwlf_create_custom_event:
@@ -47,9 +63,9 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freez
     'processedItems: 1` when done. When the request named symbols this tool adds `symbolsRequested: <count>` beside the ' +
     'summary. When status is "completed", read the fires via dwlf_get_events(type: "custom_event").',
   dwlf_register_agent:
-    'Programmatically register a new DWLF Block account: no browser or Google sign-in required. Returns an API key ' +
+    'Programmatically register a new DWLF account: no browser or Google sign-in required. Returns an API key ' +
     'immediately. Email verification unlocks the compute features (custom event evaluations). Useful for onboarding ' +
-    'flows where an agent registers itself; the human then activates the account and accepts the terms.',
+    'flows where an agent registers itself.',
   dwlf_get_cycle_setups:
     'The cycle screener: across the symbols DWLF tracks, which have their WEEKLY cycle timing window open, and whether a ' +
     'DAILY cycle pivot has confirmed inside it, for lows and highs alike. Stages: `confirmed_setup` (weekly window open ' +
@@ -66,4 +82,49 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freez
     '`depth.reading.position` places the last weekly close: `in-zone` (inside the p25–p75 of past moves), `shallow` / ' +
     '`deep` / `beyond`, or `not-reached`. It is context, not a target, and it does not change the stage or the order. ' +
     'A missing band says why in `depthUnavailable`. Everything here is a dated state of the cycle engine, not a call.',
+});
+
+const BLOCK_EVENT_TYPE_ID = 'What fires the alert: an event id (e.g. `onchain.mvrv.cross_above_1`, `cycle.low.confirmed`), or ' +
+  '`custom_event` with `customEventId`.';
+const withoutStrategyParams = (shape: Shape, eventTypeId?: z.ZodTypeAny): Shape => {
+  const { strategyId: _a, mode: _b, riskPerTradeOverride: _c, accountBalanceOverride: _d, maxConcurrentTradesOverride: _e,
+    ...rest } = shape;
+  void _a; void _b; void _c; void _d; void _e;
+  return eventTypeId && rest.eventTypeId ? { ...rest, eventTypeId } : rest;
+};
+
+/** Block input schemas: each takes the shared shape and returns Block's. */
+export const BLOCK_SCHEMAS: Readonly<Record<string, (shared: Shape) => Shape>> = Object.freeze({
+  dwlf_create_subscription: (shared: Shape) => withoutStrategyParams(shared, z.string().describe(BLOCK_EVENT_TYPE_ID)),
+  dwlf_update_subscription: (shared: Shape) => withoutStrategyParams(shared),
+  dwlf_evaluate_custom_event: (shared: Shape) => ({
+    ...shared,
+    lookbackDays: z.number().int().positive().optional().describe('How many days of history to (re)evaluate, overriding the ' +
+      'default ~400-candle (~14-month) window. Set it to cover the whole history you want the event\'s fires for.'),
+  }),
+  dwlf_get_evaluation_status: (shared: Shape) => ({
+    ...shared,
+    requestId: z.string().describe('Evaluation request ID returned by dwlf_evaluate_custom_event'),
+  }),
+  dwlf_describe_strategy_nodes: (shared: Shape) => ({
+    ...shared,
+    nodeType: z.string().optional().describe('Return only this one condition node (by its node type id).'),
+    category: z.enum(['condition']).optional().describe('Condition nodes are the only category in Block.'),
+  }),
+});
+
+/** Block handlers: each wraps the shared one. The node catalogue answers with condition nodes only. */
+type ToolResult = { content?: { type: string; text?: string }[]; isError?: boolean };
+export const BLOCK_HANDLERS: Readonly<Record<string, (shared: Handler) => Handler>> = Object.freeze({
+  // A nodeType lookup ignores `category`, so a non-condition node (a stop-loss, a take-profit, an entry signal) is
+  // refused after the lookup rather than described.
+  dwlf_describe_strategy_nodes: (shared: Handler) => async (args, extra) => {
+    const res = (await shared({ ...args, category: 'condition' }, extra)) as ToolResult;
+    if (!args.nodeType || res.isError) { return res; }
+    let nodes: { category?: string }[] = [];
+    try { nodes = (JSON.parse(res.content?.[0]?.text ?? '{}') as { nodes?: { category?: string }[] }).nodes ?? []; } catch { nodes = []; }
+    if (nodes.length && nodes.every((n) => n.category === 'condition')) { return res; }
+    return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: `Not a condition node: ${String(args.nodeType)}`,
+      hint: 'Block custom events are built from condition nodes; call with category "condition" (or no arguments) to list them.' }, null, 2) }] };
+  },
 });

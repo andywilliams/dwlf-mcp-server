@@ -53,8 +53,10 @@ test('every Block tool exists (a renamed tool fails here, not silently in the pr
 test('no Block tool sends the agent to a tool the profile hides', () => {
   const desc = {};
   registerAll({ tool: (name, d) => { desc[name] = String(d); }, resource: () => {} }, {});
-  // What a Block agent actually reads: the Block wording where a shared tool has one (DWLF-835).
-  const blockDesc = (t) => BLOCK_DESCRIPTIONS[t] ?? desc[t];
+  // What a Block agent actually reads, as profiledServer registers it (DWLF-835).
+  const seenBlock = {};
+  registerAll(profiledServer({ tool: (name, d) => { seenBlock[name] = String(d); }, resource: () => {} }, 'block'), {});
+  const blockDesc = (t) => seenBlock[t];
   const hiddenRefs = [];
   for (const t of BLOCK_TOOLS) {
     for (const ref of blockDesc(t).match(/dwlf_[a-z_]+/g) || []) {
@@ -66,18 +68,39 @@ test('no Block tool sends the agent to a tool the profile hides', () => {
   assert.deepEqual(refsInInstructions, []);
 });
 
-test('Block has no strategy signals, strategies or backtests, and no Block-visible description speaks their language (DWLF-835)', () => {
+test('Block has no strategy signals, strategies or backtests; what a Block agent is SENT never speaks their language (DWLF-835)', async () => {
   for (const t of ['dwlf_get_recent_signals', 'dwlf_list_strategies', 'dwlf_create_strategy', 'dwlf_evaluate_strategy', 'dwlf_run_backtest',
     'dwlf_get_backtest_results', 'dwlf_activate_strategy_symbols']) {
     assert.equal(BLOCK_TOOLS.has(t), false, t);
   }
-  const desc = {};
-  registerAll({ tool: (name, d) => { desc[name] = String(d); }, resource: () => {} }, {});
-  const CALL_VOCAB = /\b(?:backtests?|strategy\.(?:entry|exit|stop)|stop[- ]?loss|take[- ]?profit|SL\/TP|entry[- ]freshness|fresher entries|trigger has fired|planned Trade)\b/i;
-  const offenders = [...BLOCK_TOOLS].filter((t) => CALL_VOCAB.test(BLOCK_DESCRIPTIONS[t] ?? desc[t])).map((t) => `${t}: ${(BLOCK_DESCRIPTIONS[t] ?? desc[t]).match(CALL_VOCAB)[0]}`);
-  assert.deepEqual(offenders, []);
-  // Every Block wording is for a tool Block offers (a stale override would be dead text).
+  // Every Block override is for a tool Block offers (a stale one would be dead text).
   assert.deepEqual(Object.keys(BLOCK_DESCRIPTIONS).filter((t) => !BLOCK_TOOLS.has(t)), []);
+  const all = {};
+  registerAll({ tool: (name) => { all[name] = true; }, resource: () => {} }, {});
+  const hidden = new Set(Object.keys(all).filter((t) => !BLOCK_TOOLS.has(t)));
+  // What the built server lists under --profile block: descriptions AND input schemas (parameters speak too).
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+  const mcp = new Client({ name: 'profile-test', version: '0' });
+  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../dist/index.js', import.meta.url)), '--profile', 'block'],
+    env: { PATH: process.env.PATH || '', DWLF_API_URL: 'http://127.0.0.1:9', DWLF_API_KEY: 'x' }, stderr: 'ignore' }));
+  try {
+    const listed = (await mcp.listTools()).tools;
+    const CALL_VOCAB = /\b(?:backtests?|strategy\.(?:entry|exit|stop)\b|strategyId|stop[- ]?loss|stopLoss|take[- ]?profit|takeProfit|SL\/TP|entry[- ]freshness|fresher entries|trigger has fired|planned Trade|think twice|entering here|riskPerTrade\w*|sl_below\w*)/i;
+    const offenders = [];
+    for (const t of listed) {
+      const sent = `${t.description}\n${JSON.stringify(t.inputSchema)}`;
+      const m = sent.match(CALL_VOCAB);
+      if (m) { offenders.push(`${t.name}: ${m[0]}`); }
+      for (const ref of sent.match(/dwlf_[a-z_]+/g) || []) { if (hidden.has(ref)) { offenders.push(`${t.name} → ${ref}`); } }
+    }
+    assert.deepEqual(offenders, []);
+    // The node catalogue answers with condition nodes only: a stop-loss node is not described to a Block agent.
+    const sl = await mcp.callTool({ name: 'dwlf_describe_strategy_nodes', arguments: { nodeType: 'sl_below_recent_low' } });
+    assert.doesNotMatch(sl.content.map((c) => c.text).join(' '), /Place SL|bufferPct/);
+  } finally {
+    await mcp.close();
+  }
 });
 
 test('the Block wording reaches a Block agent; full keeps the shared wording', async () => {
