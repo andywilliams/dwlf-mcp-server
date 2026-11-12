@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
+import { BLOCK_DESCRIPTIONS } from '../dist/blockDescriptions.js';
 
 // DWLF-621: tool profiles. `full` is unchanged; `block` is the Bitcoin subset.
 const fakeServer = () => {
@@ -52,15 +53,41 @@ test('every Block tool exists (a renamed tool fails here, not silently in the pr
 test('no Block tool sends the agent to a tool the profile hides', () => {
   const desc = {};
   registerAll({ tool: (name, d) => { desc[name] = String(d); }, resource: () => {} }, {});
+  // What a Block agent actually reads: the Block wording where a shared tool has one (DWLF-835).
+  const blockDesc = (t) => BLOCK_DESCRIPTIONS[t] ?? desc[t];
   const hiddenRefs = [];
   for (const t of BLOCK_TOOLS) {
-    for (const ref of desc[t].match(/dwlf_[a-z_]+/g) || []) {
+    for (const ref of blockDesc(t).match(/dwlf_[a-z_]+/g) || []) {
       if (desc[ref] !== undefined && !BLOCK_TOOLS.has(ref)) {hiddenRefs.push(`${t} → ${ref}`);}
     }
   }
   assert.deepEqual(hiddenRefs, []);
   const refsInInstructions = (PROFILE_INSTRUCTIONS.block.match(/dwlf_[a-z_]+/g) || []).filter((r) => !BLOCK_TOOLS.has(r));
   assert.deepEqual(refsInInstructions, []);
+});
+
+test('Block has no strategy signals, strategies or backtests, and no Block-visible description speaks their language (DWLF-835)', () => {
+  for (const t of ['dwlf_get_recent_signals', 'dwlf_list_strategies', 'dwlf_create_strategy', 'dwlf_evaluate_strategy', 'dwlf_run_backtest',
+    'dwlf_get_backtest_results', 'dwlf_activate_strategy_symbols']) {
+    assert.equal(BLOCK_TOOLS.has(t), false, t);
+  }
+  const desc = {};
+  registerAll({ tool: (name, d) => { desc[name] = String(d); }, resource: () => {} }, {});
+  const CALL_VOCAB = /\b(?:backtests?|strategy\.(?:entry|exit|stop)|stop[- ]?loss|take[- ]?profit|SL\/TP|entry[- ]freshness|fresher entries|trigger has fired|planned Trade)\b/i;
+  const offenders = [...BLOCK_TOOLS].filter((t) => CALL_VOCAB.test(BLOCK_DESCRIPTIONS[t] ?? desc[t])).map((t) => `${t}: ${(BLOCK_DESCRIPTIONS[t] ?? desc[t]).match(CALL_VOCAB)[0]}`);
+  assert.deepEqual(offenders, []);
+  // Every Block wording is for a tool Block offers (a stale override would be dead text).
+  assert.deepEqual(Object.keys(BLOCK_DESCRIPTIONS).filter((t) => !BLOCK_TOOLS.has(t)), []);
+});
+
+test('the Block wording reaches a Block agent; full keeps the shared wording', async () => {
+  const seen = { block: {}, full: {} };
+  for (const profile of ['block', 'full']) {
+    const fake = { tool: (name, d) => { seen[profile][name] = d; }, resource: () => {} };
+    registerAll(profiledServer(fake, profile), {});
+  }
+  assert.equal(seen.block.dwlf_create_subscription, BLOCK_DESCRIPTIONS.dwlf_create_subscription);
+  assert.match(seen.full.dwlf_create_subscription, /strategy\.entry\.triggered/);
 });
 
 test('block leaves out the retail, metals and trade-journal tools', () => {

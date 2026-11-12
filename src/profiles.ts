@@ -1,9 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { BLOCK_DESCRIPTIONS } from './blockDescriptions.js';
 
 /**
  * Tool profiles (DWLF-621). `full` (the default) registers every tool, exactly as before. `block` registers the
- * curated subset for Bitcoin users of block.dwlf: conditions, on-chain events, custom events, strategies,
- * backtests, alerts and the academy. A Block user's agent then doesn't see ~100 retail and metals tools.
+ * curated subset for Bitcoin users of block.dwlf: conditions, on-chain events, custom events, alerts and the
+ * academy (no strategy signals, strategies or backtests: DWLF-835). A Block user's agent then doesn't see ~100 retail and metals tools.
  *
  * Selected by `--profile <name>` or `DWLF_TOOL_PROFILE`; the flag wins. An unknown name is a startup error, never a
  * silent fallback to `full`: an agent configured for Block must not quietly get the whole catalogue.
@@ -53,24 +54,9 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_deactivate_event_symbols',
   'dwlf_get_event_symbols',
   'dwlf_get_custom_event_notifications',
-  // Strategies and backtests
-  'dwlf_list_strategies',
-  'dwlf_get_strategy',
-  'dwlf_create_strategy',
-  'dwlf_update_strategy',
-  'dwlf_compile_strategy',
-  'dwlf_delete_strategy',
-  'dwlf_evaluate_strategy',
-  'dwlf_get_recent_signals',
-  'dwlf_activate_strategy_symbols',
-  'dwlf_deactivate_strategy_symbols',
-  'dwlf_get_strategy_symbols',
-  'dwlf_run_backtest',
-  'dwlf_get_backtest_results',
-  'dwlf_get_backtest_summary',
-  'dwlf_list_backtests',
-  'dwlf_cancel_backtest',
-  'dwlf_delete_backtest',
+  // NOT in Block (Andy, 12-Nov-2026 17:53, DWLF-835): strategy signals, strategies and backtests, with their
+  // signal/entry/exit vocabulary. Block describes conditions, never calls; they stay in `full` and are revisited for
+  // Block with the builder in v1.1.
   // Alerts
   'dwlf_list_subscriptions',
   'dwlf_create_subscription',
@@ -136,7 +122,10 @@ export function profiledServer(server: McpServer, profile: ProfileName, register
           const name = String(args[0]);
           registered.add(name);
           if (allowed && !allowed.has(name)) return undefined;
-          return (target.tool as (...a: unknown[]) => unknown).apply(target, args);
+          // Block wording for a shared tool (DWLF-835): the description argument is replaced, nothing else.
+          const blockText = profile === 'block' ? BLOCK_DESCRIPTIONS[name] : undefined;
+          const callArgs = blockText !== undefined && typeof args[1] === 'string' ? [args[0], blockText, ...args.slice(2)] : args;
+          return (target.tool as (...a: unknown[]) => unknown).apply(target, callArgs);
         };
       }
       const value = Reflect.get(target, prop, receiver);

@@ -150,6 +150,10 @@ A reviewer should be able to test a diff against each of these:
 5. **The docstring is the contract.** A change to a tool's behaviour, default, or backend semantics
    must change its `description` in the same diff *(inferred from: PR #62 "auto-paginate … + document
    the footgun", #50 "doc-drift audit", #39 "echo filtersApplied so the 7-day default is visible")*.
+   ⚠️ **A tool can have TWO descriptions since DWLF-835 (12-Nov-2026):** the shared one, and its Block wording in
+   `src/blockDescriptions.ts`, which `profiledServer` sends in its place for the `block` profile (Block describes
+   conditions, never calls, and has no strategies, signals or backtests). A behaviour change updates BOTH. A test keeps
+   every Block-visible description free of the strategy/backtest/entry-exit vocabulary and of hidden-tool references.
 6. **A new tool file is not shipped until it is registered in `registerAll` (`src/register.ts`)**, and **the same
    PR decides whether it is in the `block` profile** (`BLOCK_TOOLS`, `src/profiles.ts`). Those are the two wiring
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
