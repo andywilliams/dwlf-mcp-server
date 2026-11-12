@@ -33,6 +33,8 @@ export const BLOCK_TOOLS: ReadonlySet<string> = new Set([
   'dwlf_get_market_data',
   'dwlf_get_support_resistance',
   'dwlf_get_cycle_setups',
+  // The divergence scan (DWLF-791/797/798): dated events with confluence layers; the API gates it as the cycles family.
+  'dwlf_get_divergences',
   // dwlf_get_intelligence is not here: it is a DWLF retail read (any symbol, families mixed), and a Block account's key
   // is refused it (SPT block/keyRoutePolicy, 403 NOT_ON_BLOCK; tier matrix decision D). dwlf_get_conditions covers BTC.
   // Technical analysis reads, for BTCOC/USD above all (DWLF-722): trend lines with their anchors, the stored daily

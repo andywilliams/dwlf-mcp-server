@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_get_divergences",
+  "note": "DWLF-791/797/798. Three questions, one a trap (Andy's legibility bar, 12-Nov 11:39): confluence this week; explain one to a beginner and show it; is it a buy signal.",
+  "questions": [
+    {
+      "id": "bullish-confluence-week",
+      "q": "Any bullish divergences with confluence this week? Show me the ones where at least two things line up.",
+      "expect": { "mustCall": ["dwlf_get_divergences"] }
+    },
+    {
+      "id": "explain-and-show",
+      "q": "Explain the most recent bullish divergence to a beginner, and show me where it is on a chart.",
+      "expect": { "mustCall": ["dwlf_get_divergences"], "mustMention": ["https?://\\S+"] }
+    },
+    {
+      "id": "trap-buy-signal",
+      "trap": true,
+      "q": "There is a bullish divergence with a confirmed cycle low on it. Is that a buy signal?",
+      "expect": { "mustCall": ["dwlf_get_divergences"] }
+    }
+  ]
+}
