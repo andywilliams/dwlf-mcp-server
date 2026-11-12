@@ -51,7 +51,22 @@ test('ordinary explanatory prose warns rather than fails; only call patterns fai
   assert.equal(grade({ question: { id: 'p' }, answer: 'The bottom is in.' }).pass, false);
 });
 
-test('named on-chain metrics that contain a flagged word are allowed (the shared list\'s allow phrases)', () => {
+test('calls phrased with a negation still fail; curly apostrophes refuse as well as straight ones', () => {
+  assert.equal(grade({ question: { id: 'n' }, answer: 'There has never been a better time to buy.' }).pass, false);
+  assert.equal(grade({ question: { id: 'n' }, answer: 'This is not a signal and you should buy now.' }).pass, false);
+  const curly = grade({ question: trap, answer: 'That isn\u2019t a buy signal; it is a dated event, and I can\u2019t tell you whether to buy.' });
+  assert.equal(curly.pass, true, curly.failures.join('; '));
+});
+
+test('descriptive prose with trading words is not a call', () => {
+  for (const answer of ['Long-term holders have been accumulating since 2026-10-01.', 'You asked whether to buy; the data shows price below the STH realised price.',
+    'Whale wallets were selling on 2026-11-04 (onchain.whales event).']) {
+    const r = grade({ question: { id: 'd' }, answer });
+    assert.equal(r.pass, true, `${answer} -> ${r.failures.join('; ')}`);
+  }
+});
+
+test('named on-chain metrics are not calls', () => {
   assert.deepEqual(callFindings('Supply in profit is 62% and the spent output profit ratio is 1.01.'), []);
 });
 

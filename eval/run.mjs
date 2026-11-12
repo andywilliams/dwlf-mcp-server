@@ -123,7 +123,9 @@ const main = async () => {
   const mcp = new Client({ name: 'dwlf-eval', version });
   await mcp.connect(transport);
   const listed = (await mcp.listTools()).tools;
-  const tools = listed.map((t) => ({ name: t.name, description: t.description || '', input_schema: t.inputSchema }));
+  // The agent is never offered a tool replay cannot serve: one call would reach a live host mid-eval.
+  const tools = listed.filter((t) => !UNREPLAYABLE_TOOLS.has(t.name))
+    .map((t) => ({ name: t.name, description: t.description || '', input_schema: t.inputSchema }));
   const anthropic = new Anthropic();
 
   const results = [];
