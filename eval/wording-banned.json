@@ -1,0 +1,93 @@
+{
+ "schema": "block.wording-banned/1",
+ "source": "block-site wording.py",
+ "rule": "Informational only: describe what is and what happened, never what to do or what comes next.",
+ "flags": "i",
+ "banned": "\\b(buy|sell|bull\\w*|bear\\w*|expect\\w*|likely|setup|target\\w*|should|will|predict\\w*|signal\\w*|opportunit\\w*)\\b",
+ "patterns": [
+  {
+   "pattern": "\\b(buy\\w*|sell|selling|purchase now|accumulat\\w*)\\b",
+   "why": "trading instruction"
+  },
+  {
+   "pattern": "\\b(price\\s+)?targets?\\b",
+   "why": "price target"
+  },
+  {
+   "pattern": "\\breturns?\\b|\\bROI\\b|\\bgains?\\b|\\bupside\\b|\\bdownside\\b",
+   "why": "returns or gains"
+  },
+  {
+   "pattern": "\\bprofits?\\b",
+   "why": "profit (outside named metrics)"
+  },
+  {
+   "pattern": "\\b(moon\\w*|pump\\w*|dump\\w*|rally|rallies|crash\\w*|breakout|bottom(ed|ing)?|top(ped|ping)?\\s+out|the\\s+top|cycle\\s+(top|low)|peak(ed|ing)?)\\b",
+   "why": "call on direction"
+  },
+  {
+   "pattern": "\\b(guarantee\\w*|risk[- ]free|can'?t\\s+lose|sure\\s+thing|don'?t\\s+miss|last\\s+chance|act\\s+now)\\b",
+   "why": "promotional claim"
+  },
+  {
+   "pattern": "\\b(entry|exit)\\s+(point|price|signal)s?\\b",
+   "why": "trading instruction"
+  },
+  {
+   "pattern": "\\b(financial|investment)\\s+advice\\b",
+   "why": "advice claim (only 'not ... advice' is allowed)"
+  },
+  {
+   "pattern": "\\b(enter|exit|close|open)\\s+(a|the|your|this)\\s+(trade|position)s?\\b|\\b(entry|exit)\\s+(zone|level|plan)s?\\b|\\btime\\s+to\\s+(enter|exit|act)\\b",
+   "why": "trading instruction (entry/exit)"
+  },
+  {
+   "pattern": "\\btake[- ]profits?\\b|\\bstop[- ]loss(es)?\\b",
+   "why": "trading instruction (take-profit/stop-loss)"
+  },
+  {
+   "pattern": "\\bmust\\b",
+   "why": "instruction (must)"
+  },
+  {
+   "pattern": "\\bforecast\\w*|\\boutlook\\b",
+   "why": "forecast"
+  },
+  {
+   "pattern": "\\b(under|over)[- ]?valued\\b",
+   "why": "valuation call"
+  },
+  {
+   "pattern": "\\b(the\\s+)?bottom\\s+is\\s+in\\b|\\btop\\s+is\\s+in\\b",
+   "why": "call on direction"
+  },
+  {
+   "pattern": "\\breads?\\s+as\\s+(rising|falling|positive|negative|strong|weak)\\b",
+   "why": "directional reading"
+  }
+ ],
+ "allowPhrases": [
+  "signal[- ]to[- ]noise",
+  "never turn (?:them|it) into buy, sell or hold recommendations",
+  "no buy/sell/hold",
+  "no price predictions",
+  "no targets",
+  "(?:not|nothing (?:here )?is) scored as a predictor",
+  "selling at a loss",
+  "not an? forecast",
+  "paper profit",
+  "realis(?:e|es|ed|ing) a profit",
+  "profit ratio",
+  "supply in profit",
+  "profit taking",
+  "realized profit",
+  "peak regret",
+  "in profit",
+  "spent output profit ratio",
+  "not (financial |investment )?advice",
+  "confirmed (daily |weekly )?cycle lows?"
+ ],
+ "urlsIgnored": "https?://\\S+",
+ "disclaimer": "Conditions, not calls",
+ "vendoredFrom": "block-site ops/wording-banned.json @ 05d2b63 (11-Nov-2026); refresh with: cp <block-site>/ops/wording-banned.json eval/"
+}
