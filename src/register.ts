@@ -4,6 +4,7 @@ import { registerMarketDataTools } from './tools/market-data.js';
 import { registerRangeTools } from './tools/ranges.js';
 import { registerCycleSetupTools } from './tools/cycle-setups.js';
 import { registerCycleWindowTools } from './tools/cycle-windows.js';
+import { registerDivergenceTools } from './tools/divergences.js';
 import { registerStageTools } from './tools/stages.js';
 import { registerConditionsTools } from './tools/conditions.js';
 import { registerIndicatorTools } from './tools/indicators.js';
@@ -36,6 +37,7 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   registerRangeTools(server, client);
   registerCycleSetupTools(server, client);
   registerCycleWindowTools(server, client);
+  registerDivergenceTools(server, client);
   registerStageTools(server, client);
   registerConditionsTools(server, client);
   registerIndicatorTools(server, client);

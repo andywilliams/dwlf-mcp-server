@@ -67,7 +67,8 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
   provenance), `dwlf_describe_onchain_events` (what each `onchain.*` event means, read live from the API's public
   explain routes, with this package's copy as the offline fallback; no key needed), `dwlf_explain_event` (one type in full from the API: method, revision class and why, measured
   history, and its occurrences: one day, what changed since a date, or the latest five), `dwlf_get_events`, `dwlf_get_regime`, `dwlf_get_stage`, `dwlf_get_cycle_windows`,
-  `dwlf_get_cycle_setups`, `dwlf_get_support_resistance`, `dwlf_get_quote`,
+  `dwlf_get_cycle_setups`, `dwlf_get_divergences` (the divergence scan: RSI/DSS divergences at confirmed cycle pivots, with
+  optional confluence layers and daily/weekly; the API gates it as the cycles family), `dwlf_get_support_resistance`, `dwlf_get_quote`,
   `dwlf_get_price_picture`, `dwlf_get_market_data` (raw candles only where the key is licensed for them).
 - **Technical analysis (BTCOC/USD and the rest):** `dwlf_get_trendlines` (the engine's trend lines, daily; weekly lines
   for BTCOC/USD are not stored yet), `dwlf_get_indicators` (daily SMA/EMA 10–200 values), `dwlf_get_ranges` (where
