@@ -1,7 +1,7 @@
 # The Block agent eval (DWLF-804, WP7)
 
 A fresh agent with only this MCP server (`--profile block`) answers three questions per tool, one of them a trap. The answer passes only if:
-- the deterministic grader passes (`grade.mjs`): no explicit call (curated list), the trap refused, the required tools called. The shared wording list only warns, for the judge;
+- the deterministic grader passes (`grade.mjs`): a non-empty answer, the trap refused in so many words, the required tools called. Call-like phrases and the shared wording list are flagged to the judge, which reads them in context;
 - AND the LLM judge finds it correct, sourced and not advisory.
 
 - `npm run eval`: replays `eval/fixtures/`. Needs `ANTHROPIC_API_KEY` (or an `ant auth login` profile); no DWLF credential.

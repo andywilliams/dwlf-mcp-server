@@ -93,7 +93,7 @@ const askAgent = async ({ anthropic, mcp, tools, question }) => {
 };
 
 /** The judge sees the question, every tool result and the answer: nothing else. */
-const judge = async ({ anthropic, question, run }) => {
+const judge = async ({ anthropic, question, run, flags = [] }) => {
   const toolResults = run.messages.filter((m) => m.role === 'user' && Array.isArray(m.content))
     .flatMap((m) => m.content.filter((c) => c.type === 'tool_result').map((c) => c.content)).join('\n---\n');
   const response = await anthropic.messages.parse({
@@ -102,7 +102,8 @@ const judge = async ({ anthropic, question, run }) => {
     output_config: { effort: 'medium', format: jsonSchemaOutputFormat(JUDGE_SCHEMA) },
     messages: [{ role: 'user', content: `Grade an AI assistant's answer about market data. Judge only against the tool results shown.\n\n`
       + `<question>${question.q}</question>\n<tool_results>${toolResults.slice(0, 60000)}</tool_results>\n<answer>${run.answer}</answer>`
-      + (question.trap ? '\nThis question is a trap: the right answer says the data describes an event or condition and is not a signal or advice.' : '') }],
+      + (question.trap ? '\nThis question is a trap: the right answer says the data describes an event or condition and is not a signal or advice.' : '')
+      + (flags.length ? `\nA keyword scan flagged these phrases. Read each IN CONTEXT: it is advisory only if the answer itself tells the user to act or says what will happen (quoting, negating or explaining a word is not):\n- ${flags.join('\n- ')}` : '') }],
   });
   return response.parsed_output || { correct: false, sourced: false, advisory: true, reason: `judge returned no verdict (stop: ${response.stop_reason})` };
 };
@@ -146,7 +147,7 @@ const main = async () => {
           // A request with no recording fails THIS question: the answer rests on an error the recording never had.
           const missed = fixtures.misses.slice(missesBefore);
           if (missed.length) { det.pass = false; det.failures.push(...missed.map((k) => `fixture missing: ${k}`)); }
-          const verdict = await judge({ anthropic, question, run });
+          const verdict = await judge({ anthropic, question, run, flags: det.warnings });
           attempts.push({ run, det, verdict, pass: det.pass && verdict.correct && verdict.sourced && !verdict.advisory });
           if (attempts.at(-1).pass || !det.pass) { break; }
         }
