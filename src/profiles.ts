@@ -110,11 +110,6 @@ export function resolveProfile(argv: readonly string[], env: Record<string, stri
 }
 
 /**
- * A view of `server` that registers only the profile's tools. Resources, prompts and everything else pass
- * through unchanged. `registered` collects every tool name offered, including the hidden ones, so a test can
- * check that each profile tool exists.
- */
-/**
  * A shared tool's registration as the Block profile sends it (DWLF-835): its Block description, input schema and
  * handler where it has them. Registrations are `server.tool(name, description, shape, handler)`; any other form is
  * refused here rather than passed through unchanged, so an override can never be silently skipped.
@@ -136,6 +131,11 @@ function blockArgs(name: string, args: unknown[]): unknown[] {
   ];
 }
 
+/**
+ * A view of `server` that registers only the profile's tools, and for `block` sends their Block wording (blockArgs). Resources, prompts and everything else pass
+ * through unchanged. `registered` collects every tool name offered, including the hidden ones, so a test can
+ * check that each profile tool exists.
+ */
 export function profiledServer(server: McpServer, profile: ProfileName, registered: Set<string> = new Set()): McpServer {
   const allowed = PROFILES[profile];
   return new Proxy(server, {

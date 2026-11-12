@@ -86,7 +86,7 @@ test('Block has no strategy signals, strategies or backtests; what a Block agent
     env: { PATH: process.env.PATH || '', DWLF_API_URL: 'http://127.0.0.1:9', DWLF_API_KEY: 'x' }, stderr: 'ignore' }));
   try {
     const listed = (await mcp.listTools()).tools;
-    const CALL_VOCAB = /\b(?:backtests?|strategy\.(?:entry|exit|stop)\b|strategyId|stop[- ]?loss|stopLoss|take[- ]?profit|takeProfit|SL\/TP|entry[- ]freshness|fresher entries|trigger has fired|planned Trade|think twice|entering here|riskPerTrade\w*|sl_below\w*)/i;
+    const CALL_VOCAB = /\b(?:backtests?|strategy\.(?:entry|exit|stop)\b|strategyId|stop[- ]?loss|stopLoss|take[- ]?profit|takeProfit|SL\/TP|entry[- ]freshness|fresher entries|trigger has fired|planned Trade|think twice|entering here|entry timing|riskPerTrade\w*|sl_below\w*)/i;
     const offenders = [];
     for (const t of listed) {
       const sent = `${t.description}\n${JSON.stringify(t.inputSchema)}`;
@@ -95,9 +95,16 @@ test('Block has no strategy signals, strategies or backtests; what a Block agent
       for (const ref of sent.match(/dwlf_[a-z_]+/g) || []) { if (hidden.has(ref)) { offenders.push(`${t.name} → ${ref}`); } }
     }
     assert.deepEqual(offenders, []);
-    // The node catalogue answers with condition nodes only: a stop-loss node is not described to a Block agent.
+    // The node catalogue answers with condition nodes and logic gates only: a stop-loss node is refused, the gates a
+    // custom event needs are reachable, and the default listing carries no strategy node.
+    const text = (r) => r.content.map((c) => c.text).join(' ');
     const sl = await mcp.callTool({ name: 'dwlf_describe_strategy_nodes', arguments: { nodeType: 'sl_below_recent_low' } });
-    assert.doesNotMatch(sl.content.map((c) => c.text).join(' '), /Place SL|bufferPct/);
+    assert.equal(sl.isError, true);
+    assert.doesNotMatch(text(sl), /Place SL|bufferPct/);
+    const gate = await mcp.callTool({ name: 'dwlf_describe_strategy_nodes', arguments: { nodeType: 'not_gate' } });
+    assert.notEqual(gate.isError, true, text(gate));
+    const listing = JSON.parse(text(await mcp.callTool({ name: 'dwlf_describe_strategy_nodes', arguments: {} })));
+    assert.ok(listing.nodes.length > 0 && listing.nodes.every((n) => ['condition', 'logic'].includes(n.category)), JSON.stringify(listing.nodes.map((n) => n.category)));
   } finally {
     await mcp.close();
   }

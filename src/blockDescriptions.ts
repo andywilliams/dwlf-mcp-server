@@ -30,9 +30,9 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     '`{ type: \'telegram\', destination: { chatId: <id> }, enabled: true }`. An alert says what happened and when; it is ' +
     'not a recommendation. A plan limits how many alerts an account may have, and which event families it may alert on.',
   dwlf_describe_strategy_nodes:
-    'Describe the condition nodes a custom event is built from: what each one checks, its parameters and their engine ' +
-    'defaults. Optional `nodeType` filters to one node; `category: "condition"` lists the indicator and event condition ' +
-    'nodes. Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
+    'Describe the nodes a custom event is built from: condition nodes (what each one checks, its parameters and their ' +
+    'engine defaults) and the logic gates that combine them (and/or/not/then). Optional `nodeType` filters to one node; ' +
+    '`category: "condition"` or `"logic"` lists one kind in full. Indicator/event condition nodes come from the platform\'s node catalogue (GET /v2/node-types, cached up to 15 ' +
     'minutes; an unfiltered call lists them by name, ask by nodeType or category "condition" for detail), marked ' +
     '`source: "catalogue"` with `label`, `direction`, `timeframes` (the only ones the node fires on) and ' +
     '`catalogueCategory`. When `honoredByExecutor: false` on a param, the listed `default` is the only value the engine ' +
@@ -102,29 +102,39 @@ export const BLOCK_SCHEMAS: Readonly<Record<string, (shared: Shape) => Shape>> =
     lookbackDays: z.number().int().positive().optional().describe('How many days of history to (re)evaluate, overriding the ' +
       'default ~400-candle (~14-month) window. Set it to cover the whole history you want the event\'s fires for.'),
   }),
+  dwlf_get_cycle_windows: (shared: Shape) => ({
+    ...shared,
+    side: z.enum(['low', 'high']).optional().describe('Omit for both sides. `low` = the next cycle-low window; `high` = the next cycle-high window.'),
+  }),
   dwlf_get_evaluation_status: (shared: Shape) => ({
     ...shared,
     requestId: z.string().describe('Evaluation request ID returned by dwlf_evaluate_custom_event'),
   }),
   dwlf_describe_strategy_nodes: (shared: Shape) => ({
     ...shared,
-    nodeType: z.string().optional().describe('Return only this one condition node (by its node type id).'),
-    category: z.enum(['condition']).optional().describe('Condition nodes are the only category in Block.'),
+    nodeType: z.string().optional().describe('Return only this one node (a condition or a logic gate, by its node type id).'),
+    category: z.enum(['condition', 'logic']).optional().describe('`condition` (indicator and event conditions) or `logic` (the and/or/not/then gates that combine them).'),
   }),
 });
 
 /** Block handlers: each wraps the shared one. The node catalogue answers with condition nodes only. */
 type ToolResult = { content?: { type: string; text?: string }[]; isError?: boolean };
+// What a Block custom event is built from: condition nodes and the logic gates that combine them (and/or/not/then).
+// Entry signals, stop-losses, take-profits, exits and cancellations are strategy nodes, which Block does not have.
+const BLOCK_NODE_CATEGORIES = new Set(['condition', 'logic']);
 export const BLOCK_HANDLERS: Readonly<Record<string, (shared: Handler) => Handler>> = Object.freeze({
-  // A nodeType lookup ignores `category`, so a non-condition node (a stop-loss, a take-profit, an entry signal) is
-  // refused after the lookup rather than described.
+  // The shared answer (brief by default, in full for a category or a nodeType), with strategy nodes taken out. A
+  // nodeType lookup that finds only a strategy node is refused rather than described.
   dwlf_describe_strategy_nodes: (shared: Handler) => async (args, extra) => {
-    const res = (await shared({ ...args, category: 'condition' }, extra)) as ToolResult;
-    if (!args.nodeType || res.isError) { return res; }
-    let nodes: { category?: string }[] = [];
-    try { nodes = (JSON.parse(res.content?.[0]?.text ?? '{}') as { nodes?: { category?: string }[] }).nodes ?? []; } catch { nodes = []; }
-    if (nodes.length && nodes.every((n) => n.category === 'condition')) { return res; }
-    return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: `Not a condition node: ${String(args.nodeType)}`,
-      hint: 'Block custom events are built from condition nodes; call with category "condition" (or no arguments) to list them.' }, null, 2) }] };
+    const res = (await shared(args, extra)) as ToolResult;
+    if (res.isError) { return res; }
+    let parsed: { count?: number; nodes?: { category?: string }[] } & Record<string, unknown>;
+    try { parsed = JSON.parse(res.content?.[0]?.text ?? '{}'); } catch { return res; }
+    const nodes = (parsed.nodes ?? []).filter((n) => BLOCK_NODE_CATEGORIES.has(String(n.category)));
+    if (args.nodeType && nodes.length === 0) {
+      return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: `Not a custom-event node: ${String(args.nodeType)}`,
+        hint: 'Block custom events are built from condition nodes and logic gates; call with no arguments to list them.' }, null, 2) }] };
+    }
+    return { content: [{ type: 'text', text: JSON.stringify({ ...parsed, count: nodes.length, nodes }, null, 2) }] };
   },
 });
