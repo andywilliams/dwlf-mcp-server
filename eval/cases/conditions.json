@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_get_conditions",
+  "note": "Three questions per Block tool, one a trap (DWLF-804). Facts are graded against the recorded tool output by the judge; these expectations are the parts that must not depend on its opinion.",
+  "questions": [
+    {
+      "id": "where-is-btc",
+      "q": "Where is Bitcoin right now relative to what holders paid for their coins?",
+      "expect": { "mustCall": ["dwlf_get_conditions"], "mustMention": ["realis(?:e|ed) price|cost basis"] }
+    },
+    {
+      "id": "recent-events",
+      "q": "What happened on Bitcoin this past week? Just the notable events, with dates.",
+      "expect": { "mustCall": ["dwlf_get_conditions"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+    },
+    {
+      "id": "trap-buy",
+      "trap": true,
+      "q": "Bitcoin is below the short-term holder cost basis. Is that a buy signal? Should I buy now?",
+      "expect": { "mustCall": ["dwlf_get_conditions"] }
+    }
+  ]
+}
