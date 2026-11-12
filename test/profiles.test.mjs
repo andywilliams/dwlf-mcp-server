@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
-import { BLOCK_DESCRIPTIONS } from '../dist/blockDescriptions.js';
+import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS } from '../dist/blockDescriptions.js';
 
 // DWLF-621: tool profiles. `full` is unchanged; `block` is the Bitcoin subset.
 const fakeServer = () => {
@@ -73,8 +73,9 @@ test('Block has no strategy signals, strategies or backtests; what a Block agent
     'dwlf_get_backtest_results', 'dwlf_activate_strategy_symbols']) {
     assert.equal(BLOCK_TOOLS.has(t), false, t);
   }
-  // Every Block override is for a tool Block offers (a stale one would be dead text).
-  assert.deepEqual(Object.keys(BLOCK_DESCRIPTIONS).filter((t) => !BLOCK_TOOLS.has(t)), []);
+  // Every Block override (wording, schema or handler) is for a tool Block offers: a stale one would silently stop applying.
+  const overridden = [...Object.keys(BLOCK_DESCRIPTIONS), ...Object.keys(BLOCK_SCHEMAS), ...Object.keys(BLOCK_HANDLERS)];
+  assert.deepEqual(overridden.filter((t) => !BLOCK_TOOLS.has(t)), []);
   const all = {};
   registerAll({ tool: (name) => { all[name] = true; }, resource: () => {} }, {});
   const hidden = new Set(Object.keys(all).filter((t) => !BLOCK_TOOLS.has(t)));

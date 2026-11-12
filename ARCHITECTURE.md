@@ -58,7 +58,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
   `block` (the Bitcoin subset, `BLOCK_TOOLS` in `src/profiles.ts`), applied by a view over `server.tool`.
   A profile hides tools, and `block` also sends its own wording for some shared ones (description, input schema, and
-  the node catalogue's answer limited to condition nodes; `src/blockDescriptions.ts`, DWLF-835). It still never widens
+  the node catalogue's answer limited to condition nodes and logic gates; `src/blockDescriptions.ts`, DWLF-835). It still never widens
   what a call can do. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
@@ -154,7 +154,7 @@ A reviewer should be able to test a diff against each of these:
    the footgun", #50 "doc-drift audit", #39 "echo filtersApplied so the 7-day default is visible")*.
    ⚠️ **A tool can have TWO contracts since DWLF-835 (12-Nov-2026):** the shared one, and its Block wording in
    `src/blockDescriptions.ts` (description, input schema, and for the node catalogue a handler that answers with
-   condition nodes only), which `profiledServer` sends for the `block` profile (Block describes conditions, never calls,
+   condition nodes and logic gates only), which `profiledServer` sends for the `block` profile (Block describes conditions, never calls,
    and has no strategies, signals or backtests). A behaviour change updates BOTH. A test reads what the built server
    lists under `--profile block` (descriptions and input schemas) and keeps it free of strategy/backtest/entry-exit
    vocabulary and of references to hidden tools.
