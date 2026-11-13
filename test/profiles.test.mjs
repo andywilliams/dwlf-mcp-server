@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
-import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS } from '../dist/blockDescriptions.js';
+import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS, NOTED_TOOLS, READING_NOTE } from '../dist/blockDescriptions.js';
 
 // DWLF-621: tool profiles. `full` is unchanged; `block` is the Bitcoin subset.
 const fakeServer = () => {
@@ -96,6 +96,13 @@ test('Block has no strategy signals, strategies or backtests; what a Block agent
       for (const ref of sent.match(/dwlf_[a-z_]+/g) || []) { if (hidden.has(ref)) { offenders.push(`${t.name} → ${ref}`); } }
     }
     assert.deepEqual(offenders, []);
+    // WP7: a market reading says what it is (each noted tool carries the note), every description is long enough to say
+    // what the tool returns (the audit's line: 120 characters), and none still sends an agent to a compile step that
+    // saving already does.
+    const byName = Object.fromEntries(listed.map((t) => [t.name, t.description]));
+    assert.deepEqual(NOTED_TOOLS.filter((n) => !byName[n]?.includes(READING_NOTE)), []);
+    assert.deepEqual(listed.filter((t) => t.description.length < 120).map((t) => `${t.name} (${t.description.length})`), []);
+    assert.deepEqual(listed.filter((t) => /\bCompile\b\s*→|re-call dwlf_compile_custom_event|after compiling/i.test(t.description)).map((t) => t.name), []);
     // The node catalogue answers with condition nodes and logic gates only: a stop-loss node is refused, the gates a
     // custom event needs are reachable, and the default listing carries no strategy node.
     const text = (r) => r.content.map((c) => c.text).join(' ');

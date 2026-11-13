@@ -73,7 +73,7 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 - **Technical analysis (BTCOC/USD and the rest):** `dwlf_get_trendlines` (the engine's trend lines, daily; weekly lines
   for BTCOC/USD are not stored yet), `dwlf_get_indicators` (daily SMA/EMA 10–200 values), `dwlf_get_ranges` (where
   price sits in its range, from cycle pivots). The TA events themselves come through `dwlf_get_events`.
-- **Build:** custom events (create, compile, activate, evaluate, read their fires), with `dwlf_describe_strategy_nodes`
+- **Build:** custom events (create, which also compiles; activate; evaluate; read their fires), with `dwlf_describe_strategy_nodes`
   for the condition-node catalogue.
 - **Not in Block** (Andy, 12-Nov-2026, DWLF-835): strategy signals, strategies and backtests, with their signal/entry/exit
   vocabulary. They stay in the `full` profile, and Block revisits them with the builder in v1.1.

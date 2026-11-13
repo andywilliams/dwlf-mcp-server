@@ -13,6 +13,24 @@ import { z } from 'zod';
 type Shape = Record<string, z.ZodTypeAny>;
 type Handler = (args: Record<string, unknown>, extra: unknown) => unknown;
 
+/**
+ * A one-phrase change to the shared description. It throws when the phrase is gone, so an edit to the shared wording
+ * cannot silently drop the Block change (the profile test builds every Block description).
+ */
+const swap = (from: string, to: string) => (shared: string): string => {
+  if (!shared.includes(from)) { throw new Error(`Block wording: the shared description no longer contains ${JSON.stringify(from)}`); }
+  return shared.replace(from, to);
+};
+/**
+ * What a Block agent must not do with a market reading (WP7, the 12-Nov input point 6). Appended to the read tools whose
+ * shared description does not already say it in its own words; the profile test checks every one of them carries it.
+ */
+export const READING_NOTE = 'What this returns describes the market or the chain as of its date: it is not a signal, a forecast or a ' +
+  'recommendation, so never present it as a reason to buy or sell.';
+const withNote = (shared: string): string => `${shared} ${READING_NOTE}`;
+export const NOTED_TOOLS = Object.freeze(['dwlf_get_events', 'dwlf_get_price_picture', 'dwlf_get_indicators', 'dwlf_get_regime',
+  'dwlf_get_support_resistance', 'dwlf_get_trendlines', 'dwlf_get_market_data', 'dwlf_get_quote']);
+
 /** A string replaces the shared description; a function rewrites it (for a one-phrase change). */
 export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: string) => string)>> = Object.freeze({
   dwlf_update_subscription:
@@ -20,7 +38,14 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'Most used: toggle `enabled` to pause/resume without losing the subscription\'s history. Editable fields: enabled, ' +
     'symbols, timeframes, channels, quietHours, dedupeWindowMinutes, and customEventId (custom_event subscriptions ' +
     'only). `eventTypeId` is NOT patchable: switching what an alert listens for means delete + recreate.',
-  dwlf_get_ranges: (shared: string) => shared.replace(' "at the TOP of the range — think twice about entering here",', ' "at the TOP of the range",'),
+  dwlf_get_ranges: swap(' "at the TOP of the range — think twice about entering here",', ' "at the TOP of the range",'),
+  // Every noted tool gets the note; the two below also change a phrase (a later key replaces the plain note).
+  ...Object.fromEntries(NOTED_TOOLS.map((name) => [name, withNote])),
+  dwlf_get_quote: (shared: string) => withNote(swap(' Ideal for marking a trade/skip to current price or pricing an arbitrary symbol.',
+    ' Use it to price any tracked symbol.')(shared)),
+  dwlf_get_indicators: (shared: string) => withNote(swap('For momentum, band and cross signals use', 'For momentum, band and cross events use')(shared)),
+  dwlf_get_custom_event_notifications: (shared: string) => `${shared} A fire records that a condition the user defined held on that ` +
+    'date: it is the output of their own rule, not a DWLF signal or recommendation.',
   dwlf_create_subscription:
     'Create an alert subscription: get told when an event fires. Two shapes, distinguished by `eventTypeId`:\n' +
     '  - any event id (e.g. `onchain.mvrv.cross_above_1`, `cycle.low.confirmed`, `swing_low_break`): fires when that event is recorded;\n' +
@@ -41,10 +66,10 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'list ({ id } or { prefix }, with a reason). `catalogueError` means the catalogue could not be read and only the ' +
     'static nodes are listed.',
   dwlf_create_custom_event:
-    '⚠️ Create a new custom event (a condition you define, recorded each time it holds). WORKFLOW: 1) create → 2) compile ' +
-    '→ 3) MUST call dwlf_activate_event_symbols (or the event will never fire) → 4) dwlf_evaluate_custom_event to fill ' +
-    'its history. Until symbols are activated the event exists but the evaluation engine does not see it, so it records ' +
-    'nothing. Activate symbols straight after creating it.',
+    '⚠️ Create a new custom event (a condition you define, recorded each time it holds). WORKFLOW: 1) create (saving ' +
+    'compiles it; a graph that will not compile is refused with 400) → 2) MUST call dwlf_activate_event_symbols (or the ' +
+    'event will never fire) → 3) dwlf_evaluate_custom_event to fill its history. Until symbols are activated the event ' +
+    'exists but the evaluation engine does not see it, so it records nothing. Activate symbols straight after creating it.',
   dwlf_evaluate_custom_event:
     '⚠️ Trigger an on-demand evaluation run for a custom event: the step BETWEEN activating symbols and reading its fires. ' +
     'Without it the event only evaluates on the daily run, and its history is not filled until then. Returns ' +
@@ -55,7 +80,7 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
   dwlf_activate_event_symbols:
     '⚠️ REQUIRED STEP after creating a custom event: activate (enable) symbols for it. An event does NOT evaluate until ' +
     'symbols are activated: the daily run skips it and it records no fires. If an event shows no fires, check this step ' +
-    'first. Call straight after compiling an event.',
+    'first (dwlf_get_event_symbols shows its `health`). Call straight after creating an event.',
   dwlf_get_evaluation_status:
     'Get the status and result summary of an evaluation by requestId. Poll this after dwlf_evaluate_custom_event until ' +
     'status === "completed". ⚠️ `summary.totalItems` / `summary.processedItems` count evaluation-JOB items (one per ' +

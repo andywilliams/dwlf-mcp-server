@@ -99,15 +99,19 @@ Learn from the academy, then create and deploy a custom event that fires on spec
      },
      "symbols": ["BTC-USD", "ETH-USD", "SOL-USD"]
    }
-   → Creates the event definition
+   → Creates the event definition and compiles it (a graph that will not compile is refused with 400)
 
-5. dwlf_compile_custom_event
-   eventId: "<returned id>"
-   → Compiles into executable form — validates conditions, ready to evaluate
+5. dwlf_activate_event_symbols
+   eventId: "<returned id>", symbols: ["BTC-USD", "ETH-USD", "SOL-USD"]
+   → REQUIRED: an event with no activated symbols never evaluates
 
-6. dwlf_get_custom_event
+6. dwlf_evaluate_custom_event
    eventId: "<returned id>"
-   → Verify the compiled event looks correct
+   → Fills its history; poll dwlf_get_evaluation_status, then read fires with dwlf_get_events (type `custom_event`)
+
+7. dwlf_get_event_symbols
+   eventId: "<returned id>"
+   → Its `health` line says whether it is really running (from the nightly coverage check)
 ```
 
 ### Key concepts
@@ -115,7 +119,7 @@ Learn from the academy, then create and deploy a custom event that fires on spec
 - **THEN gate:** First condition must be true, then second condition triggers the event. Perfect for "exits oversold" patterns (was below threshold, now crosses up).
 - **AND gate:** All conditions must be true simultaneously.
 - **OR gate:** Any condition triggers.
-- **Compile step** is required — the event won't evaluate until compiled.
+- **No separate compile step:** saving compiles. `dwlf_compile_custom_event` only recompiles a legacy event (activation answers 422 `EVENT_NOT_COMPILED`). **Activation is required**: the event won't evaluate until symbols are activated.
 - Custom events can be used as building blocks in strategies.
 
 ---
