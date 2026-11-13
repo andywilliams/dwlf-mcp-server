@@ -11,7 +11,7 @@ export function registerSymbolActivationTools(
   // 1. Activate symbols for a custom event (bulk enable)
   server.tool(
     'dwlf_activate_event_symbols',
-    '⚠️ REQUIRED STEP after creating custom events! Activate (enable) symbols for an event. Events do NOT evaluate automatically — they are invisible to backtests and the daily pipeline until activated. If backtests return 0 trades, you likely forgot this step. Call immediately after compiling an event.',
+    '⚠️ REQUIRED STEP after creating custom events! Activate (enable) symbols for an event. Events do NOT evaluate automatically — they are invisible to backtests and the daily pipeline until activated. If backtests return 0 trades, you likely forgot this step. Call immediately after creating an event (saving compiles it).',
     {
       eventId: z.string().describe('Custom event ID'),
       symbols: z

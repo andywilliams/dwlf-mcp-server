@@ -7,7 +7,7 @@ export function registerEvaluationTools(
   client: DWLFClient
 ) {
   // 1. Trigger evaluation for a custom event (the missing step in the
-  // create → compile → activate → evaluate → results workflow). Without
+  // create (which compiles) → activate → evaluate → results workflow). Without
   // this, custom events only evaluate on the daily cron schedule.
   server.tool(
     'dwlf_evaluate_custom_event',

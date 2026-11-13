@@ -280,7 +280,7 @@ Over time, the trade journal becomes a dataset the agent can reference: "What ha
 ## Tips
 
 - **Start with AI summaries** (`dwlf_ai_dashboard`, `dwlf_ai_symbol_brief`) — they're designed to give agents maximum context in minimum tokens.
-- **Always compile** after creating or updating strategies and custom events. They won't execute until compiled.
+- **Always compile** after creating or updating strategies: they won't execute until compiled. Custom events compile when saved; activate their symbols.
 - **Backtests are async** — `dwlf_run_backtest` returns immediately. Poll `dwlf_get_backtest_results` until status is `"complete"`.
 - **Use the academy** when you need to understand a concept. The agent can read lessons and apply what it learns to build strategies and events.
 - **Symbol format** is flexible — `BTC`, `BTC/USD`, `BTC-USD`, `BTCUSD` all work. The server normalizes automatically.

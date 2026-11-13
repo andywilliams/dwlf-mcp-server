@@ -27,9 +27,14 @@ const swap = (from: string, to: string) => (shared: string): string => {
  */
 export const READING_NOTE = 'What this returns describes the market or the chain as of its date: it is not a signal, a forecast or a ' +
   'recommendation, so never present it as a reason to buy or sell.';
-const withNote = (shared: string): string => `${shared} ${READING_NOTE}`;
 export const NOTED_TOOLS = Object.freeze(['dwlf_get_events', 'dwlf_get_price_picture', 'dwlf_get_indicators', 'dwlf_get_regime',
   'dwlf_get_support_resistance', 'dwlf_get_trendlines', 'dwlf_get_market_data', 'dwlf_get_quote']);
+// A noted tool whose shared wording also needs a phrase changed: the phrase change, then the note.
+const NOTED_PHRASES: Readonly<Record<string, (shared: string) => string>> = {
+  dwlf_get_quote: swap(' Ideal for marking a trade/skip to current price or pricing an arbitrary symbol.', ' Use it to price any tracked symbol.'),
+  dwlf_get_indicators: swap('For momentum, band and cross signals use', 'For momentum, band and cross events use'),
+};
+const noted = (name: string) => (shared: string): string => `${(NOTED_PHRASES[name] ?? String)(shared)} ${READING_NOTE}`;
 
 /** A string replaces the shared description; a function rewrites it (for a one-phrase change). */
 export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: string) => string)>> = Object.freeze({
@@ -39,11 +44,7 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'symbols, timeframes, channels, quietHours, dedupeWindowMinutes, and customEventId (custom_event subscriptions ' +
     'only). `eventTypeId` is NOT patchable: switching what an alert listens for means delete + recreate.',
   dwlf_get_ranges: swap(' "at the TOP of the range — think twice about entering here",', ' "at the TOP of the range",'),
-  // Every noted tool gets the note; the two below also change a phrase (a later key replaces the plain note).
-  ...Object.fromEntries(NOTED_TOOLS.map((name) => [name, withNote])),
-  dwlf_get_quote: (shared: string) => withNote(swap(' Ideal for marking a trade/skip to current price or pricing an arbitrary symbol.',
-    ' Use it to price any tracked symbol.')(shared)),
-  dwlf_get_indicators: (shared: string) => withNote(swap('For momentum, band and cross signals use', 'For momentum, band and cross events use')(shared)),
+  ...Object.fromEntries(NOTED_TOOLS.map((name) => [name, noted(name)])),
   dwlf_get_custom_event_notifications: (shared: string) => `${shared} A fire records that a condition the user defined held on that ` +
     'date: it is the output of their own rule, not a DWLF signal or recommendation.',
   dwlf_create_subscription:

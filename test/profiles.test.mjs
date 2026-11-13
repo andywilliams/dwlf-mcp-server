@@ -101,6 +101,8 @@ test('Block has no strategy signals, strategies or backtests; what a Block agent
     // saving already does.
     const byName = Object.fromEntries(listed.map((t) => [t.name, t.description]));
     assert.deepEqual(NOTED_TOOLS.filter((n) => !byName[n]?.includes(READING_NOTE)), []);
+    assert.doesNotMatch(byName.dwlf_get_quote, /trade\/skip/);
+    assert.doesNotMatch(byName.dwlf_get_indicators, /cross signals/);
     assert.deepEqual(listed.filter((t) => t.description.length < 120).map((t) => `${t.name} (${t.description.length})`), []);
     assert.deepEqual(listed.filter((t) => /\bCompile\b\s*→|re-call dwlf_compile_custom_event|after compiling/i.test(t.description)).map((t) => t.name), []);
     // The node catalogue answers with condition nodes and logic gates only: a stop-loss node is refused, the gates a
