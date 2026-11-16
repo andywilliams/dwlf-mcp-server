@@ -42,9 +42,9 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
     exceptions end for the `block` profile. WP4's re-point PR records that.
   - Until the cut, the check runs only for tools whose upstream is the Block API, so there are none before WP4
     and no tool fails it on day one.
-  - Whatever "unwrap once" becomes, it mustn't unwrap a Block response to `items`, because that would drop
-    `summary` and `definitions` before the agent sees them. How it treats the Block envelope is WP4's decision,
-    made with the re-point.
+  - **WP7's requirement: a Block response is never unwrapped before the agent sees them.** Unwrapping to `items`
+    would drop `summary` and `definitions`. "Unwrap once" then applies to SPT's shapes only. WP4 still decides
+    whether SPT standardises on Block's shape.
 - **Live drift is caught when recording.** The fixture server checks each live data-route body against the
   `required` lists in the Block API's own `/public/v1/openapi.json`, fetched at record time. A body that fails is
   reported as a Block API defect and isn't saved. Each recording stores the OpenAPI `info.version` and the
@@ -71,6 +71,8 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - The server instructions already pass, because they use the list's own allowed phrases ("never turn them into
   buy, sell or hold recommendations", "nothing here is scored as a predictor"). So the fix is wording, not a softer
   list: the note is rewritten in those phrases, and "returns" becomes "gives".
+- **The list governs every Block-visible description.** A dispute is settled by editing the list in block-site
+  (its owner), not by an exemption here.
 - **Shared wording changes for both profiles where the change is neutral.** "Returns" → "gives" changes nothing
   for `full`, so the shared docstring changes. Only wording that differs in content goes into
   `blockDescriptions.ts`, as it does today.
@@ -167,7 +169,8 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 - **One publish path, no hand publish.** Gating publish on the eval was decided on 12-Nov. If the Anthropic API is
   down, a release waits. For an urgent fix blocked by a known judge flake, or by a failure outside this repo, Andy can tap a `workflow_dispatch` run
   with an `eval_override` reason. That run still goes through the same OIDC job, tags the release and attaches the
-  failing transcripts, and the reason goes into the release notes. A version is never published outside
+  failing transcripts, and the reason and the overridden cases go into the release notes. The next release must
+  pass those cases; the same case can't be overridden twice. A version is never published outside
   `publish.yml`, so it always has its provenance, its tag and its transcripts.
 - **Accepted:** every release of the package (both profiles) depends on the Anthropic API being up and on the
   Block eval passing. One package means one gate.
@@ -181,7 +184,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 | The Block profile re-pointed at the Block API | WP4 (MCP step) | before the post-cut recordings |
 | The post-cut tool list | Andy/Jenna (§3) | before check 7 and the cut release |
 | A `block-staging` key for the signed-in recordings | WP4 | for the account tool and plan views |
-| What an item's `knowableAt` means (DWLF-853) | WP2 (§7) | **before the cut release** (a Block launch with request-time `knowableAt` is a time collapse SYSTEM.md forbids), and before check 4 trusts it as a date |
+| What an item's `knowableAt` means (DWLF-853) | WP2 (§7) | **before the cut release** (a Block launch with request-time `knowableAt` is a time collapse SYSTEM.md forbids). The mechanism: DWLF-853 `blocks` the cut on the board, and once it lands check 4 fails an item whose `knowableAt` equals the response's `asOf` while it carries an earlier `date`/`since` |
 | `ANTHROPIC_API_KEY` as a dwlf-mcp-server Actions secret | Andy (tap) | before the gate PR merges |
 
 ## 6 · Plan: one PR at a time
@@ -202,6 +205,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 5. **The cut release, with WP4:**
    - recordings from the Block API;
    - check 7 over the decided tool list, with that list's descriptions reworded;
+   - check 4's `knowableAt` rule switched on. The cut release isn't opened for merge while DWLF-853 is open;
    - `eval/pending.json` re-based to that list.
 6. **First full run** on the release candidate. The transcripts are attached to DWLF-804, and the cost is written
    into §4. WP7 is done when that run passes and the gate is live (the design: "the eval runs in CI for the MCP repo

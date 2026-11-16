@@ -139,7 +139,7 @@ A reviewer should be able to test a diff against each of these:
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:325-352` `filtersApplied`, `:589` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
-   ⚠️ **Open for WP4 (16-Nov):** the Block API answers with its own envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`), which is what the agent should read. How "unwrap once" treats it is decided with the re-point, not here. The WP7 eval only requires that those fields reach the agent intact (see *Proposed*).
+   ⚠️ **Proposed (WP7, 16-Nov; see *Proposed*, item 8):** Block API responses are never unwrapped. Their envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`) is the answer the agent reads. "Unwrap once" would then apply to SPT's shapes only.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
    the sole `Authorization` assignment in `src/`. The "no tool builds its own URL" half is
@@ -283,7 +283,7 @@ work-in-progress, and a diff that moves toward them is conformant.)*
 ## Proposed — not in force until approved
 
 - **PROPOSED 16-Nov-2026: amend the 2026-11-12 agent-eval standing decision** *(WP7 charter,
-  `docs/design/block-eval.md`; pending Jenna/Andy)*. On approval, item 6 replaces invariant 3's "`eval/` … two
+  `docs/design/block-eval.md`; pending Jenna/Andy)*. On approval, items 1–10 take force together: item 6 replaces invariant 3's "`eval/` … two
   outbound paths" note, *Depends on* gains a dev-time row (block-site's wording list and dwlf-block-api's port,
   vendored, never at runtime), and the rest moves into that standing decision, replacing its conflicting lines. On
   rejection it is deleted. Until then the standing decision is in force as
@@ -316,7 +316,19 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   7. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
      and it uploads the transcripts as a release asset beside the tag. The eval also runs as a PR check on any
      PR that bumps the version, so master never holds a bump the gate refuses. Each recording stores the OpenAPI
-     version and sha256 it was checked against.
+     version and sha256 it was checked against. There is no hand publish. An urgent override is a tapped
+     `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing transcripts
+     attached. The overridden cases are listed in the release notes, and the next release must pass them; it
+     can't be overridden for the same case again.
+  8. **Block responses are never unwrapped before the agent sees them.** This is WP7's requirement: the envelope
+     is the answer. Item 2 enforces it. How "unwrap once" applies to SPT's shapes stays with that decision.
+  9. **Shared docstrings:** the list governs every Block-visible description. A shared docstring that trips it is
+     reworded neutrally for both profiles. Only content that has to differ is forked into
+     `blockDescriptions.ts`. A dispute with the list is settled by editing the list in block-site (its owner),
+     not by an exemption here.
+  10. **The `knowableAt` cut gate (DWLF-853) is mechanical:** DWLF-853 `blocks` the cut release on the board, and
+      once it lands, check 4 also fails an item whose `knowableAt` equals the response's `asOf` while the item
+      carries an earlier `date` or `since`.
 - **Handed to WP4 by the WP7 charter (16-Nov), not decided here.** The re-point PR answers these, through its own
   `lgtm arch`:
   - which charter lines it rewrites. Known: *Purpose*, *Not for*, *Depends on*, *Tool profiles* ("same key to the
@@ -326,15 +338,13 @@ work-in-progress, and a diff that moves toward them is conformant.)*
     can tell the two shapes apart;
   - the install migration: what a `--profile block` client holding only `DWLF_API_KEY` sees after the cut (unpinned
     `npx -y` picks up the release on its next start), and what `server.json` declares as required;
-  - how "unwrap once" treats the Block envelope, and whether Block's envelope is considered as the shape SPT
-    standardises on;
+  - whether Block's envelope is considered as the shape SPT standardises on (that it is never unwrapped is WP7's
+    requirement, item 8);
   - the key's env var, the client that sends it, and whether shared tools branch on the profile or are registered
     twice.
 
   The eval needs only one thing from these answers: the envelope reaches the agent intact. Its cases ask what a
-  user would ask, so a renamed tool changes a case's `tool` and `mustCall` fields, not its questions. There is no hand publish. An urgent override
-     is a tapped `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing
-     transcripts attached.
+  user would ask, so a renamed tool changes a case's `tool` and `mustCall` fields, not its questions.
 
 ## Org context
 
