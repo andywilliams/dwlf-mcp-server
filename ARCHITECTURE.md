@@ -62,6 +62,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   what a call can do. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
+  ⚠️ **Scheduled to change at the Block cut** (Block 3-layer design §1.4 and §2 step 4; WP4 owns it): the `block`
+  profile will call the Block API (`api.block.dwlf.co.uk`) with an identity-issued `dwlfk_` key, not SPT `/v2` with
+  `DWLF_API_KEY`. That changes three statements in this charter: this "same key to the same backend" line; *Not
+  for*'s "only what `api.dwlf.co.uk/v2` already does" and "one `DWLF_API_KEY` = one account"; and *Depends on*,
+  which gains the Block API. ⇒ **The WP4 re-point PR delivers that decision and rewrites those lines; it doesn't
+  violate them.** Even then a profile is never a permission boundary: the Block API checks every call.
+  `docs/HOSTED-MCP.md` changes in the same PR.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
   `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
   state (`inEngine`) comes from the same API, and the engine's own types are a pseudo-pack, `engine` (the bundle's
@@ -144,7 +151,7 @@ A reviewer should be able to test a diff against each of these:
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
-   ⚠️ **`eval/` is dev tooling outside `src/`, and has two outbound paths of its own (2026-11-12, DWLF-804):** the Anthropic API (the eval agent and its judge), and, in `--record` mode only, an authenticated GET to the DWLF API from `eval/fixture-server.mjs` (the person recording provides the key; GET only; the key is never written). Neither is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves either into `src/` breaks it.
+   ⚠️ **`eval/` is dev tooling outside `src/`, and has two outbound paths of its own (2026-11-12, DWLF-804):** the Anthropic API (the eval agent and its judge), and, in `--record` mode only, an authenticated GET to the DWLF API from `eval/fixture-server.mjs` (the person recording provides the key; GET only; the key is never written). Neither is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves either into `src/` breaks it. *(16-Nov, WP7 charter `docs/design/block-eval.md`, proposed: the record path gains the Block API, `api.block.dwlf.co.uk`, still GET only. Its public routes are recorded with no key, its signed-in ones with a `block-staging` key the person recording provides. `wording:sync` reads block-site and dwlf-block-api at named commits through `gh`. All of it is dev tooling, none of it in `src/`.)*
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
@@ -189,13 +196,18 @@ A reviewer should be able to test a diff against each of these:
   ⚠️ The eval is not part of the npm package (`files` lists `dist` only) and must not become a runtime dependency.
   📌 **Amended 16-Nov-2026 (WP7 charter, `docs/design/block-eval.md`; proposed, pending Jenna/Andy):** (1) the trap
   check also requires the answer to name what the data is (an event, a condition or a reading); "not advice" alone
-  fails. (2) A deterministic **envelope check on the tool results**: every Block data-route result carries
-  `summary`, `definitions` and `knowableAt`, and every item `summary`, `why`, `chartUrl` and `knowableAt`. It grades
-  the product, not the agent. (3) Block tool descriptions and the profile instructions pass the shared wording list
-  as a hard `npm test` gate: DWLF's own copy, like the Block API's templates. (4) **The eval targets the Block profile
-  after the re-point to the Block API** (design §2 step 4): no new cases are written against SPT-backed tools, and
-  `eval/pending.json` is re-based to the post-cut tool list when the re-point lands. (5) `publish.yml` uploads the
-  transcripts as a release asset beside the tag the eval gated.
+  fails. (2) A deterministic **pass-through check on the tool results**: every Block data-route result reaches the
+  agent still carrying `summary`, `definitions` and `knowableAt`, and every item still carries `summary`, `why`,
+  `chartUrl` and `knowableAt`. The Block API owns its envelope and its contract test; this repo owns not stripping
+  it (invariant 2). Live drift is caught at record time, because a failing live response isn't saved. `knowableAt`
+  is checked for presence only until WP2 settles its meaning; dates are graded by each case's own facts and by the
+  judge. (3) Block tool descriptions and the profile instructions pass the shared wording list as a hard
+  `npm test` gate: DWLF's own copy, like the Block API's templates. The list and its port are synced from named
+  commits, and `wording:sync --check` shows drift. (4) **Cases are written now for the tools that exist in every
+  outcome of the cut** (conditions, events, the catalogue tools, series, account). The other 33 Block tools wait
+  for Andy/Jenna's decision on the post-cut tool list (design §2 step 4). Until then their description changes ship
+  with the `npm test` guards only: accepted, time-boxed debt. `eval/pending.json` is re-based at the cut.
+  (5) `publish.yml` uploads the transcripts as a release asset beside the tag the eval gated.
 
 - **2026-01-30 — stdio transport, one `McpServer` and one `DWLFClient` built at module load; one API key, one account, per process. Confirmed 2026-08-13 as the CURRENT posture, with a named expiry condition** *(Andy, 2026-08-13, accepting the recommendation)*.
   **Why it is right today:** two users, no multi-tenancy to build, no hosting to run, and the API key is simply an env var.
