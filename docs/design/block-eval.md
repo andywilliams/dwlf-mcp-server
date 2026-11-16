@@ -1,7 +1,7 @@
 # The Block agent eval: charter and plan (WP7, DWLF-804)
 
 *16-Nov-2026. Design §1.10 and §4 WP7 of the Block 3-layer design (Andy approved 12-Nov 16:25). Docs only: this
-file, plus in `ARCHITECTURE.md` a proposed amendment to the eval standing decision (under *Proposed — not in force*) and a note marking the lines the Block cut touches. No code.*
+file, plus in `ARCHITECTURE.md` an amendment to the eval standing decision (accepted by Andy, tap c-dc40) and a note marking the lines the Block cut touches. No code.*
 
 ## 1 · What the eval is for
 
@@ -137,8 +137,8 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
   against the current backend, which is the conservative default. After a decision, a tool that stays gets its
   case before the cut release, and one that leaves needs nothing.
 - This loosens two rules of the 12-Nov standing decision ("a tool without a case is unfinished", "the pending list
-  only shrinks"). So it's written in `ARCHITECTURE.md` as a **proposal, not in force until approved**. It isn't
-  edited into the standing decision.
+  only shrinks"). Andy accepted that with tap c-dc40, and it is now amendment 5 of that standing decision in
+  `ARCHITECTURE.md`.
 
 ## 4 · How it runs
 
@@ -224,7 +224,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
     `dwlf_get_cycle_windows`), and they link the SPT pricing URL. They're rewritten in the cut release, and check 7
     covers them.
   - `docs/HOSTED-MCP.md` still routes the hosted Block endpoint to SPT `/v2`.
-  - The questions the re-point has to answer are listed in `ARCHITECTURE.md` (*Proposed*, "Handed to WP4"):
+  - The questions the re-point has to answer are listed in `ARCHITECTURE.md` (*Handed to other packages*):
     the charter lines it rewrites; tool names when the response contract differs; the install migration and
     `server.json`; how "unwrap once" treats the Block envelope; and the key's env var and client. They're WP4's,
     decided through its own `lgtm arch`, not here.

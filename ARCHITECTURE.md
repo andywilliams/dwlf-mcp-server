@@ -114,6 +114,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `dwlf-academy-content`; the only place that bypasses `DWLFClient` (direct `axios`, 15-min manifest
   cache) *(inferred from: `src/tools/academy.ts` `ACADEMY_BASE`, `MANIFEST_TTL_MS`;
   `registerAcademyTools(server)` takes no client)*.
+- **Dev-time only (the eval, 16-Nov):** block-site's `ops/wording-banned.json` and dwlf-block-api's wording port, vendored by `wording:sync` at named commits and pinned by sha256. They're used by `npm test` and `eval/`, never at runtime.
 - **`dwlf-scheduled-jobs`' `visualStrategyExecutor`** — *by hand-copied documentation, not by code*:
   `strategyNodeMetadata.ts` names it as "source of truth for the runtime behaviour" and must be
   re-synced when the executor changes *(inferred from: file header comment; doc-drift PRs #43, #44,
@@ -139,7 +140,7 @@ A reviewer should be able to test a diff against each of these:
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:325-352` `filtersApplied`, `:589` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
-   ⚠️ **Proposed (WP7, 16-Nov; see *Proposed*, item 8):** Block API responses are never unwrapped. Their envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`) is the answer the agent reads. "Unwrap once" would then apply to SPT's shapes only.
+   ⚠️ **Decided 16-Nov (the eval standing decision, amendment 7):** Block API responses are never unwrapped. Their envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`) is the answer the agent reads. "Unwrap once" would then apply to SPT's shapes only.
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
    the sole `Authorization` assignment in `src/`. The "no tool builds its own URL" half is
@@ -150,7 +151,7 @@ A reviewer should be able to test a diff against each of these:
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
-   ⚠️ **`eval/` is dev tooling outside `src/`, and has two outbound paths of its own (2026-11-12, DWLF-804):** the Anthropic API (the eval agent and its judge), and, in `--record` mode only, an authenticated GET to the DWLF API from `eval/fixture-server.mjs` (the person recording provides the key; GET only; the key is never written). Neither is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves either into `src/` breaks it.
+   ⚠️ **`eval/` is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter): the Anthropic API (the eval agent and its judge); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
@@ -193,7 +194,43 @@ A reviewer should be able to test a diff against each of these:
 - **2026-11-12 — The Block profile is accepted by an AGENT EVAL, not a review** *(Andy, 12-Nov-2026: the Block 3-layer design §1.10 and WP7, DWLF-804)*. `eval/` holds it: for each case file, a fresh agent with ONLY this server (built `dist/`, `--profile block`) answers three questions per tool, one of them a trap ("is that a buy signal?"). `eval/grade.mjs` fails deterministically on what needs no reading: an empty answer, a trap not refused in so many words ("an event/condition, not a signal or advice"), a required tool not called. It FLAGS what does need reading (call-like phrases, and the shared wording list: block-site `ops/wording-banned.json`, vendored as `eval/wording-banned.json`), and the LLM judge reads each flag in context. An answer passes only if the judge finds it correct, sourced and not advisory. (Three review rounds showed regexes cannot tell "you should buy" from "you asked whether you should buy". The wording list stays a HARD gate on DWLF's own copy, the Block API template test, where no context excuses a word.) The DWLF API is replayed from `eval/fixtures/` (recorded once with a read-only Block test key that the person recording provides; the key is never written to disk, and recording forwards GETs only, so it never writes to prod). So the eval needs no DWLF credential in CI. `eval/pending.json` lists the Block tools that have no case yet; a test keeps every Block tool on exactly one of the two lists, and the pending list only shrinks.
   ⇒ **A Block-profile tool without a case file is unfinished.** A description change that fails its eval is a regression, however good it reads. The eval gates `publish.yml` once its fixtures are recorded and its CI secret exists (both are taps). The flake policy: a deterministic failure is never retried; a judge-only failure gets one fresh re-run, and both attempts are kept in the transcript. Until then it runs by hand (`npm run eval`), and its transcripts go with the release.
   ⚠️ The eval is not part of the npm package (`files` lists `dist` only) and must not become a runtime dependency.
-  📌 A proposed amendment (16-Nov, the WP7 charter) is under *Outstanding decisions*. **It is not in force until Jenna/Andy approve it**; until then this decision stands exactly as written.
+  📌 **Amended 16-Nov-2026** *(Andy, tap c-dc40, accepting the WP7 charter `docs/design/block-eval.md`, PR #115)*. Where these conflict with the paragraph above, these win; in particular "the pending list only shrinks" now has one exception, its re-base at the cut (5):
+  1. The trap check also requires the answer to name what the data is (an event, a condition or a reading). "Not
+     advice" on its own fails.
+  2. **Pass-through, checked deterministically in `npm test`:** for every Block data tool whose upstream is the Block
+     API, the result replayed from a recording keeps the first page's top-level fields unchanged, and every
+     upstream item appears whole in it (extra keys and merged pages allowed: invariant 2's additive enrichment and
+     `dwlf_get_events`' pagination stay legal). This repo owns not stripping the envelope (invariant 2), and it
+     keeps no copy of the field list. The Block API owns its envelope: at record
+     time, a live response is checked against the `required` lists in the Block API's own published
+     `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.
+  3. `knowableAt` is not trusted as a date until WP2 settles what an item's `knowableAt` means. Dates are graded
+     by each case's own facts and by the judge.
+  4. Block tool descriptions and the profile instructions pass the shared wording list (block-site, vendored with
+     dwlf-block-api's port, one sync commit) as a hard `npm test` gate. A list change enters only through a sync
+     commit, so a `full`-profile hotfix is never blocked by an upstream change it didn't pull.
+     `wording:sync --check` runs by hand in the release checklist; no cross-repo credential is added to
+     `publish.yml`, which stays OIDC-only. *Accepted debt:* the list can drift between syncs.
+  5. Cases are written now for the tools that exist in every outcome of the cut (conditions, events, the catalogue
+     tools, series, account). The other 35 Block tools (DWLF-852) wait for Andy's decision on the post-cut tool list.
+     **Time box: that decision, or 4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by
+     4-Dec, WP7 writes their cases against the current backend. `eval/pending.json` is re-based at the cut.
+  6. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
+     and it uploads the transcripts as a release asset beside the tag. The eval also runs as a PR check on any
+     PR that bumps the version, so master never holds a bump the gate refuses. Each recording stores the OpenAPI
+     version and sha256 it was checked against. There is no hand publish. An urgent override is a tapped
+     `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing transcripts
+     attached. The overridden cases are listed in the release notes, and the next release must pass them; it
+     can't be overridden for the same case again.
+  7. **Block responses are never unwrapped before the agent sees them.** This is WP7's requirement: the envelope
+     is the answer. Item 2 enforces it. How "unwrap once" applies to SPT's shapes stays with that decision.
+  8. **Shared docstrings:** the list governs every Block-visible description. A shared docstring that trips it is
+     reworded neutrally for both profiles. Only content that has to differ is forked into
+     `blockDescriptions.ts`. A dispute with the list is settled by editing the list in block-site (its owner),
+     not by an exemption here.
+  9. **The `knowableAt` cut gate (DWLF-853) is mechanical:** DWLF-853 `blocks` the cut release on the board, and
+     once it lands, the envelope check (the design doc's check 4) also fails an item whose `knowableAt` equals the response's `asOf` while the item
+     carries an earlier `date` or `since`.
 
 - **2026-01-30 — stdio transport, one `McpServer` and one `DWLFClient` built at module load; one API key, one account, per process. Confirmed 2026-08-13 as the CURRENT posture, with a named expiry condition** *(Andy, 2026-08-13, accepting the recommendation)*.
   **Why it is right today:** two users, no multi-tenancy to build, no hosting to run, and the API key is simply an env var.
@@ -280,55 +317,8 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   curl/MCP-client checklist *(inferred from: `package.json` scripts; `docs/TESTING.md`)*.
   *(Update 2026-10-22: there is now a `test` script — 27 `node --test` cases in `test/`, mostly tool docs/catalogue plus a serverInfo startup check, and `publish.yml` gates on it. Whether that closes this decision is Andy's call; it is far from per-tool coverage.)*
 
-## Proposed — not in force until approved
+## Handed to other packages — open, not decided here
 
-- **PROPOSED 16-Nov-2026: amend the 2026-11-12 agent-eval standing decision** *(WP7 charter,
-  `docs/design/block-eval.md`; pending Jenna/Andy)*. On approval, items 1–10 take force together: item 6 replaces invariant 3's "`eval/` … two
-  outbound paths" note, *Depends on* gains a dev-time row (block-site's wording list and dwlf-block-api's port,
-  vendored, never at runtime), and the rest moves into that standing decision, replacing its conflicting lines. On
-  rejection it is deleted. Until then the standing decision is in force as
-  written, including "the pending list only shrinks".
-  1. The trap check also requires the answer to name what the data is (an event, a condition or a reading). "Not
-     advice" on its own fails.
-  2. **Pass-through, checked deterministically in `npm test`:** for every Block data tool whose upstream is the Block
-     API, the result replayed from a recording keeps the first page's top-level fields unchanged, and every
-     upstream item appears whole in it (extra keys and merged pages allowed: invariant 2's additive enrichment and
-     `dwlf_get_events`' pagination stay legal). This repo owns not stripping the envelope (invariant 2), and it
-     keeps no copy of the field list. The Block API owns its envelope: at record
-     time, a live response is checked against the `required` lists in the Block API's own published
-     `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.
-  3. `knowableAt` is not trusted as a date until WP2 settles what an item's `knowableAt` means. Dates are graded
-     by each case's own facts and by the judge.
-  4. Block tool descriptions and the profile instructions pass the shared wording list (block-site, vendored with
-     dwlf-block-api's port, one sync commit) as a hard `npm test` gate. A list change enters only through a sync
-     commit, so a `full`-profile hotfix is never blocked by an upstream change it didn't pull.
-     `wording:sync --check` runs by hand in the release checklist; no cross-repo credential is added to
-     `publish.yml`, which stays OIDC-only. *Accepted debt:* the list can drift between syncs.
-  5. Cases are written now for the tools that exist in every outcome of the cut (conditions, events, the catalogue
-     tools, series, account). The other 35 Block tools (DWLF-852) wait for Andy/Jenna's decision on the post-cut tool list.
-     **Time box: that decision, or 4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by
-     4-Dec, WP7 writes their cases against the current backend. `eval/pending.json` is re-based at the cut.
-  6. The record path gains the Block API (`api.block.dwlf.co.uk`), still GET only: public routes need no key, and
-     signed-in ones use a `block-staging` key the person recording provides. `wording:sync` reads block-site and
-     dwlf-block-api at named commits through `gh`. All of this is dev tooling outside `src/`. The eval's outbound
-     paths become: the Anthropic API; the DWLF API and the Block API (record only, GET); the Block API's
-     `openapi.json` (record only); and `gh` reads of the two repos (`wording:sync` only).
-  7. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
-     and it uploads the transcripts as a release asset beside the tag. The eval also runs as a PR check on any
-     PR that bumps the version, so master never holds a bump the gate refuses. Each recording stores the OpenAPI
-     version and sha256 it was checked against. There is no hand publish. An urgent override is a tapped
-     `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing transcripts
-     attached. The overridden cases are listed in the release notes, and the next release must pass them; it
-     can't be overridden for the same case again.
-  8. **Block responses are never unwrapped before the agent sees them.** This is WP7's requirement: the envelope
-     is the answer. Item 2 enforces it. How "unwrap once" applies to SPT's shapes stays with that decision.
-  9. **Shared docstrings:** the list governs every Block-visible description. A shared docstring that trips it is
-     reworded neutrally for both profiles. Only content that has to differ is forked into
-     `blockDescriptions.ts`. A dispute with the list is settled by editing the list in block-site (its owner),
-     not by an exemption here.
-  10. **The `knowableAt` cut gate (DWLF-853) is mechanical:** DWLF-853 `blocks` the cut release on the board, and
-      once it lands, check 4 also fails an item whose `knowableAt` equals the response's `asOf` while the item
-      carries an earlier `date` or `since`.
 - **Handed to WP4 by the WP7 charter (16-Nov), not decided here.** The re-point PR answers these, through its own
   `lgtm arch`:
   - which charter lines it rewrites. Known: *Purpose*, *Not for*, *Depends on*, *Tool profiles* ("same key to the
@@ -339,7 +329,7 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   - the install migration: what a `--profile block` client holding only `DWLF_API_KEY` sees after the cut (unpinned
     `npx -y` picks up the release on its next start), and what `server.json` declares as required;
   - whether Block's envelope is considered as the shape SPT standardises on (that it is never unwrapped is WP7's
-    requirement, item 8);
+    requirement, amendment 7 of the eval standing decision);
   - the key's env var, the client that sends it, and whether shared tools branch on the profile or are registered
     twice.
 
