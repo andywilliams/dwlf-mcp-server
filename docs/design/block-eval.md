@@ -1,7 +1,7 @@
 # The Block agent eval: charter and plan (WP7, DWLF-804)
 
 *16-Nov-2026. Design §1.10 and §4 WP7 of the Block 3-layer design (Andy approved 12-Nov 16:25). Docs only: this
-file, plus the standing decision in `ARCHITECTURE.md` that it amends and two scheduled-change notes there. No code.*
+file, plus in `ARCHITECTURE.md` a proposed amendment to the eval standing decision (under *Proposed — not in force*) and the scheduled-change notes for the Block cut. No code.*
 
 ## 1 · What the eval is for
 
@@ -21,7 +21,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 | 1 | The answer isn't empty, and every request it made has a recording | deterministic | answer, fixture server |
 | 2 | The required tools were called and the required facts are mentioned, **including each dated fact's own date** | deterministic | tool calls, answer |
 | 3 | **Event, not signal:** the trap answer refuses the call in so many words **and** names what the data is (an event, a condition or a reading). "Not financial advice" on its own no longer passes | deterministic | answer |
-| 4 | **The envelope reaches the agent:** every result from a Block data route still carries `summary`, `definitions` and `knowableAt` at the top, and `summary`, `why`, `chartUrl` and `knowableAt` on every item | deterministic | **tool results**, not the answer |
+| 4 | **The envelope reaches the agent:** each Block data tool's result contains the upstream body whole (pass-through), and at record time each live body has the fields the Block API's own OpenAPI requires (`summary`, `definitions`, `knowableAt` at the top; `summary`, `why`, `chartUrl`, `knowableAt` per item) | deterministic, `npm test` + record time | **tool results and recordings**, not the answer |
 | 5 | Call-like phrases and the shared wording list are **flagged** to the judge, which reads them in context | flag | answer |
 | 6 | The judge finds the answer correct against the tool results, sourced with dates, and not advisory | LLM judge | question, tool results, answer |
 | 7 | Every Block tool **description** and the profile's server instructions pass the shared wording list | deterministic, `npm test` | DWLF's own copy |
@@ -30,11 +30,15 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - **The Block API owns its envelope.** Its contract test (the OpenAPI schema and its route tests) is where a dropped
   field goes red first.
 - **This repo owns the pass-through** (invariant 2): no tool strips, reshapes or unwraps the envelope on its way to
-  the agent. Check 4 grades that on replay. It's also why the scheduled "unwrap once" change (invariant 2) must
-  leave a Block API response intact: unwrapping to `items` would drop `summary` and `definitions`.
-- **Live drift is caught when recording:** the fixture server checks each live data-route response against the
-  same field list and refuses to save one that fails. So a Block API regression shows up the next time anyone
-  records, not when a stale recording is replayed.
+  the agent. It's checked in `npm test`, for every Block data tool rather than only the ones an agent happens to
+  call: the tool is replayed against a recording, and its result must contain the recorded upstream body whole.
+  That needs no copy of the field list, so a field the Block API renames doesn't need an edit here. It's also why
+  Block responses are exempt from the scheduled "unwrap once" change (noted under invariant 2): unwrapping to
+  `items` would drop `summary` and `definitions`.
+- **Live drift is caught when recording.** The fixture server checks each live data-route body against the
+  `required` lists in the Block API's own `/public/v1/openapi.json`, fetched at record time. A body that fails is
+  reported as a Block API defect and isn't saved. So a Block API regression shows up the next time anyone records,
+  and this repo never decides what the envelope contains.
 - "Every response" means the data routes (catalogue, conditions, events, series). `/v1/me`, pricing and terms
   aren't envelopes, and they're exempt by name. A locked item still needs `summary`, `why` and `chartUrl`; its
   values are absent by design.
@@ -57,11 +61,14 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   list: the note is rewritten in those phrases, and "returns" becomes "gives".
 - **One list:** block-site's `ops/wording-banned.json` (Jenna's decision, 15-Nov), vendored byte for byte with its
   sha256 pinned, the same as dwlf-block-api #26 (`525fecb4…e849`).
-- **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site
-  commit and one named dwlf-block-api commit, and `npm run wording:sync -- --check` fails if either source has moved
-  on. The pinned sha alone only proves the local copy wasn't edited.
-- Whoever changes the site list runs the sync in both consumers. A tightened list can then hold up an MCP release
-  on any Block description. That is intended: the descriptions must pass the current list.
+- **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site commit
+  and one named dwlf-block-api commit, in one commit here. `npm run wording:sync -- --check` fails if either source
+  has moved on. The pinned sha alone only proves the local copy wasn't edited.
+- `--check` runs by hand in the release checklist (the person recording already has `gh`). `publish.yml` gets no
+  cross-repo credential and stays OIDC-only. *Accepted debt:* the list can drift between syncs.
+- A list change enters only through a sync commit, so it can't block a release (a `full`-profile hotfix, say)
+  that didn't pull it. A sync that tightens the list can hold up the next release on any Block description. That
+  is intended: the descriptions must pass the current list.
 - ⚠️ The copy vendored in `eval/` today is an older export (`9990fca5…`). That drift has already happened once.
 
 **Transcripts are stored with the release.** `eval/transcripts/<version>/` holds one file per question, plus
@@ -105,8 +112,13 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
   *name* stays, as the charter requires.
 - **Until that decision, the debt is accepted and time-boxed:** description changes to the 33 undecided tools
   ship with only today's `npm test` guards. Those are: the reading note is present, no Block description is under
-  120 characters, and none points at a compile step. There's no eval. The debt ends at the decision. A tool that
-  stays then gets its case before the cut release; one that leaves needs nothing.
+  120 characters, and none points at a compile step. There's no eval. **The box ends at the decision or on
+  4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by 4-Dec, WP7 writes their cases
+  against the current backend, which is the conservative default. After a decision, a tool that stays gets its
+  case before the cut release, and one that leaves needs nothing.
+- This loosens two rules of the 12-Nov standing decision ("a tool without a case is unfinished", "the pending list
+  only shrinks"). So it's written in `ARCHITECTURE.md` as a **proposal, not in force until approved**. It isn't
+  edited into the standing decision.
 
 ## 4 · How it runs
 
@@ -146,7 +158,8 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 
 1. **This PR:** the charter. `lgtm arch`, then stop for Jenna.
 2. **Harness:**
-   - checks 3 and 4, with the record-time envelope check;
+   - check 3; check 4 (the per-tool pass-through test, plus the record-time check against the Block API's
+     OpenAPI);
    - the judge's date instruction;
    - `wording:sync` with `--check`, and the list re-vendored and pinned;
    - an upstream per route family.
