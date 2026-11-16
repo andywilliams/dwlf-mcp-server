@@ -1,7 +1,7 @@
 # The Block agent eval: charter and plan (WP7, DWLF-804)
 
 *16-Nov-2026. Design §1.10 and §4 WP7 of the Block 3-layer design (Andy approved 12-Nov 16:25). Docs only: this
-file, plus in `ARCHITECTURE.md` a proposed amendment to the eval standing decision (under *Proposed — not in force*) and the scheduled-change notes for the Block cut. No code.*
+file, plus in `ARCHITECTURE.md` a proposed amendment to the eval standing decision (under *Proposed — not in force*) and a note marking the lines the Block cut touches. No code.*
 
 ## 1 · What the eval is for
 
@@ -39,12 +39,12 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   need an edit here.
   - Today `dwlf_describe_onchain_events` and `dwlf_explain_event` *reshape* SPT's answer (scoped exceptions to
     invariant 2: a JOIN, a pack and search view). After the cut the catalogue is one Block API read, and those
-    exceptions end for the `block` profile. WP4's re-point PR records that (see the scheduled-change note).
+    exceptions end for the `block` profile. WP4's re-point PR records that.
   - Until the cut, the check runs only for tools whose upstream is the Block API, so there are none before WP4
     and no tool fails it on day one.
-  - It's also why
-  Block responses are exempt from the scheduled "unwrap once" change (noted under invariant 2): unwrapping to
-  `items` would drop `summary` and `definitions`.
+  - Whatever "unwrap once" becomes, it mustn't unwrap a Block response to `items`, because that would drop
+    `summary` and `definitions` before the agent sees them. How it treats the Block envelope is WP4's decision,
+    made with the re-point.
 - **Live drift is caught when recording.** The fixture server checks each live data-route body against the
   `required` lists in the Block API's own `/public/v1/openapi.json`, fetched at record time. A body that fails is
   reported as a Block API defect and isn't saved. Each recording stores the OpenAPI `info.version` and the
@@ -71,6 +71,11 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - The server instructions already pass, because they use the list's own allowed phrases ("never turn them into
   buy, sell or hold recommendations", "nothing here is scored as a predictor"). So the fix is wording, not a softer
   list: the note is rewritten in those phrases, and "returns" becomes "gives".
+- **Shared wording changes for both profiles where the change is neutral.** "Returns" → "gives" changes nothing
+  for `full`, so the shared docstring changes. Only wording that differs in content goes into
+  `blockDescriptions.ts`, as it does today.
+- A `full`-only release waits on the eval too. Every merge and publish already needs Andy's tap, so
+  `eval_override` adds no new approver.
 - **One list:** block-site's `ops/wording-banned.json` (Jenna's decision, 15-Nov), vendored byte for byte with its
   sha256 pinned, the same as dwlf-block-api #26 (`525fecb4…e849`).
 - **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site commit
@@ -215,6 +220,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
     `dwlf_get_cycle_windows`), and they link the SPT pricing URL. They're rewritten in the cut release, and check 7
     covers them.
   - `docs/HOSTED-MCP.md` still routes the hosted Block endpoint to SPT `/v2`.
-  - The re-point changes the charter's Interfaces (the profile → backend line, "one DWLF_API_KEY = one account",
-    "Not for: api.dwlf.co.uk/v2 only"). Scheduled-change notes in `ARCHITECTURE.md` mark those lines, so the WP4
-    PR delivers a decision instead of contradicting the charter.
+  - The questions the re-point has to answer are listed in `ARCHITECTURE.md` (*Proposed*, "Handed to WP4"):
+    the charter lines it rewrites; tool names when the response contract differs; the install migration and
+    `server.json`; how "unwrap once" treats the Block envelope; and the key's env var and client. They're WP4's,
+    decided through its own `lgtm arch`, not here.

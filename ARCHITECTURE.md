@@ -62,34 +62,11 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   what a call can do. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
-  ⚠️ **Scheduled to change at the Block cut** (Block 3-layer design §1.4 and §2 step 4, approved 12-Nov; WP4 owns
-  it): the `block` profile will call the Block API (`api.block.dwlf.co.uk`) with an identity-issued `dwlfk_` key,
-  not SPT `/v2` with `DWLF_API_KEY`. Block stays **inside this package, as a profile**. That isn't a new choice: it
-  is Andy's Q10, "one server, product profiles" (design §1.4). **The WP4 re-point PR delivers that decision by
-  rewriting every charter line the router contradicts; it does not violate them.** The list below is the known
-  minimum, not a closed set:
-  - *Purpose*: "exposes DWLF's v2 REST surface" and "call `DWLFClient`";
-  - invariant 5's two contracts (shared, plus Block wording via `profiledServer` and `blockDescriptions.ts`), and
-    invariant 6's "two wiring points". Separate Block registrations would make these three surfaces, or retire
-    `blockDescriptions.ts` for the tools that move;
-  - invariant 1 (slash-form symbol keys), for whatever ids Block series use;
-  - this line's "same key to the same backend checks" and "never widens what a call can do". After the cut a
-    profile is a **router**: the same tool name goes to SPT in `full` and to the Block API in `block`, with
-    different response contracts, and `block` gains tools `full` lacks (`dwlf_get_series`). The rule becomes "a
-    profile never widens what its backend allows";
-  - the scoped invariant-2 exceptions of `dwlf_describe_onchain_events` and `dwlf_explain_event` (a JOIN, a pack
-    and search view), which end for `block` when the catalogue is one Block API read;
-  - *Not for*: "only what `api.dwlf.co.uk/v2` already does" and "one `DWLF_API_KEY` = one account";
-  - *Depends on*, which gains the Block API;
-  - invariant 3, "all authenticated HTTP goes through `DWLFClient`", and its host-scoped wording;
-  - invariant 8, where the key comes from;
-  - the stdio standing decision's "one `DWLFClient` … one API key, one account, per process".
-
-  WP4 decides, in that PR: which env var holds the `dwlfk_` key; whether it goes through `DWLFClient` or a second
-  client with its own `Authorization` header; and whether a shared tool is one handler that branches on the
-  profile or two registrations. WP7 recommends separate Block registrations in their own module, so `full`'s
-  handlers are untouched. Even after the cut a profile is never a permission boundary,
-  because the Block API checks every call. `docs/HOSTED-MCP.md` changes in the same PR.
+  ⚠️ **Scheduled to change at the Block cut** (Block 3-layer design §1.4 and §2 step 4, approved 12-Nov; Andy's
+  Q10, "one server, product profiles"): the `block` profile will call the Block API (`api.block.dwlf.co.uk`) with
+  an identity-issued `dwlfk_` key, not SPT `/v2` with `DWLF_API_KEY`. **WP4 owns that change and its charter
+  edits.** This note only marks the lines here that it touches, so a reader isn't surprised. It authorises
+  nothing in advance: the WP4 PR is reviewed against this charter like any other, through its own `lgtm arch`.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
   `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
   state (`inEngine`) comes from the same API, and the engine's own types are a pseudo-pack, `engine` (the bundle's
@@ -162,7 +139,7 @@ A reviewer should be able to test a diff against each of these:
    replacement wrapper *(inferred from: ~100 `JSON.stringify` returns in `src/tools/*`;
    `market-data.ts:325-352` `filtersApplied`, `:589` `agentHints`)*.
    ⚠️ **This invariant is scheduled to change.** Once the backend envelopes are standardised (see *Outstanding decisions*), `DWLFClient` should unwrap **once** and tools stop handling the variance individually. ⇒ **A diff that centralises unwrapping is delivering that decision, not violating this invariant.** Until then pass-through remains correct, because a partial normalisation is worse than none.
-   ⚠️ **Except Block API responses** (16-Nov, Block 3-layer design §1.10): their envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`) is the product's answer to the agent, so it is passed whole and never unwrapped to `items`, whatever rule SPT's shapes end up with. Whether the Block client is `DWLFClient` is WP4's decision (see the scheduled-change note under *Tool profiles*).
+   ⚠️ **Open for WP4 (16-Nov):** the Block API answers with its own envelope (`summary`, `definitions`, `knowableAt`, items with `why`/`chartUrl`), which is what the agent should read. How "unwrap once" treats it is decided with the re-point, not here. The WP7 eval only requires that those fields reach the agent intact (see *Proposed*).
 3. **All authenticated HTTP goes through `DWLFClient`.** No tool constructs its own axios instance or
    URL against `api.dwlf.co.uk` *(verified 2026-08-13 for the auth half only: `src/client.ts:77` is
    the sole `Authorization` assignment in `src/`. The "no tool builds its own URL" half is
@@ -339,7 +316,23 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   7. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
      and it uploads the transcripts as a release asset beside the tag. The eval also runs as a PR check on any
      PR that bumps the version, so master never holds a bump the gate refuses. Each recording stores the OpenAPI
-     version and sha256 it was checked against. There is no hand publish. An urgent override
+     version and sha256 it was checked against.
+- **Handed to WP4 by the WP7 charter (16-Nov), not decided here.** The re-point PR answers these, through its own
+  `lgtm arch`:
+  - which charter lines it rewrites. Known: *Purpose*, *Not for*, *Depends on*, *Tool profiles* ("same key to the
+    same backend", "never widens"), invariants 1, 3, 5, 6 and 8, the stdio standing decision, and the scoped
+    invariant-2 exceptions of the two catalogue tools;
+  - whether Block-backed tools keep `full`'s `dwlf_*` names when their response contract differs, and how an agent
+    can tell the two shapes apart;
+  - the install migration: what a `--profile block` client holding only `DWLF_API_KEY` sees after the cut (unpinned
+    `npx -y` picks up the release on its next start), and what `server.json` declares as required;
+  - how "unwrap once" treats the Block envelope, and whether Block's envelope is considered as the shape SPT
+    standardises on;
+  - the key's env var, the client that sends it, and whether shared tools branch on the profile or are registered
+    twice.
+
+  The eval needs only one thing from these answers: the envelope reaches the agent intact. Its cases ask what a
+  user would ask, so a renamed tool changes a case's `tool` and `mustCall` fields, not its questions. There is no hand publish. An urgent override
      is a tapped `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing
      transcripts attached.
 
