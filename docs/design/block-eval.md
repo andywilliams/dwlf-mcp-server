@@ -31,8 +31,18 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   field goes red first.
 - **This repo owns the pass-through** (invariant 2): no tool strips, reshapes or unwraps the envelope on its way to
   the agent. It's checked in `npm test`, for every Block data tool rather than only the ones an agent happens to
-  call: the tool is replayed against a recording, and its result must contain the recorded upstream body whole.
-  That needs no copy of the field list, so a field the Block API renames doesn't need an edit here. It's also why
+  call. The tool is replayed against a recording, and the rule is **containment, not equality**. The result must
+  keep the first upstream page's top-level fields unchanged, and every item of every page it fetched must appear
+  whole (deep-equal; extra keys allowed). So invariant 2's additive enrichment (`filtersApplied`, `agentHints`)
+  and `dwlf_get_events`' auto-pagination (a standing decision) stay legal. Dropping, renaming or rewriting an
+  upstream field is what fails. That needs no copy of the field list, so a field the Block API renames doesn't
+  need an edit here.
+  - Today `dwlf_describe_onchain_events` and `dwlf_explain_event` *reshape* SPT's answer (scoped exceptions to
+    invariant 2: a JOIN, a pack and search view). After the cut the catalogue is one Block API read, and those
+    exceptions end for the `block` profile. WP4's re-point PR records that (see the scheduled-change note).
+  - Until the cut, the check runs only for tools whose upstream is the Block API, so there are none before WP4
+    and no tool fails it on day one.
+  - It's also why
   Block responses are exempt from the scheduled "unwrap once" change (noted under invariant 2): unwrapping to
   `items` would drop `summary` and `definitions`.
 - **Live drift is caught when recording.** The fixture server checks each live data-route body against the
@@ -95,10 +105,11 @@ billing.
 For these tools, the questions are written once. Only the fixtures change at the cut, so cases are written now
 against today's backend and re-recorded then.
 
-**The other 33 tools: a product decision, not WP7's.** These are:
+**The other 35 tools: a product decision, not WP7's** (DWLF-852). These are:
 - regime, stage, cycle windows, quote, price picture, market data, support/resistance, cycle setups, divergences,
   trendlines, indicators and ranges;
-- the 13 custom-event tools and the 4 subscription tools;
+- the 14 custom-event tools (with `dwlf_describe_strategy_nodes`, whose Block-only handler answers from SPT's
+  `/v2/node-types`) and the 4 subscription tools;
 - the 3 Academy tools, quotas and register.
 
 None of them has a Block API route. Each either gets one (WP2) or leaves the Block profile at the cut. That's 🛑
@@ -110,7 +121,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 - **The tool list is shown, not hidden.** Removing tools from the profile changes what agents set up through
   `docs/BLOCK.md` can call. The cut release says so in its notes and in `docs/BLOCK.md`'s tool list. The profile
   *name* stays, as the charter requires.
-- **Until that decision, the debt is accepted and time-boxed:** description changes to the 33 undecided tools
+- **Until that decision, the debt is accepted and time-boxed:** description changes to the 35 undecided tools
   ship with only today's `npm test` guards. Those are: the reading note is present, no Block description is under
   120 characters, and none points at a compile step. There's no eval. **The box ends at the decision or on
   4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by 4-Dec, WP7 writes their cases
@@ -138,9 +149,16 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
   and both attempts are kept.
 - **Models:** Opus 5.5 for the agent and the judge (the env overrides stay). The cost per release is measured on
   the first full run and written here; it isn't guessed now.
-- **No escape hatch is designed here.** Gating publish on the eval was decided on 12-Nov. If the Anthropic API is
-  down, a release waits. An urgent fix with a known judge flake goes to Andy as a tap to publish by hand, with the
-  failing transcript attached.
+- **The eval runs in its own job.** `publish.yml` gets an `eval` job that holds `ANTHROPIC_API_KEY` and has no
+  `id-token` permission. The `publish` job `needs: eval`, and only it can mint the OIDC credential. So model-driven
+  test code never runs where an npm publish credential exists.
+- **One publish path, no hand publish.** Gating publish on the eval was decided on 12-Nov. If the Anthropic API is
+  down, a release waits. For an urgent fix blocked by a known judge flake, Andy can tap a `workflow_dispatch` run
+  with an `eval_override` reason. That run still goes through the same OIDC job, tags the release and attaches the
+  failing transcripts, and the reason goes into the release notes. A version is never published outside
+  `publish.yml`, so it always has its provenance, its tag and its transcripts.
+- **Accepted:** every release of the package (both profiles) depends on the Anthropic API being up and on the
+  Block eval passing. One package means one gate.
 
 ## 5 · Dependencies
 

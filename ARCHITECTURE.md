@@ -66,15 +66,22 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   it): the `block` profile will call the Block API (`api.block.dwlf.co.uk`) with an identity-issued `dwlfk_` key,
   not SPT `/v2` with `DWLF_API_KEY`. That changes these lines, and **the WP4 re-point PR delivers the decision by
   rewriting them; it does not violate them**:
-  - this line's "same key to the same backend checks";
+  - this line's "same key to the same backend checks" and "never widens what a call can do". After the cut a
+    profile is a **router**: the same tool name goes to SPT in `full` and to the Block API in `block`, with
+    different response contracts, and `block` gains tools `full` lacks (`dwlf_get_series`). The rule becomes "a
+    profile never widens what its backend allows";
+  - the scoped invariant-2 exceptions of `dwlf_describe_onchain_events` and `dwlf_explain_event` (a JOIN, a pack
+    and search view), which end for `block` when the catalogue is one Block API read;
   - *Not for*: "only what `api.dwlf.co.uk/v2` already does" and "one `DWLF_API_KEY` = one account";
   - *Depends on*, which gains the Block API;
   - invariant 3, "all authenticated HTTP goes through `DWLFClient`", and its host-scoped wording;
   - invariant 8, where the key comes from;
   - the stdio standing decision's "one `DWLFClient` … one API key, one account, per process".
 
-  WP4 decides, in that PR: which env var holds the `dwlfk_` key, and whether it goes through `DWLFClient` or a
-  second client with its own `Authorization` header. Even after the cut a profile is never a permission boundary,
+  WP4 decides, in that PR: which env var holds the `dwlfk_` key; whether it goes through `DWLFClient` or a second
+  client with its own `Authorization` header; and whether a shared tool is one handler that branches on the
+  profile or two registrations. WP7 recommends separate Block registrations in their own module, so `full`'s
+  handlers are untouched. Even after the cut a profile is never a permission boundary,
   because the Block API checks every call. `docs/HOSTED-MCP.md` changes in the same PR.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
   `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
@@ -292,14 +299,18 @@ work-in-progress, and a diff that moves toward them is conformant.)*
 ## Proposed — not in force until approved
 
 - **PROPOSED 16-Nov-2026: amend the 2026-11-12 agent-eval standing decision** *(WP7 charter,
-  `docs/design/block-eval.md`; pending Jenna/Andy)*. On approval this entry moves into that standing decision,
-  replacing its conflicting lines; on rejection it is deleted. Until then the standing decision is in force as
+  `docs/design/block-eval.md`; pending Jenna/Andy)*. On approval, item 6 replaces invariant 3's "`eval/` … two
+  outbound paths" note, *Depends on* gains a dev-time row (block-site's wording list and dwlf-block-api's port,
+  vendored, never at runtime), and the rest moves into that standing decision, replacing its conflicting lines. On
+  rejection it is deleted. Until then the standing decision is in force as
   written, including "the pending list only shrinks".
   1. The trap check also requires the answer to name what the data is (an event, a condition or a reading). "Not
      advice" on its own fails.
-  2. **Pass-through, checked deterministically in `npm test`:** for every Block data tool, the tool's result,
-     replayed from a recording, contains the recorded upstream body whole. This repo owns not stripping the
-     envelope (invariant 2), and it keeps no copy of the field list. The Block API owns its envelope: at record
+  2. **Pass-through, checked deterministically in `npm test`:** for every Block data tool whose upstream is the Block
+     API, the result replayed from a recording keeps the first page's top-level fields unchanged, and every
+     upstream item appears whole in it (extra keys and merged pages allowed: invariant 2's additive enrichment and
+     `dwlf_get_events`' pagination stay legal). This repo owns not stripping the envelope (invariant 2), and it
+     keeps no copy of the field list. The Block API owns its envelope: at record
      time, a live response is checked against the `required` lists in the Block API's own published
      `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.
   3. `knowableAt` is not trusted as a date until WP2 settles what an item's `knowableAt` means. Dates are graded
@@ -310,14 +321,18 @@ work-in-progress, and a diff that moves toward them is conformant.)*
      `wording:sync --check` runs by hand in the release checklist; no cross-repo credential is added to
      `publish.yml`, which stays OIDC-only. *Accepted debt:* the list can drift between syncs.
   5. Cases are written now for the tools that exist in every outcome of the cut (conditions, events, the catalogue
-     tools, series, account). The other 33 Block tools wait for Andy/Jenna's decision on the post-cut tool list.
+     tools, series, account). The other 35 Block tools (DWLF-852) wait for Andy/Jenna's decision on the post-cut tool list.
      **Time box: that decision, or 4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by
      4-Dec, WP7 writes their cases against the current backend. `eval/pending.json` is re-based at the cut.
   6. The record path gains the Block API (`api.block.dwlf.co.uk`), still GET only: public routes need no key, and
      signed-in ones use a `block-staging` key the person recording provides. `wording:sync` reads block-site and
-     dwlf-block-api at named commits through `gh`. All of this is dev tooling outside `src/` (invariant 3's `eval/`
-     note).
-  7. `publish.yml` uploads the transcripts as a release asset beside the tag the eval gated.
+     dwlf-block-api at named commits through `gh`. All of this is dev tooling outside `src/`. The eval's outbound
+     paths become: the Anthropic API; the DWLF API and the Block API (record only, GET); the Block API's
+     `openapi.json` (record only); and `gh` reads of the two repos (`wording:sync` only).
+  7. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
+     and it uploads the transcripts as a release asset beside the tag. There is no hand publish. An urgent override
+     is a tapped `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing
+     transcripts attached.
 
 ## Org context
 
