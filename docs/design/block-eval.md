@@ -42,7 +42,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
     exceptions end for the `block` profile. WP4's re-point PR records that.
   - Until the cut, the check runs only for tools whose upstream is the Block API, so there are none before WP4
     and no tool fails it on day one.
-  - **WP7's requirement: a Block response is never unwrapped before the agent sees them.** Unwrapping to `items`
+  - **WP7's requirement: a Block response is never unwrapped before the agent sees it.** Unwrapping to `items`
     would drop `summary` and `definitions`. "Unwrap once" then applies to SPT's shapes only. WP4 still decides
     whether SPT standardises on Block's shape.
 - **Live drift is caught when recording.** The fixture server checks each live data-route body against the
