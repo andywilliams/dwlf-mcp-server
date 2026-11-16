@@ -64,8 +64,15 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `test/profiles.test.mjs`)*.
   ⚠️ **Scheduled to change at the Block cut** (Block 3-layer design §1.4 and §2 step 4, approved 12-Nov; WP4 owns
   it): the `block` profile will call the Block API (`api.block.dwlf.co.uk`) with an identity-issued `dwlfk_` key,
-  not SPT `/v2` with `DWLF_API_KEY`. That changes these lines, and **the WP4 re-point PR delivers the decision by
-  rewriting them; it does not violate them**:
+  not SPT `/v2` with `DWLF_API_KEY`. Block stays **inside this package, as a profile**. That isn't a new choice: it
+  is Andy's Q10, "one server, product profiles" (design §1.4). **The WP4 re-point PR delivers that decision by
+  rewriting every charter line the router contradicts; it does not violate them.** The list below is the known
+  minimum, not a closed set:
+  - *Purpose*: "exposes DWLF's v2 REST surface" and "call `DWLFClient`";
+  - invariant 5's two contracts (shared, plus Block wording via `profiledServer` and `blockDescriptions.ts`), and
+    invariant 6's "two wiring points". Separate Block registrations would make these three surfaces, or retire
+    `blockDescriptions.ts` for the tools that move;
+  - invariant 1 (slash-form symbol keys), for whatever ids Block series use;
   - this line's "same key to the same backend checks" and "never widens what a call can do". After the cut a
     profile is a **router**: the same tool name goes to SPT in `full` and to the Block API in `block`, with
     different response contracts, and `block` gains tools `full` lacks (`dwlf_get_series`). The rule becomes "a
@@ -330,7 +337,9 @@ work-in-progress, and a diff that moves toward them is conformant.)*
      paths become: the Anthropic API; the DWLF API and the Block API (record only, GET); the Block API's
      `openapi.json` (record only); and `gh` reads of the two repos (`wording:sync` only).
   7. `publish.yml` runs the eval in its own job (holding `ANTHROPIC_API_KEY`, no `id-token`). `publish` needs it,
-     and it uploads the transcripts as a release asset beside the tag. There is no hand publish. An urgent override
+     and it uploads the transcripts as a release asset beside the tag. The eval also runs as a PR check on any
+     PR that bumps the version, so master never holds a bump the gate refuses. Each recording stores the OpenAPI
+     version and sha256 it was checked against. There is no hand publish. An urgent override
      is a tapped `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing
      transcripts attached.
 

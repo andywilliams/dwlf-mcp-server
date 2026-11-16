@@ -47,7 +47,9 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   `items` would drop `summary` and `definitions`.
 - **Live drift is caught when recording.** The fixture server checks each live data-route body against the
   `required` lists in the Block API's own `/public/v1/openapi.json`, fetched at record time. A body that fails is
-  reported as a Block API defect and isn't saved. So a Block API regression shows up the next time anyone records,
+  reported as a Block API defect and isn't saved. Each recording stores the OpenAPI `info.version` and the
+  schema's sha256 it was checked against. `summary.json` lists recordings checked against an older schema than the
+  newest in the set, so a tightened `required` list shows up even while replay stays green. So a Block API regression shows up the next time anyone records,
   and this repo never decides what the envelope contains.
 - "Every response" means the data routes (catalogue, conditions, events, series). `/v1/me`, pricing and terms
   aren't envelopes, and they're exempt by name. A locked item still needs `summary`, `why` and `chartUrl`; its
@@ -143,6 +145,11 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
   every question passes**.
   - On a failure, nothing is published and the transcripts are kept as a workflow artifact.
   - A missing recording fails the gate.
+  - Block API conformance is a release dependency **for new recordings only**. Existing recordings keep
+    replaying. If a recording a new case needs can't be saved because the Block API fails its own schema, that's
+    a failure outside this repo, and `eval_override` covers it like a judge flake.
+  - **The eval also runs as a PR check on any PR that bumps the version** (a release PR), so a failure is found
+    before merge. Master never holds a version bump the gate then refuses. The run in `publish.yml` repeats it.
   - A recording older than 30 days is reported, and the release checklist says to re-record before a release
     candidate.
 - **Flake policy (unchanged):** a deterministic failure is never retried. A judge-only failure gets one fresh run,
@@ -153,7 +160,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
   `id-token` permission. The `publish` job `needs: eval`, and only it can mint the OIDC credential. So model-driven
   test code never runs where an npm publish credential exists.
 - **One publish path, no hand publish.** Gating publish on the eval was decided on 12-Nov. If the Anthropic API is
-  down, a release waits. For an urgent fix blocked by a known judge flake, Andy can tap a `workflow_dispatch` run
+  down, a release waits. For an urgent fix blocked by a known judge flake, or by a failure outside this repo, Andy can tap a `workflow_dispatch` run
   with an `eval_override` reason. That run still goes through the same OIDC job, tags the release and attaches the
   failing transcripts, and the reason goes into the release notes. A version is never published outside
   `publish.yml`, so it always has its provenance, its tag and its transcripts.
@@ -169,7 +176,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 | The Block profile re-pointed at the Block API | WP4 (MCP step) | before the post-cut recordings |
 | The post-cut tool list | Andy/Jenna (§3) | before check 7 and the cut release |
 | A `block-staging` key for the signed-in recordings | WP4 | for the account tool and plan views |
-| What an item's `knowableAt` means | WP2 (§7) | before check 4 trusts it as a date |
+| What an item's `knowableAt` means (DWLF-853) | WP2 (§7) | **before the cut release** (a Block launch with request-time `knowableAt` is a time collapse SYSTEM.md forbids), and before check 4 trusts it as a date |
 | `ANTHROPIC_API_KEY` as a dwlf-mcp-server Actions secret | Andy (tap) | before the gate PR merges |
 
 ## 6 · Plan: one PR at a time
@@ -197,7 +204,7 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 
 ## 7 · Findings handed on (not WP7's code)
 
-- **For WP2:** on `/public/v1/conditions`, each item's `knowableAt` (and the "Knowable from …" line in its `why`) is
+- **For WP2 (DWLF-853, a cut-release gate):** on `/public/v1/conditions`, each item's `knowableAt` (and the "Knowable from …" line in its `why`) is
   the time of the request, not when the fact became knowable. The real time is in `values.sinceKnowableAt`. For
   the realised-price cross that's 2023-01-14, against an item `knowableAt` of 2026-11-16T07:50.
   - SYSTEM.md keeps printed and confirmed times apart.
