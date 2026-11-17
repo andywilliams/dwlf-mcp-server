@@ -19,7 +19,8 @@
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
     "test": "npm run build && node --test test/*.test.mjs",
-    "eval": "npm run build && node eval/run.mjs"
+    "eval": "npm run build && node eval/run.mjs",
+    "wording:sync": "node scripts/wording-sync.mjs"
   },
   "keywords": [
     "mcp",

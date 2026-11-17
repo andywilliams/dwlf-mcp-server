@@ -11,7 +11,7 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
 export function registerCycleWindowTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_get_cycle_windows',
-    'When is this symbol\'s next cycle LOW (or HIGH) due? Returns the STORED cycle timing window per side — ' +
+    'When is the window for this symbol\'s next cycle pivot low (or high)? Gives the STORED cycle timing window per side — ' +
       'the same edges the chart draws and the screener reads — for ONE symbol, whether or not the window is ' +
       'open yet. Use it for "when does X\'s next weekly-low window open?", "when is X\'s next DAILY low due?" and ' +
       '"how many weeks since X\'s last weekly low, against its usual gap?". Unlike `dwlf_get_cycle_setups`, which only lists symbols whose ' +
@@ -22,8 +22,8 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       '`null` when the store holds nothing for it, otherwise `{ symbolUsed, current, retiredAbove, history }`. ' +
       '`current` is the live window: `ruler` (the confirmed pivot the window counts from — `pivotDate`, ' +
       '`price`); dated edges in order `earliest` (the shortest gap on record; weekly and daily — a daily one is always an estimate, `extrapolated: true`; null when there is none) → `opens` (early ' +
-      'bound) → `centre` (typical) → `closes` (late bound) → `hardMax` (the last bar by which the pivot must ' +
-      'arrive or the window is a miss), each with `bars` counted from the ruler and `extrapolated: true` when it ' +
+      'bound) → `centre` (typical) → `closes` (late bound) → `hardMax` (the last bar by which the pivot can ' +
+      'arrive before the window is a miss), each with `bars` counted from the ruler and `extrapolated: true` when it ' +
       'lies beyond the last candle; `gaps` (the gap statistics the band was drawn from, incl. `used` = the ' +
       'inter-pivot gaps in bars, `n`, `spreadPct`); `status` (the store row lifecycle: projected | closed — NOT ' +
       'the screener\'s phase); `calibration` (calibrated = the gap chain is long enough to mean anything); ' +
@@ -48,10 +48,10 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
       '`shallow` | `in-zone` (inside p25–p75: the one to call out) | `deep` | `beyond` — plus `movePct`, `price` ' +
       'and `closeDate`. An API key without raw-candle rights gets `price`/`movePct` null (`priceWithheld: true`), ' +
       'the position kept, and a pivots-only band (`candlesUnavailable: not-licensed`). ⚠️ ' +
-      '`depth.verification.state` is `context-only`: a distribution of past moves, NOT a target or forecast. Use ' +
-      'it for "has X fallen far enough for a typical weekly low?", never as an entry level. A missing band says ' +
+      '`depth.verification.state` is `context-only`: a distribution of past moves: not a forecast, and no targets. Use ' +
+      'it for "has X fallen far enough for a typical weekly low?" and nothing more. A missing band says ' +
       'why in `depthUnavailable`. For many symbols at once, `dwlf_get_cycle_setups` with `depth: true` carries the ' +
-      'same band on each open-window setup.',
+      'same band on each open-window row.',
     {
       symbol: z
         .string()
@@ -72,7 +72,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
         .max(20)
         .optional()
         .describe(
-          'How many windows OLDER than `current` to return, newest first (0-20, default 0). Use ~10 to see ' +
+          'How many windows OLDER than `current` to include, newest first (0-20, default 0). Use ~10 to see ' +
             'past outcomes and judge how often this symbol\'s lows landed inside the window.'
         ),
       depth: z
@@ -80,7 +80,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
         .optional()
         .describe(
           'Add each window\'s derived price zone (`depth`, DWLF-416): the typical move into this side\'s pivots, ' +
-            'and as prices from the current cycle\'s anchor. Historical context, not a target.'
+            'and as prices from the current cycle\'s anchor. Historical context, no targets.'
         ),
       generation: z
         .number()

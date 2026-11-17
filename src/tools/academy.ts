@@ -88,7 +88,7 @@ export function registerAcademyTools(server: McpServer) {
   // 2. Get a single lesson by slug
   server.tool(
     'dwlf_get_academy_lesson',
-    'Get the full content of a DWLF Academy lesson by slug. Returns markdown. Use dwlf_list_academy_tracks first to find available lessons.',
+    'Get the full content of a DWLF Academy lesson by slug, as markdown. Use dwlf_list_academy_tracks first to find available lessons.',
     {
       slug: z
         .string()
@@ -120,7 +120,7 @@ export function registerAcademyTools(server: McpServer) {
   // 3. Search academy content by keyword
   server.tool(
     'dwlf_search_academy',
-    'Search DWLF Academy content by keyword. Searches track and lesson titles. Returns matching lessons with their track context.',
+    'Search DWLF Academy content by keyword. Searches track and lesson titles and lists the matching lessons with their track context.',
     {
       query: z
         .string()

@@ -36,8 +36,8 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'are read from the own-data BTC symbol (`onchainSymbol`), whose price is DWLF\'s own BRK oracle close.\n\n' +
       '⚠️ Read before you report:\n' +
       '- `framing`: these are CONDITIONS, NOT CALLS. Describe the state ("price is below the STH realised price ' +
-      'since 20-Oct"); never turn it into a buy/sell/hold recommendation. `provenance.scoring` is `unscored`: no ' +
-      'reading is a validated predictor.\n' +
+      'since 20-Oct"); never turn it into buy, sell or hold recommendations. `provenance.scoring` is `unscored`: ' +
+      'nothing here is scored as a predictor.\n' +
       '- `status: "pending"` means the on-chain events are not ingested yet, not that the market is neutral. ' +
       'Say so rather than inferring a side.\n' +
       '- `provenance.unavailable` lists legs that failed or timed out (those fields are null). Never fill them ' +

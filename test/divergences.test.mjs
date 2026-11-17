@@ -45,9 +45,9 @@ test('the answer is passed through unchanged; a backend failure is a tool error,
   assert.match(bad.content[0].text, /PLAN_REQUIRED/);
 });
 
-test('the description frames events, not signals, and tells the agent to use summary, chartUrl and knowableAt', () => {
+test('the description frames events, not calls, and tells the agent to use summary, chartUrl and knowableAt', () => {
   const { description } = setup();
-  for (const must of [/not signals/i, /summary/, /chartUrl/, /knowableAt/, /never present one/i, /\{ matched: false \}/]) {
+  for (const must of [/not calls/i, /summary/, /chartUrl/, /knowableAt/, /never turn them into buy, sell or hold recommendations/i, /\{ matched: false \}/]) {
     assert.match(description, must);
   }
 });

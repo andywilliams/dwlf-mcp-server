@@ -19,8 +19,8 @@ export function registerRangeTools(server: McpServer, client: DWLFClient) {
       'Use it for the classic reads: "at the BOTTOM of a range" (near_floor — significant alongside a daily ' +
       'cycle low), "at the TOP of the range — think twice about entering here", "broke out of the range", ' +
       '"retesting an edge". IMPORTANT: "not in a range" is a first-class, common answer — a symbol with no ' +
-      'clear current range simply is not returned in the list, or returns inRange:false. Prefer `live` for ' +
-      'current location and `snapshot` for the lifecycle narrative. NOTE: this is context, not a trade signal.',
+      'clear current range simply is not returned in the list, or gives inRange:false. Prefer `live` for ' +
+      'current location and `snapshot` for the lifecycle narrative. NOTE: this is context, not a call.',
     {
       symbol: z
         .string()

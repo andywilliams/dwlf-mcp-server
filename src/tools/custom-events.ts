@@ -29,7 +29,7 @@ export function registerCustomEventTools(
   // 2. Get custom event notifications (recent fires)
   server.tool(
     'dwlf_get_custom_event_notifications',
-    'Get all recently fired custom events where the user has notifications enabled. Returns fires across ALL symbols in one call — the most efficient way to check what custom events have triggered. The eventName field contains the human-readable name (e.g. "wcl_confirmed"). The eventType field is always "custom_event" — use eventName to distinguish events.',
+    'Get all recently fired custom events where the user has notifications enabled. Gives fires across ALL symbols in one call — the most efficient way to check what custom events have triggered. The eventName field contains the human-readable name (e.g. "wcl_confirmed"). The eventType field is always "custom_event" — use eventName to distinguish events.',
     {
       days: z.number().optional().default(7).describe('How many days back to look (default 7)'),
     },
@@ -73,7 +73,7 @@ export function registerCustomEventTools(
   // 3. Compile custom event
   server.tool(
     'dwlf_compile_custom_event',
-    'Recompile a LEGACY custom event. Saving already compiles: dwlf_create_custom_event, and every dwlf_update_custom_event that changes the definition, compile in the same request and refuse (400) a graph that will not compile, so this is needed only when activating symbols answers 422 `EVENT_NOT_COMPILED` (an older event never compiled, or one whose saved definition is not what would run). A 409 means the event changed while it compiled: reload it and retry.',
+    'Recompile a LEGACY custom event. Saving already compiles: dwlf_create_custom_event, and every dwlf_update_custom_event that changes the definition, compile in the same request and refuse (400) a graph that does not compile, so this is needed only when activating symbols answers 422 `EVENT_NOT_COMPILED` (an older event never compiled, or one whose saved definition is not what would run). A 409 means the event changed while it compiled: reload it and retry.',
     {
       eventId: z.string().describe('Custom event ID to compile'),
     },
@@ -95,7 +95,7 @@ export function registerCustomEventTools(
   // 4. Preflight validate custom event
   server.tool(
     'dwlf_preflight_custom_event',
-    'Validate a custom event graph WITHOUT saving it. Returns execution tier (fast/async/reject), complexity score with breakdown, graph metrics, plan policy limits, errors, warnings, and suggested fixes. Call this BEFORE creating or updating a complex event to check whether it will be accepted and which execution tier it will land in.',
+    'Validate a custom event graph WITHOUT saving it. Gives the execution tier (fast/async/reject), complexity score with breakdown, graph metrics, plan policy limits, errors, warnings, and suggested fixes. Call this BEFORE creating or updating a complex event to check whether it is accepted and which execution tier it lands in.',
     {
       bodyJson: z.string().describe('Full event body as JSON string with name, visual (nodes + edges), and optionally description, metadata, version'),
     },
@@ -118,7 +118,7 @@ export function registerCustomEventTools(
   // 5. Create custom event
   server.tool(
     'dwlf_create_custom_event',
-    '⚠️ Create a new custom event. CRITICAL WORKFLOW: 1) Create event (saving compiles it; a graph that will not compile is refused with 400) → 2) MUST call dwlf_activate_event_symbols (or event will NEVER fire!) → 3) Trigger evaluation. Without step 2, backtests return 0 trades. The event exists but is invisible to the evaluation engine until symbols are activated. Always activate symbols immediately after creation.',
+    '⚠️ Create a new custom event. CRITICAL WORKFLOW: 1) Create event (saving compiles it; a graph that does not compile is refused with 400) → 2) MUST call dwlf_activate_event_symbols (or event will NEVER fire!) → 3) Trigger evaluation. Without step 2, backtests return 0 trades. The event exists but is invisible to the evaluation engine until symbols are activated. Always activate symbols immediately after creation.',
     {
       name: z.string().describe('Event name'),
       bodyJson: z.string().describe('Full event definition body as JSON string (conditions, parameters). Parse before sending.'),
@@ -146,7 +146,7 @@ export function registerCustomEventTools(
   // Saving compiles (SPT): a definition change compiles in the same request.
   server.tool(
     'dwlf_update_custom_event',
-    'Update an existing custom event. Accepts any subset of {name, description, visual, metadata, version, notifyOnFire} via bodyJson. Most common use: flip notifyOnFire to true after creation so future fires surface in dwlf_get_custom_event_notifications. A change to `visual` or a condition compiles in the same request (a graph that will not compile is refused with 400): no separate compile call is needed.',
+    'Update an existing custom event. Accepts any subset of {name, description, visual, metadata, version, notifyOnFire} via bodyJson. Most common use: flip notifyOnFire to true after creation so future fires surface in dwlf_get_custom_event_notifications. A change to `visual` or a condition compiles in the same request (a graph that does not compile is refused with 400): no separate compile call is needed.',
     {
       eventId: z.string().describe('Custom event ID to update'),
       bodyJson: z.string().describe('Partial update body as JSON string. Any subset of name, description, visual, metadata, version, notifyOnFire.'),

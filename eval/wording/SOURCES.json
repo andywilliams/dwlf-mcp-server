@@ -1,0 +1,16 @@
+{
+ "list": {
+  "repo": "andywilliams/block-site",
+  "path": "ops/wording-banned.json",
+  "commit": "8214767b98d8d7b9d23411d44a50375ea4187b5d",
+  "sha256": "872dbce182760ee55c7a137981dc69c9e74b2115cc90dd8c68f23931a3e1ed8e"
+ },
+ "port": {
+  "repo": "andywilliams/dwlf-block-api",
+  "path": "src/legibility/bannedWords.ts",
+  "commit": "ea4eaf9af61376ee779a648ac215ca53f2ecfc05",
+  "sha256": "2370646c2604172d1b20dfd90fa166fefebf33c55b2c87406880d85232736d5a",
+  "generatedSha256": "5ed3b6b2ad0760f7092ca3356f62b041fde952a3fc201baaa359f0474e15317c"
+ },
+ "_comment": "Written by npm run wording:sync. list: block-site's export, vendored byte for byte. port: dwlf-block-api's bannedWordIn, as plain ESM. sha256 is of each source file as fetched; generatedSha256 is of the vendored bannedWords.mjs."
+}

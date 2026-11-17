@@ -9,7 +9,7 @@ import { DWLFClient, normalizeSymbol } from '../client.js';
 export function registerStageTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_get_stage',
-    'What stage of its market cycle is this symbol (or sector) in, on the WEEKLY chart? Returns the Weinstein ' +
+    'What stage of its market cycle is this symbol (or sector) in, on the WEEKLY chart? Gives the Weinstein ' +
       'stage — 1 base, 2 advance, 3 top, 4 decline — derived from the 30-week average, with `weeksInStage`, ' +
       '`since` (when the stage became knowable) and the recent transitions. Use it for "is X basing or ' +
       'advancing?", "how long has X been in Stage 2?" and, with `group` or several `symbols`, for sector breadth ' +
@@ -21,9 +21,9 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
       'little weekly history. SHAPE (many): `{ verification, stages: { SYM: … }, unavailable: [{ symbol, reason }], ' +
       'breadth: { counted, withoutStage, share: { base, advance, top, decline } } }` — shares are over symbols ' +
       'WITH a stage.\n\n' +
-      'With no arguments, returns every staged symbol plus universe breadth (a large response).\n\n' +
-      '⚠️ Stages are CONTEXT, not a trading signal: report the response\'s `verification` (state + reason) with ' +
-      'the stage rather than presenting it as a buy/sell call. Like any trend read a stage confirms late — much ' +
+      'With no arguments, gives every staged symbol plus universe breadth (a large response).\n\n' +
+      '⚠️ Stages are CONTEXT, not a call: report the response\'s `verification` (state + reason) with ' +
+      'the stage, and never turn it into buy, sell or hold recommendations. Like any trend read a stage confirms late — much ' +
       'of a move has happened by the time a stage changes.',
     {
       symbol: z
@@ -36,7 +36,7 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
         .min(1)
         .max(150)
         .optional()
-        .describe('Several symbols: returns each stage plus breadth over them'),
+        .describe('Several symbols: each one\'s stage plus breadth over them'),
       group: z
         .string()
         .min(1)

@@ -24,7 +24,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 | 4 | **The envelope reaches the agent:** each Block data tool's result contains the upstream body whole (pass-through), and at record time each live body has the fields the Block API's own OpenAPI requires (`summary`, `definitions`, `knowableAt` at the top; `summary`, `why`, `chartUrl`, `knowableAt` per item) | deterministic, `npm test` + record time | **tool results and recordings**, not the answer |
 | 5 | Call-like phrases and the shared wording list are **flagged** to the judge, which reads them in context | flag | answer |
 | 6 | The judge finds the answer correct against the tool results, sourced with dates, and not advisory | LLM judge | question, tool results, answer |
-| 7 | Every Block tool **description** and the profile's server instructions pass the shared wording list | deterministic, `npm test` | DWLF's own copy |
+| 7 | Every Block tool **description and parameter description**, and the profile's server instructions, pass the shared wording list (enum values are the engine's identifiers, not text) | deterministic, `npm test` | DWLF's own copy |
 
 **Check 4: who owns what.**
 - **The Block API owns its envelope.** Its contract test (the OpenAPI schema and its route tests) is where a dropped
@@ -34,9 +34,15 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   call. The tool is replayed against a recording, and the rule is **containment, not equality**. The result must
   keep the first upstream page's top-level fields unchanged, and every item of every page it fetched must appear
   whole (deep-equal; extra keys allowed). So invariant 2's additive enrichment (`filtersApplied`, `agentHints`)
-  and `dwlf_get_events`' auto-pagination (a standing decision) stay legal. Dropping, renaming or rewriting an
-  upstream field is what fails. That needs no copy of the field list, so a field the Block API renames doesn't
-  need an edit here.
+  stays legal. Dropping, renaming or rewriting an upstream field is what fails. That needs no copy of the field
+  list, so a field the Block API renames doesn't need an edit here.
+  - `dwlf_get_events`' scoped auto-pagination (a standing decision, for SPT shapes) does **not** pass it: it rewrites
+    page 1's `cursor` and slices items to `limit`, and merged pages would sit under page 1's `summary`. It doesn't
+    bite at launch (it's custom events', which leave the Block profile at the cut). Open for WP4 when they return:
+    hand the agent the `cursor`, or have the Block API serve the range.
+  - **Which tools:** `eval/passthrough.json`. `cutPending` lists the launch-set data tools not yet re-pointed and only
+    shrinks; a tool leaves it with its recording. During the eval, a call that reaches a Block API path from a tool
+    not in the registry fails its question, so a re-pointed tool left off the file can't pass unchecked.
   - Today `dwlf_describe_onchain_events` and `dwlf_explain_event` *reshape* SPT's answer (scoped exceptions to
     invariant 2: a JOIN, a pack and search view). After the cut the catalogue is one Block API read, and those
     exceptions end for the `block` profile. WP4's re-point PR records that.
@@ -54,32 +60,44 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - "Every response" means the data routes (catalogue, conditions, events, series). `/v1/me`, pricing and terms
   aren't envelopes, and they're exempt by name. A locked item still needs `summary`, `why` and `chartUrl`; its
   values are absent by design.
-- **`knowableAt` is checked for presence only, and it is not trusted as a date** (see §7: on conditions it is the
-  request time today). Until WP2 settles what an item's `knowableAt` means, the dates are graded by check 2 (each
-  case names the fact's own date, e.g. 2023-01-13 for the realised-price cross) and by the judge. The judge is told
-  that an answer dating a fact to the day of the request is wrong when the tool result shows an earlier
-  `date`/`since`.
+- **`knowableAt` is checked by value** (DWLF-853, live 16-Nov: an item's `knowableAt` is when the reading it rests
+  on became knowable). On every data-route response:
+  - an item's `knowableAt` is never later than the envelope's `knowableAt`, and on conditions it is never the
+    response's `asOf` (the OpenAPI promises that for conditions only: the catalogue's definitions are knowable when
+    asked, and live catalogue items carry `asOf`, 17-Nov);
+  - the envelope's `knowableAt` is the latest item's and no later than `asOf`;
+  - where an item carries `values.sinceKnowableAt`, it equals the item's `knowableAt`;
+  - an event's `knowableAt` is no earlier than its `date`.
+  
+  Dates in answers are still graded by check 2 (each case names the fact's own date, e.g. 2023-01-13 for the
+  realised-price cross) and by the judge, who is told that an answer dating a fact to the day of the request is
+  wrong when the tool result shows an earlier `knowableAt`, `date` or `since`.
 
 **Check 7: the wording gate.**
 - It's a hard gate because it's DWLF's own wording, and no context excuses a word there. The standing decision
   already applies the same rule to the Block API's templates.
-- It uses the Block API's JS port of the list's rules (`bannedWordIn`, dwlf-block-api PR #26, open 16-Nov). That
-  port agrees with block-site's `wording.py` on 1,100 texts. It's vendored once #26 merges; there's no third port.
-- **Measured today: 25 of the 39 Block descriptions fail it.** Most hits are:
+- It uses the Block API's JS port of the list's rules (`bannedWordIn`, dwlf-block-api #26, merged). That port
+  agrees with block-site's `wording.py` on its parity corpus. It's vendored in `eval/wording/` as plain ESM (types
+  stripped by `wording:sync`, nothing else); there's no third port.
+- **Measured 16-Nov: 25 of the 39 Block descriptions fail it** (and 23 parameter descriptions, 17-Nov). PR 2 rewords all of them. Most hits were:
   - the verb "returns" (the list bans "returns" in the sense of investment returns);
   - the buy/sell/signal words inside the "not a signal" note itself.
 - The server instructions already pass, because they use the list's own allowed phrases ("never turn them into
   buy, sell or hold recommendations", "nothing here is scored as a predictor"). So the fix is wording, not a softer
   list: the note is rewritten in those phrases, and "returns" becomes "gives".
 - **The list governs every Block-visible description.** A dispute is settled by editing the list in block-site
-  (its owner), not by an exemption here.
+  (its owner), not by an exemption here. Enum values aren't descriptions: they are the engine's identifiers, which
+  Block keeps as ids (dwlf-block-api's standing decision, 15-Nov: "`smc.bos.bullish` stays an id").
+- *Accepted debt:* the never-advice lines quote the list's `allowPhrases` word for word, in shared text. If block-site
+  rewords one, the next sync turns check 7 red on those descriptions, and that sync PR rewords them for both
+  profiles. The failure is loud and names each text.
 - **Shared wording changes for both profiles where the change is neutral.** "Returns" → "gives" changes nothing
   for `full`, so the shared docstring changes. Only wording that differs in content goes into
   `blockDescriptions.ts`, as it does today.
 - A `full`-only release waits on the eval too. Every merge and publish already needs Andy's tap, so
   `eval_override` adds no new approver.
 - **One list:** block-site's `ops/wording-banned.json` (Jenna's decision, 15-Nov), vendored byte for byte with its
-  sha256 pinned, the same as dwlf-block-api #26 (`525fecb4…e849`).
+  sha256 pinned in `eval/wording/SOURCES.json`, the same pin dwlf-block-api keeps (`872dbce1…` at PR 2).
 - **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site commit
   and one named dwlf-block-api commit, in one commit here. `npm run wording:sync -- --check` fails if either source
   has moved on. The pinned sha alone only proves the local copy wasn't edited.
@@ -88,7 +106,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - A list change enters only through a sync commit, so it can't block a release (a `full`-profile hotfix, say)
   that didn't pull it. A sync that tightens the list can hold up the next release on any Block description. That
   is intended: the descriptions must pass the current list.
-- ⚠️ The copy vendored in `eval/` today is an older export (`9990fca5…`). That drift has already happened once.
+- The older export once vendored in `eval/` (`9990fca5…`) had drifted, which is why `--check` exists. PR 2 replaced it.
 
 **Transcripts are stored with the release.** `eval/transcripts/<version>/` holds one file per question, plus
 `summary.json`. `publish.yml` uploads it as a GitHub release asset, beside the tag it gated. It is not in the npm
@@ -114,31 +132,21 @@ billing.
 For these tools, the questions are written once. Only the fixtures change at the cut, so cases are written now
 against today's backend and re-recorded then.
 
-**The other 35 tools: a product decision, not WP7's** (DWLF-852). These are:
+**The other 35 tools leave the Block profile at the cut** (DWLF-852, decided by Andy 16-Nov). These are:
 - regime, stage, cycle windows, quote, price picture, market data, support/resistance, cycle setups, divergences,
-  trendlines, indicators and ranges;
-- the 14 custom-event tools (with `dwlf_describe_strategy_nodes`, whose Block-only handler answers from SPT's
-  `/v2/node-types`) and the 4 subscription tools;
+  trendlines, indicators and ranges (regime, stage and windows are already sections of conditions);
+- the 14 custom-event tools (with `dwlf_describe_strategy_nodes`) and the 4 subscription tools;
 - the 3 Academy tools, quotas and register.
 
-None of them has a Block API route. Each either gets one (WP2) or leaves the Block profile at the cut. That's 🛑
-**a decision for Andy/Jenna**, recorded on its own ticket rather than settled here.
-- **WP7's recommendation:** launch with the tools above (regime, stage and windows are already sections of
-  conditions). Bring alerts and building back when the Block API serves them.
-- **If alerts and custom events stay:** each family needs its Block API routes first (WP2). Then one WP7 PR per
-  family: its cases, its check-7 rewording, its recordings. The plan grows by those PRs and nothing else changes.
+None of them has a Block API route, so **the launch set is the table above** and WP7 writes cases only for it.
+- **Alerts and custom events/building come back** once the Block API serves them (WP2 routes first). Then one WP7 PR
+  per family: its cases, its wording, its recordings. The plan grows by those PRs and nothing else changes.
+- **Until the cut,** the 35 stay in today's Block profile with today's `npm test` guards plus check 7 (their
+  descriptions are what Block agents read until then). They get no eval cases; `eval/pending.json` is re-based to
+  the launch set at the cut.
 - **The tool list is shown, not hidden.** Removing tools from the profile changes what agents set up through
   `docs/BLOCK.md` can call. The cut release says so in its notes and in `docs/BLOCK.md`'s tool list. The profile
   *name* stays, as the charter requires.
-- **Until that decision, the debt is accepted and time-boxed:** description changes to the 35 undecided tools
-  ship with only today's `npm test` guards. Those are: the reading note is present, no Block description is under
-  120 characters, and none points at a compile step. There's no eval. **The box ends at the decision or on
-  4-Dec-2026 (the end of stage B), whichever comes first.** With no decision by 4-Dec, WP7 writes their cases
-  against the current backend, which is the conservative default. After a decision, a tool that stays gets its
-  case before the cut release, and one that leaves needs nothing.
-- This loosens two rules of the 12-Nov standing decision ("a tool without a case is unfinished", "the pending list
-  only shrinks"). Andy accepted that with tap c-dc40, and it is now amendment 5 of that standing decision in
-  `ARCHITECTURE.md`.
 
 ## 4 · How it runs
 
@@ -180,11 +188,11 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 | Needs | From | When |
 |---|---|---|
 | The envelope on every data route | WP2 (live: verified on `/public/v1/conditions`, 16-Nov) | done |
-| The wording port and the pinned list | WP2, dwlf-block-api PR #26 | before check 7 |
+| The wording port and the pinned list | WP2, dwlf-block-api #26 | done; vendored in PR 2 |
 | The Block profile re-pointed at the Block API | WP4 (MCP step) | before the post-cut recordings |
-| The post-cut tool list | Andy/Jenna (§3) | before check 7 and the cut release |
+| The post-cut tool list | Andy (DWLF-852, §3) | done 16-Nov |
 | A `block-staging` key for the signed-in recordings | WP4 | for the account tool and plan views |
-| What an item's `knowableAt` means (DWLF-853) | WP2 (§7) | **before the cut release** (a Block launch with request-time `knowableAt` is a time collapse SYSTEM.md forbids). The mechanism: DWLF-853 `blocks` the cut on the board, and once it lands check 4 fails an item whose `knowableAt` equals the response's `asOf` while it carries an earlier `date`/`since` |
+| What an item's `knowableAt` means (DWLF-853) | WP2 (dwlf-block-api #27, live 6d77171) | done 16-Nov; check 4 checks it by value |
 | `ANTHROPIC_API_KEY` as a dwlf-mcp-server Actions secret | Andy (tap) | before the gate PR merges |
 
 ## 6 · Plan: one PR at a time
@@ -195,17 +203,17 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
      OpenAPI);
    - the judge's date instruction;
    - `wording:sync` with `--check`, and the list re-vendored and pinned;
-   - an upstream per route family.
+   - an upstream per route family;
+   - check 4's `knowableAt` value rules (checked against all four live routes, 17-Nov);
+   - check 7 on, over all 39 Block descriptions, with the failing ones reworded neutrally.
    
    `npm test` only; no model calls in CI.
-3. **Cases for the tools that exist in every outcome** (this folds in DWLF-822). They're written now and run against
+3. **Cases for the launch set** (§3; this folds in DWLF-822). They're written now and run against
    today's backend; recordings are made by whoever holds a key.
 4. **The gate:** `publish.yml` runs the eval, uploads the transcripts, and blocks publish on a failure (this needs
    the secret tap).
 5. **The cut release, with WP4:**
    - recordings from the Block API;
-   - check 7 over the decided tool list, with that list's descriptions reworded;
-   - check 4's `knowableAt` rule switched on. The cut release isn't opened for merge while DWLF-853 is open;
    - `eval/pending.json` re-based to that list.
 6. **First full run** on the release candidate. The transcripts are attached to DWLF-804, and the cost is written
    into §4. WP7 is done when that run passes and the gate is live (the design: "the eval runs in CI for the MCP repo
@@ -213,12 +221,17 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
 
 ## 7 · Findings handed on (not WP7's code)
 
-- **For WP2 (DWLF-853, a cut-release gate):** on `/public/v1/conditions`, each item's `knowableAt` (and the "Knowable from …" line in its `why`) is
+- **For WP2 (DWLF-853, fixed and live 16-Nov, dwlf-block-api #27):** on `/public/v1/conditions`, each item's `knowableAt` (and the "Knowable from …" line in its `why`) was
   the time of the request, not when the fact became knowable. The real time is in `values.sinceKnowableAt`. For
   the realised-price cross that's 2023-01-14, against an item `knowableAt` of 2026-11-16T07:50.
   - SYSTEM.md keeps printed and confirmed times apart.
   - An agent told "knowable from today" can't tell a two-year-old fact from a new one.
-  - The eval works around it (§2, check 4), but the field's meaning is WP2's to decide.
+  - WP2 settled the meaning; check 4 now checks it by value.
+- **For WP2 (the knowableAt rules, 17-Nov):** the Block API states its `knowableAt` rules as prose in its OpenAPI
+  descriptions, and its route tests don't assert them as a contract. So the eval's `eval/envelope.mjs` is a copy,
+  and a recording it refuses may be a Block regression or a stale copy (the two are reported apart). Ask: assert
+  the rules in dwlf-block-api's own contract tests (or publish them machine-readably). A change of meaning lands
+  there first, and the recording PR here edits `envelope.mjs` with it.
 - **For WP4:**
   - The Block profile's server instructions name tools that may leave at the cut (`dwlf_get_regime`,
     `dwlf_get_cycle_windows`), and they link the SPT pricing URL. They're rewritten in the cut release, and check 7
@@ -228,3 +241,9 @@ None of them has a Block API route. Each either gets one (WP2) or leaves the Blo
     the charter lines it rewrites; tool names when the response contract differs; the install migration and
     `server.json`; how "unwrap once" treats the Block envelope; and the key's env var and client. They're WP4's,
     decided through its own `lgtm arch`, not here.
+  - What the harness assumes today, for WP4 to keep or change in the re-point PR: one fixture origin for both
+    upstreams, split by path (`/v1/…`, `/public/v1/…` = Block); a signed-in Block path sent `Bearer`; and the
+    server under test pointed at the fixtures by `DWLF_API_URL` only, with a dummy `DWLF_API_KEY`. Every other host is
+    unreachable under replay (`replayEnv`: a closed proxy, with only the fixture origin exempt), so a Block client
+    reading its own base-URL variable fails the eval loudly until `replayEnv` sets it. If the client picks public
+    routes by having no key, the eval must not set the dummy key for it.

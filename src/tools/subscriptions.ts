@@ -159,7 +159,7 @@ export function registerSubscriptionTools(
       channels: z
         .array(z.record(z.string(), z.unknown()))
         .optional()
-        .describe("Replace the delivery channels array, e.g. [{ type: 'telegram', destination: { chatId: <number> }, enabled: true }]. Must be non-empty."),
+        .describe("Replace the delivery channels array, e.g. [{ type: 'telegram', destination: { chatId: <number> }, enabled: true }]. It cannot be empty."),
       quietHours: z
         .record(z.string(), z.unknown())
         .nullable()
@@ -169,7 +169,7 @@ export function registerSubscriptionTools(
         .number()
         .nullable()
         .optional()
-        .describe("Dedup window for repeat fires, or null to clear. Must be a non-negative finite number."),
+        .describe("Dedup window for repeat fires, or null to clear. A non-negative finite number."),
       strategyId: z.string().optional(),
       mode: z.enum(['confirm', 'auto']).optional(),
       riskPerTradeOverride: z.number().optional(),
@@ -178,7 +178,7 @@ export function registerSubscriptionTools(
       customEventId: z
         .string()
         .optional()
-        .describe("Only valid on custom_event subscriptions — repoints which custom event the sub watches. Backend returns 400 if the sub isn't a custom_event."),
+        .describe("Only valid on custom_event subscriptions — repoints which custom event the sub watches. The backend answers 400 if the sub isn't a custom_event."),
     },
     async ({ subscriptionId, ...patch }) => {
       try {

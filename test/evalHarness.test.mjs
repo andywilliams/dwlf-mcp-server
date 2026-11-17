@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { startFixtureServer } from '../eval/fixture-server.mjs';
+import { startFixtureServer, replayEnv } from '../eval/fixture-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -18,7 +18,7 @@ test('the harness lists Block tools and names a missing recording', async () => 
   const fixtures = await startFixtureServer({ dir });
   const mcp = new Client({ name: 'eval-test', version: '0' });
   await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-    env: { PATH: process.env.PATH || '', DWLF_API_URL: fixtures.url, DWLF_API_KEY: 'eval-fixture' }, stderr: 'ignore' }));
+    env: replayEnv(fixtures.url), stderr: 'ignore' }));
   try {
     const names = (await mcp.listTools()).tools.map((t) => t.name);
     assert.ok(names.includes('dwlf_get_conditions'));
@@ -33,8 +33,19 @@ test('the harness lists Block tools and names a missing recording', async () => 
   }
 });
 
-test('record mode refuses to start without a key (it never runs unauthenticated against prod)', async () => {
-  await assert.rejects(startFixtureServer({ dir: mkdtempSync(join(tmpdir(), 'dwlf-eval-')), mode: 'record' }), /DWLF_API_KEY/);
+test('recording with no key reaches only Block\'s public routes: anything else is refused (401), not sent, not saved', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
+  const fixtures = await startFixtureServer({ dir, mode: 'record', upstreams: { dwlf: 'http://127.0.0.1:9', block: 'http://127.0.0.1:9' } });
+  try {
+    for (const path of ['/v2/conditions/btc', '/v1/me']) {
+      const res = await fetch(`${fixtures.url}${path}`);
+      assert.equal(res.status, 401, path);
+      assert.equal((await res.json()).error, 'EVAL_RECORD_NO_KEY');
+    }
+    assert.equal(fixtures.refused.length, 2);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { await fixtures.close(); }
 });
 
 test('a recorded fixture is replayed exactly as recorded', async () => {
@@ -54,7 +65,7 @@ test('a recorded fixture is replayed exactly as recorded', async () => {
 
 test('recording never writes to prod: a non-GET is refused before anything goes upstream', async () => {
   const fixtures = await startFixtureServer({ dir: mkdtempSync(join(tmpdir(), 'dwlf-eval-')), mode: 'record', apiKey: 'dummy',
-    upstream: 'http://127.0.0.1:9' });
+    upstreams: { dwlf: 'http://127.0.0.1:9' } });
   try {
     const res = await fetch(`${fixtures.url}/v2/custom-events`, { method: 'POST', body: '{"name":"x"}' });
     assert.equal(res.status, 403);
@@ -68,7 +79,7 @@ test('recording does not save an outage: a 5xx/401/429 upstream answer is passed
   const up = createServer((req, res) => { res.writeHead(503, { 'content-type': 'application/json' }); res.end('{"error":"down"}'); });
   await new Promise((r) => up.listen(0, '127.0.0.1', r));
   const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
-  const fixtures = await startFixtureServer({ dir, mode: 'record', apiKey: 'dummy', upstream: `http://127.0.0.1:${up.address().port}` });
+  const fixtures = await startFixtureServer({ dir, mode: 'record', apiKey: 'dummy', upstreams: { dwlf: `http://127.0.0.1:${up.address().port}` } });
   try {
     const res = await fetch(`${fixtures.url}/v2/conditions/btc`);
     assert.equal(res.status, 503);
@@ -85,4 +96,18 @@ test('an undated fixture is reported stale', async () => {
   writeFileSync(fixtureFile(dir, key), JSON.stringify({ key, status: 200, body: {} }));
   const fixtures = await startFixtureServer({ dir });
   try { await fetch(`${fixtures.url}/v2/x`); assert.deepEqual([...fixtures.stale], [key]); } finally { await fixtures.close(); }
+});
+
+test('under replay a tool cannot reach a live host: anything but the fixture origin goes to a closed proxy', async () => {
+  const mcp = new Client({ name: 'eval-test', version: '0' });
+  // A base URL the harness did not point at the fixtures (as a re-pointed client with its own variable would have).
+  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+    env: { ...replayEnv('http://127.0.0.1:1'), DWLF_API_URL: 'https://api.dwlf.invalid' }, stderr: 'ignore' }));
+  try {
+    const r = await mcp.callTool({ name: 'dwlf_get_divergences', arguments: {} });
+    assert.equal(r.isError, true);
+    const text = r.content.map((c) => c.text).join(' ');
+    assert.match(text, /ECONNREFUSED|127\.0\.0\.1:9/, text);
+    assert.doesNotMatch(text, /ENOTFOUND/, 'the request went to DNS, not the closed proxy');
+  } finally { await mcp.close(); }
 });

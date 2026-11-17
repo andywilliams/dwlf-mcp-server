@@ -28,7 +28,7 @@ export function registerMarketDataTools(
       limit: z
         .number()
         .optional()
-        .describe(`Number of most-recent candles to return (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
+        .describe(`Number of most-recent candles to fetch (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
     },
     async ({ symbol, timeframe, limit }) => {
       try {
@@ -66,7 +66,7 @@ export function registerMarketDataTools(
     'dwlf_get_quote',
     'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
       'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
-      'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
+      'Gives ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
       'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
       'an arbitrary symbol. Unknown symbols come back with found:false (not an error).',
     {
@@ -166,8 +166,8 @@ export function registerMarketDataTools(
       'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
       'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
       '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
-      'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
-      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+      'AUTO-FOLLOWS the cursor and gives the event’s COMPLETE history in one call ' +
+      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you still need to pass a ' +
       'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
@@ -182,7 +182,7 @@ export function registerMarketDataTools(
       'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one. ' +
       'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
       '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
-      '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger, and events only: not builder ' +
+      '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not a call, and events only: not builder ' +
       'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them.',
     {
       symbol: z
@@ -201,13 +201,13 @@ export function registerMarketDataTools(
         .optional()
         .describe(
           'Filter by event type (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
-            '`bullish_reversal`, `dss_breakout`).'
+            '`custom_event`).'
         ),
       timeframe: z
         .enum(['1w', '1d', '4h', '1h'])
         .optional()
         .describe(
-          'Filter by candle timeframe. Strongly recommended — without it the API returns ' +
+          'Filter by candle timeframe. Set it — without it the API answers with ' +
             'mostly hourly events and daily-bar fires get truncated past the limit. ' +
             'Use `1w` to query weekly cycle events (e.g. for multi-timeframe DCL analysis).'
         ),
@@ -217,7 +217,7 @@ export function registerMarketDataTools(
         .describe(
           'Restrict to events fired in the last N days (e.g. `5` for the last 5 days). ' +
             '⚠️ DEFAULT IS 7 DAYS if omitted — anything older is silently hidden. ' +
-            'For historical lookups (verifying old cycle pivots, debugging "where did that signal go") ' +
+            'For historical lookups (verifying old cycle pivots, finding an event that seems to have gone) ' +
             'pass an explicit larger value like `days: 120` or use `fromDate`/`toDate` for a precise window. ' +
             'Hit this footgun multiple times across sessions; documenting loudly.'
         ),
@@ -232,11 +232,11 @@ export function registerMarketDataTools(
       uniquePerSymbol: z
         .boolean()
         .optional()
-        .describe('If true, return only the most recent event per symbol (useful for "latest fire" snapshots).'),
+        .describe('If true, give only the most recent event per symbol (useful for "latest fire" snapshots).'),
       limit: z
         .number()
         .optional()
-        .describe('Number of events to return (default: 20).'),
+        .describe('Number of events to give (default: 20).'),
       customEventId: z
         .string()
         .optional()
@@ -244,7 +244,7 @@ export function registerMarketDataTools(
           'Filter to fires of a specific custom event by its event definition ID. ' +
             'Only honoured when `type` is `custom_event` (the tool defaults `type` to `custom_event` ' +
             'when you set this and leave `type` unset). The tool auto-follows pagination for this scoped ' +
-            'query and returns the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
+            'query and gives the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
             '`fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
             'Combine with `symbol` / `symbols` to scope to a single asset, or omit to see fires across the watchlist.'
         ),
@@ -252,7 +252,7 @@ export function registerMarketDataTools(
         .string()
         .optional()
         .describe(
-          'Filter custom event fires by their human-readable name (e.g. `bullish_reversal_1`). ' +
+          'Filter custom event fires by their human-readable name (e.g. `wcl_confirmed`). ' +
             'Only honoured when `type` is `custom_event`. Useful when you know the name but not the ID.'
         ),
     },
@@ -415,7 +415,7 @@ export function registerMarketDataTools(
       'Each row carries date + price (or level) + a human-readable label. ' +
       'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
       'or when you want a clean one-call summary instead of stitching together multiple `dwlf_get_events` queries. ' +
-      'Returns events sorted newest-first.',
+      'Events come sorted newest-first.',
     {
       symbol: z
         .string()
@@ -432,7 +432,7 @@ export function registerMarketDataTools(
       limit: z
         .number()
         .optional()
-        .describe('Max events to return (default: 50). Most useful narratives fit in 20-40 rows.'),
+        .describe('Max events to give (default: 50). Most useful narratives fit in 20-40 rows.'),
     },
     async ({ symbol, days, timeframe, limit }) => {
       try {
@@ -655,7 +655,7 @@ export function registerMarketDataTools(
       '⚠️ A symbol whose weekly window is not yet open is ABSENT from every list, not ' +
       'suppressed — for its window dates call `dwlf_get_cycle_windows`. ' +
       'DEPTH (`depth: true`, DWLF-416): each row also carries `depth`, its weekly window\'s derived price band ' +
-      '(the same object `dwlf_get_cycle_windows` returns; long rows = the fall into the weekly low, short rows = ' +
+      '(the same object `dwlf_get_cycle_windows` gives; long rows = the fall into the weekly low, short rows = ' +
       'the rise into the weekly high), and `depth.reading.position` places the last weekly close: ' +
       '`in-zone` (inside the p25–p75 of past cycles\' moves — call it out), `shallow` / `deep` / `beyond`, or ' +
       '`not-reached` (short of the smallest move on record — not worth raising). Context, NOT a gate or target: it ' +
@@ -667,8 +667,8 @@ export function registerMarketDataTools(
         .boolean()
         .optional()
         .describe(
-          'Add each setup\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
-            'Historical context, not a target.'
+          'Add each row\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
+            'Historical context, no targets.'
         ),
     },
     async ({ depth }) => {

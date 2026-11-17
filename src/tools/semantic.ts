@@ -9,7 +9,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
     'dwlf_get_regime',
     'Get the market regime classification for a symbol on one timeframe (daily by default) — trend, ' +
       'momentum, volatility and a confidence score, plus `insufficientHistory` (true when the symbol has too ' +
-      'little history on that timeframe: the fields are then placeholders, not a reading). With `history`, returns a dated regime series, newest ' +
+      'little history on that timeframe: the fields are then placeholders, not a reading). With `history`, gives a dated regime series, newest ' +
       'first. It carries no cycle phase: for where an asset is in its market cycle, use dwlf_get_stage (weekly ' +
       'Weinstein stage).',
     {
@@ -21,14 +21,14 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       history: z
         .boolean()
         .optional()
-        .describe('If true, return the dated regime series (newest first) instead of just the current regime'),
+        .describe('If true, give the dated regime series (newest first) instead of just the current regime'),
       limit: z
         .number()
         .int()
         .min(1)
         .max(500)
         .optional()
-        .describe('History entries to return when `history` is true (default 90).'),
+        .describe('History entries to give when `history` is true (default 90).'),
     },
     async ({ symbol, timeframe, history, limit }) => {
       try {
@@ -182,7 +182,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       purpose: z
         .string()
         .optional()
-        .describe('Optional description of what this account will be used for'),
+        .describe('Optional description of what this account is for'),
     },
     async ({ email, agentId, purpose }) => {
       try {
