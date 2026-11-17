@@ -34,9 +34,16 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   call. The tool is replayed against a recording, and the rule is **containment, not equality**. The result must
   keep the first upstream page's top-level fields unchanged, and every item of every page it fetched must appear
   whole (deep-equal; extra keys allowed). So invariant 2's additive enrichment (`filtersApplied`, `agentHints`)
-  and `dwlf_get_events`' auto-pagination (a standing decision) stay legal. Dropping, renaming or rewriting an
-  upstream field is what fails. That needs no copy of the field list, so a field the Block API renames doesn't
-  need an edit here.
+  stays legal. Dropping, renaming or rewriting an upstream field is what fails. That needs no copy of the field
+  list, so a field the Block API renames doesn't need an edit here.
+  - **One Block body per call.** `dwlf_get_events`' auto-pagination (a standing decision) merges pages under page 1's
+    envelope, so page 1's `summary` would sit over items it doesn't describe. For SPT shapes it stays; a
+    Block-backed tool returns one Block body and hands the agent the `cursor`. The pass-through test fails a
+    registered tool that fetched more than one. (It doesn't bite at launch: scoped auto-pagination is custom
+    events', which leave the Block profile at the cut.)
+  - **Which tools:** `eval/passthrough.json`. `cutPending` lists the launch-set data tools not yet re-pointed and only
+    shrinks; a tool leaves it with its recording. During the eval, a call that reaches a Block API path from a tool
+    not in the registry fails its question, so a re-pointed tool left off the file can't pass unchecked.
   - Today `dwlf_describe_onchain_events` and `dwlf_explain_event` *reshape* SPT's answer (scoped exceptions to
     invariant 2: a JOIN, a pack and search view). After the cut the catalogue is one Block API read, and those
     exceptions end for the `block` profile. WP4's re-point PR records that.
@@ -216,6 +223,11 @@ None of them has a Block API route, so **the launch set is the table above** and
   - SYSTEM.md keeps printed and confirmed times apart.
   - An agent told "knowable from today" can't tell a two-year-old fact from a new one.
   - WP2 settled the meaning; check 4 now checks it by value.
+- **For WP2 (the knowableAt rules, 17-Nov):** the Block API states its `knowableAt` rules as prose in its OpenAPI
+  descriptions, and its route tests don't assert them as a contract. So the eval's `eval/envelope.mjs` is a copy,
+  and a recording it refuses may be a Block regression or a stale copy (the two are reported apart). Ask: assert
+  the rules in dwlf-block-api's own contract tests (or publish them machine-readably). A change of meaning lands
+  there first, and the recording PR here edits `envelope.mjs` with it.
 - **For WP4:**
   - The Block profile's server instructions name tools that may leave at the cut (`dwlf_get_regime`,
     `dwlf_get_cycle_windows`), and they link the SPT pricing URL. They're rewritten in the cut release, and check 7
@@ -225,3 +237,9 @@ None of them has a Block API route, so **the launch set is the table above** and
     the charter lines it rewrites; tool names when the response contract differs; the install migration and
     `server.json`; how "unwrap once" treats the Block envelope; and the key's env var and client. They're WP4's,
     decided through its own `lgtm arch`, not here.
+  - What the harness assumes today, for WP4 to keep or change in the re-point PR: one fixture origin for both
+    upstreams, split by path (`/v1/…`, `/public/v1/…` = Block); a signed-in Block path sent `Bearer`; and the
+    server under test pointed at the fixtures by `DWLF_API_URL` only, with a dummy `DWLF_API_KEY`. If the Block
+    client reads its own base-URL variable, `run.mjs` and the pass-through test must set it to the fixture origin,
+    or replay would reach the live Block API. If it picks public routes by having no key, the eval must not set
+    the dummy key for it.

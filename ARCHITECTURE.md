@@ -331,7 +331,9 @@ work-in-progress, and a diff that moves toward them is conformant.)*
   - whether Block's envelope is considered as the shape SPT standardises on (that it is never unwrapped is WP7's
     requirement, amendment 7 of the eval standing decision);
   - the key's env var, the client that sends it, and whether shared tools branch on the profile or are registered
-    twice.
+    twice. The eval harness assumes one fixture origin split by path, `Bearer` for signed-in Block paths, and a
+    server pointed at the fixtures by `DWLF_API_URL` alone (design doc §7); the re-point PR keeps or changes that
+    so replay never reaches the live Block API.
 
   The eval needs only one thing from these answers: the envelope reaches the agent intact. Its cases ask what a
   user would ask, so a renamed tool changes a case's `tool` and `mustCall` fields, not its questions.

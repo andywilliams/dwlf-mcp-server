@@ -69,15 +69,26 @@ export const requiredForPath = (routes, path) => {
 
 const time = (v) => (typeof v === 'string' && v ? Date.parse(v) : NaN);
 
-/** What a data-route body breaks: missing required fields, then the knowableAt rules. Empty = the body passes. */
-export const envelopeFailures = (body, required, { family } = {}) => {
-  const failures = [];
+/** The fields the Block API's OpenAPI requires that a data-route body lacks (the Block API's own rule). */
+export const requiredFailures = (body, required) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) { return ['the body is not an object']; }
+  const failures = [];
   for (const k of required.envelope) { if (!(k in body)) { failures.push(`envelope: no \`${k}\``); } }
-  const items = Array.isArray(body.items) ? body.items : [];
-  items.forEach((item, i) => {
+  (Array.isArray(body.items) ? body.items : []).forEach((item, i) => {
     for (const k of required.item) { if (!item || !(k in item)) { failures.push(`items[${i}] (${item?.id ?? '?'}): no \`${k}\``); } }
   });
+  return failures;
+};
+
+/**
+ * The knowableAt rules a body breaks. These are THIS repo's reading of DWLF-853 (the Block API publishes them as prose
+ * in its OpenAPI descriptions, not as a schema), so a failure may be the Block API's regression or this copy gone stale:
+ * fixture-server reports them apart from `requiredFailures` so whoever is recording can tell which.
+ */
+export const knowableAtFailures = (body, { family } = {}) => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) { return []; }
+  const failures = [];
+  const items = Array.isArray(body.items) ? body.items : [];
   const asOf = time(body.asOf);
   const top = time(body.knowableAt);
   if ('knowableAt' in body && Number.isNaN(top)) { failures.push('envelope: `knowableAt` is not a time'); }
@@ -102,6 +113,9 @@ export const envelopeFailures = (body, required, { family } = {}) => {
   }
   return failures;
 };
+
+/** Both: what a data-route body breaks. Empty = the body passes. */
+export const envelopeFailures = (body, required, options = {}) => [...requiredFailures(body, required), ...knowableAtFailures(body, options)];
 
 /**
  * Invariant 2's pass-through, by containment. `result`: the parsed JSON a tool gave the agent. `pages`: the upstream

@@ -200,6 +200,15 @@ test('the pass-through check works end to end (proven on dwlf_get_divergences, a
   assert.deepEqual(containmentFailures(result, pages), []);
 });
 
+test('passthrough.json covers the launch set: each launch-set data tool is checked or still pending the cut, and pending only shrinks', () => {
+  const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
+  const checked = registry.tools.map((t) => t.tool);
+  const LAUNCH_DATA_TOOLS = ['dwlf_describe_onchain_events', 'dwlf_explain_event', 'dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series'];
+  assert.deepEqual(LAUNCH_DATA_TOOLS.filter((t) => !checked.includes(t) && !registry.cutPending.includes(t)), [], 'a launch-set data tool is in neither list');
+  assert.deepEqual(registry.cutPending.filter((t) => checked.includes(t)), [], 'a tool is both checked and pending');
+  assert.deepEqual(registry.cutPending.filter((t) => !LAUNCH_DATA_TOOLS.includes(t)), [], 'cutPending only shrinks');
+});
+
 test('check 4: every tool in eval/passthrough.json keeps its Block API body whole (empty until WP4 re-points the profile)', async () => {
   const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
   const { BLOCK_TOOLS } = await import('../dist/profiles.js');
@@ -207,7 +216,9 @@ test('check 4: every tool in eval/passthrough.json keeps its Block API body whol
     assert.ok(BLOCK_TOOLS.has(tool), `${tool} is not a Block tool`);
     const { result, pages, paths, misses } = await replayTool(join(root, 'eval', 'fixtures'), tool, args);
     assert.deepEqual(misses, [], `${tool}: record its fixture first`);
-    assert.ok(pages.length > 0, `${tool}: no upstream page`);
+    // One upstream body per call: merging pages under page 1's envelope would put its summary over items it does not
+    // describe (charter §2), so a Block-backed tool hands the agent the cursor instead.
+    assert.equal(pages.length, 1, `${tool}: expected exactly one Block API body, got ${pages.length}`);
     assert.deepEqual(paths.filter((p) => routeFamily(p) !== 'block'), [], `${tool}: its upstream is not the Block API`);
     assert.deepEqual(containmentFailures(result, pages), [], tool);
   }

@@ -19,7 +19,7 @@ import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { dataFamily, envelopeFailures, requiredForPath, requiredFrom } from './envelope.mjs';
+import { dataFamily, knowableAtFailures, requiredFailures, requiredForPath, requiredFrom } from './envelope.mjs';
 
 export const UPSTREAMS = Object.freeze({ dwlf: 'https://api.dwlf.co.uk', block: 'https://api.block.dwlf.co.uk' });
 /** Which upstream serves a path: the Block API owns `/v1/…` and `/public/v1/…`; SPT everything else. */
@@ -146,7 +146,11 @@ export const startFixtureServer = async ({ dir, mode = 'replay', upstreams: give
       if (dataRoute) {
         const { routes, openapi: schema } = await blockContract();
         const required = requiredForPath(routes, path);
-        const broken = required ? envelopeFailures(parsed, required, { family: dataRoute }) : [`${path} is not in the Block API's OpenAPI`];
+        // Two sources, reported apart: the OpenAPI's `required` lists are the Block API's own rule; the knowableAt rules
+        // are this repo's copy (envelope.mjs), so a failure there may mean the copy is stale (see eval/README.md).
+        const missing = required ? requiredFailures(parsed, required) : [`${path} is not in the Block API's OpenAPI`];
+        const times = knowableAtFailures(parsed, { family: dataRoute });
+        const broken = [...missing.map((f) => `required by the Block API's OpenAPI: ${f}`), ...times.map((f) => `knowableAt rule (eval/envelope.mjs): ${f}`)];
         if (broken.length) {
           contractFailures.push({ key, openapi: schema, failures: broken });
           res.writeHead(up.status, { 'content-type': 'application/json' });

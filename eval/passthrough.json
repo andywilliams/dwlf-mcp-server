@@ -1,4 +1,5 @@
 {
- "note": "Charter check 4 (DWLF-804): each Block data tool whose upstream is the Block API, with the arguments its pass-through test replays (test/evalEnvelope.test.mjs, against eval/fixtures/). Empty until WP4 re-points the Block profile at the Block API; that release adds every launch-set data tool here (conditions, events, the catalogue tools, series) with its recording.",
- "tools": []
+ "note": "Charter check 4 (DWLF-804): each Block data tool whose upstream is the Block API, with the arguments its pass-through test replays (test/evalEnvelope.test.mjs, against eval/fixtures/). `tools` is empty until WP4 re-points the Block profile at the Block API. `cutPending` holds the launch-set data tools (DWLF-852) not yet re-pointed: it only shrinks, a tool leaving it for `tools` with its recording. During the eval, a tool call that reaches a Block API path from a tool not in `tools` fails its question (eval/run.mjs), so a re-pointed tool left off this file cannot pass unchecked.",
+ "tools": [],
+ "cutPending": ["dwlf_describe_onchain_events", "dwlf_explain_event", "dwlf_get_conditions", "dwlf_get_events", "dwlf_get_series"]
 }
