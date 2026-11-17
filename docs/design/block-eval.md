@@ -85,7 +85,11 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   buy, sell or hold recommendations", "nothing here is scored as a predictor"). So the fix is wording, not a softer
   list: the note is rewritten in those phrases, and "returns" becomes "gives".
 - **The list governs every Block-visible description.** A dispute is settled by editing the list in block-site
-  (its owner), not by an exemption here.
+  (its owner), not by an exemption here. Enum values aren't descriptions: they are the engine's identifiers, which
+  Block keeps as ids (dwlf-block-api's standing decision, 15-Nov: "`smc.bos.bullish` stays an id").
+- *Accepted debt:* the never-advice lines quote the list's `allowPhrases` word for word, in shared text. If block-site
+  rewords one, the next sync turns check 7 red on those descriptions, and that sync PR rewords them for both
+  profiles. The failure is loud and names each text.
 - **Shared wording changes for both profiles where the change is neutral.** "Returns" → "gives" changes nothing
   for `full`, so the shared docstring changes. Only wording that differs in content goes into
   `blockDescriptions.ts`, as it does today.

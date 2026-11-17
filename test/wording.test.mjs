@@ -5,9 +5,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { bannedWordIn } from '../eval/wording/bannedWords.mjs';
-import { profiledServer, PROFILE_INSTRUCTIONS, BLOCK_TOOLS } from '../dist/profiles.js';
-import { registerAll } from '../dist/register.js';
+import { BLOCK_TOOLS } from '../dist/profiles.js';
 
 const wording = new URL('../eval/wording/', import.meta.url);
 const pins = JSON.parse(readFileSync(new URL('SOURCES.json', wording), 'utf8'));
@@ -26,27 +29,43 @@ test('the port flags what the list bans and lets its allowed phrases through', (
   assert.equal(bannedWordIn('See https://block.dwlf.co.uk/chart/smc.bos.bullish/ for the chart.'), null);
 });
 
-/** Every parameter description in a zod shape, with its path (nested objects and arrays too). Enum VALUES are not text: they are the engine's identifiers. */
-const parameterTexts = (shape, prefix = '') => Object.entries(shape || {}).flatMap(([key, schema]) => {
-  const out = [];
-  for (let s = schema, depth = 0; s && depth < 10; depth += 1) {
-    if (typeof s.description === 'string') { out.push([`${prefix}${key}`, s.description]); }
-    const def = s._def || {};
-    if (typeof def.shape === 'function') { out.push(...parameterTexts(def.shape(), `${prefix}${key}.`)); }
-    s = def.innerType || (def.type && typeof def.type === 'object' ? def.type : undefined);
-  }
-  return [...new Map(out.map(([k, v]) => [`${k}\u0000${v}`, [k, v]])).values()];
-});
+/**
+ * Every `description` in a listed JSON Schema, with its path. Enum VALUES are not checked: they are the engine's
+ * identifiers, which Block keeps as ids (dwlf-block-api's charter: "`smc.bos.bullish` stays an id").
+ */
+const schemaTexts = (schema, path) => {
+  if (!schema || typeof schema !== 'object') { return []; }
+  const own = typeof schema.description === 'string' ? [[path, schema.description]] : [];
+  const nested = [
+    ...Object.entries(schema.properties || {}).flatMap(([k, v]) => schemaTexts(v, path ? `${path}.${k}` : k)),
+    ...schemaTexts(schema.items, `${path}[]`),
+    ...['anyOf', 'oneOf', 'allOf'].flatMap((k) => (schema[k] || []).flatMap((v) => schemaTexts(v, path))),
+    ...(typeof schema.additionalProperties === 'object' ? schemaTexts(schema.additionalProperties, `${path}{}`) : []),
+  ];
+  return [...own, ...nested];
+};
 
-test('check 7: every Block tool description, parameter description and the Block instructions pass the wording list', () => {
-  const texts = {};
-  registerAll(profiledServer({ tool: (name, description, shape) => {
-    texts[name] = String(description);
-    for (const [path, text] of parameterTexts(shape)) { texts[`${name} (${path})`] = text; }
-  }, resource: () => {} }, 'block'), {});
-  assert.deepEqual(Object.keys(texts).filter((k) => !k.includes(' (')).sort(), [...BLOCK_TOOLS].sort());
+test('check 7: every Block tool description, parameter description and the Block instructions pass the wording list', async () => {
+  // What a Block agent is actually sent: the built server's tool listing and instructions, over MCP.
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const mcp = new Client({ name: 'wording-gate', version: '0' });
+  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+    env: { PATH: process.env.PATH || '', DWLF_API_KEY: 'wording-gate' }, stderr: 'ignore' }));
+  let listed;
+  let instructions;
+  try {
+    listed = (await mcp.listTools()).tools;
+    instructions = mcp.getInstructions();
+  } finally { await mcp.close(); }
+  assert.deepEqual(listed.map((t) => t.name).sort(), [...BLOCK_TOOLS].sort());
+  assert.ok(instructions, 'the Block profile sends server instructions');
+  const texts = { '(block instructions)': instructions };
+  for (const tool of listed) {
+    texts[tool.name] = tool.description || '';
+    for (const [path, text] of schemaTexts(tool.inputSchema, '')) { texts[`${tool.name} (${path})`] = text; }
+  }
   assert.ok(Object.keys(texts).length > BLOCK_TOOLS.size * 2, 'parameter descriptions were read');
-  const hits = Object.entries({ ...texts, '(block instructions)': String(PROFILE_INSTRUCTIONS.block) })
-    .map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
+  assert.ok('dwlf_get_events (timeframe)' in texts, 'a known parameter description was read');
+  const hits = Object.entries(texts).map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
   assert.deepEqual(hits, [], `reword these neutrally (shared text where the change is neutral, blockDescriptions.ts where it is not): ${JSON.stringify(hits)}`);
 });
