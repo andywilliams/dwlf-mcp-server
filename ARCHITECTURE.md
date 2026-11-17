@@ -49,10 +49,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 27 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
+- **~100 `dwlf_*` tools** grouped in 28 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
-  subscriptions, onchain-catalogue, explain-event), each wired by `registerAll` in `src/register.ts` via a
+  subscriptions, onchain-catalogue, explain-event, theses), each wired by `registerAll` in `src/register.ts` via a
   `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
   *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
 - **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
