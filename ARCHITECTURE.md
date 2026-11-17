@@ -207,7 +207,7 @@ A reviewer should be able to test a diff against each of these:
   3. `knowableAt` is checked by value (DWLF-853, live 16-Nov): an item's is when its reading became knowable (on
      conditions never the request time); the envelope's is the latest item's. Dates in answers are graded by each case's own facts
      and by the judge.
-  4. Block tool descriptions and the profile instructions pass the shared wording list (block-site, vendored with
+  4. Block tool descriptions, their parameter descriptions and the profile instructions pass the shared wording list (block-site, vendored with
      dwlf-block-api's port, one sync commit) as a hard `npm test` gate. A list change enters only through a sync
      commit, so a `full`-profile hotfix is never blocked by an upstream change it didn't pull.
      `wording:sync --check` runs by hand in the release checklist; no cross-repo credential is added to

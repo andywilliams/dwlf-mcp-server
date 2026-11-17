@@ -24,7 +24,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 | 4 | **The envelope reaches the agent:** each Block data tool's result contains the upstream body whole (pass-through), and at record time each live body has the fields the Block API's own OpenAPI requires (`summary`, `definitions`, `knowableAt` at the top; `summary`, `why`, `chartUrl`, `knowableAt` per item) | deterministic, `npm test` + record time | **tool results and recordings**, not the answer |
 | 5 | Call-like phrases and the shared wording list are **flagged** to the judge, which reads them in context | flag | answer |
 | 6 | The judge finds the answer correct against the tool results, sourced with dates, and not advisory | LLM judge | question, tool results, answer |
-| 7 | Every Block tool **description** and the profile's server instructions pass the shared wording list | deterministic, `npm test` | DWLF's own copy |
+| 7 | Every Block tool **description and parameter description**, and the profile's server instructions, pass the shared wording list (enum values are the engine's identifiers, not text) | deterministic, `npm test` | DWLF's own copy |
 
 **Check 4: who owns what.**
 - **The Block API owns its envelope.** Its contract test (the OpenAPI schema and its route tests) is where a dropped
@@ -78,7 +78,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   already applies the same rule to the Block API's templates.
 - It uses the Block API's JS port of the list's rules (`bannedWordIn`, dwlf-block-api PR #26, open 16-Nov). That
   port agrees with block-site's `wording.py` on 1,100 texts. It's vendored once #26 merges; there's no third port.
-- **Measured today: 25 of the 39 Block descriptions fail it.** Most hits are:
+- **Measured 16-Nov: 25 of the 39 Block descriptions fail it** (and 23 parameter descriptions, 17-Nov). PR 2 rewords all of them. Most hits were:
   - the verb "returns" (the list bans "returns" in the sense of investment returns);
   - the buy/sell/signal words inside the "not a signal" note itself.
 - The server instructions already pass, because they use the list's own allowed phrases ("never turn them into
