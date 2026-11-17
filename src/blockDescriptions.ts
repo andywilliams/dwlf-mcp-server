@@ -69,7 +69,7 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'ceiling of the range",'),
   dwlf_get_divergences: swaps(
     ['Bullish = measured at lows, bearish = at highs.', 'The `direction` parameter says where it was measured: one value for lows, the other for highs.'],
-    ['`direction` (bullish | bearish)', '`direction` (lows or highs)'],
+    ['`direction` (bullish | bearish)', '`direction` (one of its two values: the first measured at lows, the second at highs)'],
   ),
   ...Object.fromEntries(NOTED_TOOLS.map((name) => [name, noted(name)])),
   dwlf_get_custom_event_notifications: (shared: string) => `${shared} A fire records that a condition the user defined held on that ` +

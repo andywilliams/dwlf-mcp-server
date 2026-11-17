@@ -206,7 +206,10 @@ test('passthrough.json covers the launch set: each launch-set data tool is check
   const launch = registry.launchDataTools;
   assert.deepEqual(launch.filter((t) => !checked.includes(t) && !registry.cutPending.includes(t)), [], 'a launch-set data tool is in neither list');
   assert.deepEqual(registry.cutPending.filter((t) => checked.includes(t)), [], 'a tool is both checked and pending');
-  assert.deepEqual(registry.cutPending.filter((t) => !launch.includes(t)), [], 'cutPending only shrinks');
+  // cutPending never grows past its 17-Nov baseline (a hand-kept copy here, as evalGrade.test.mjs does for pending.json).
+  const CUT_PENDING_BASELINE_2026_11_17 = ['dwlf_describe_onchain_events', 'dwlf_explain_event', 'dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series'];
+  assert.deepEqual(registry.cutPending.filter((t) => !CUT_PENDING_BASELINE_2026_11_17.includes(t)), [], 'a tool was ADDED to cutPending');
+  assert.deepEqual(registry.cutPending.filter((t) => !launch.includes(t)), [], 'cutPending holds launch-set tools only');
   // A renamed launch tool fails here; dwlf_get_series is the one the launch set adds (it arrives with its PR).
   const { BLOCK_TOOLS } = await import('../dist/profiles.js');
   assert.deepEqual(launch.filter((t) => !BLOCK_TOOLS.has(t) && t !== 'dwlf_get_series'), [], 'a launch-set tool is not a Block tool');
@@ -223,4 +226,29 @@ test('check 4: every tool in eval/passthrough.json keeps its Block API body whol
     assert.deepEqual(paths.filter((p) => routeFamily(p) !== 'block'), [], `${tool}: its upstream is not the Block API`);
     assert.deepEqual(containmentFailures(result, pages), [], tool);
   }
+});
+
+test('a failed OpenAPI fetch is reported, not saved and not cached: the next request fetches it again', async () => {
+  let openapiCalls = 0;
+  const server = createServer((req, res) => {
+    if (req.url === '/public/v1/openapi.json') {
+      openapiCalls += 1;
+      res.writeHead(openapiCalls === 1 ? 503 : 200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(openapiCalls === 1 ? { error: 'down' } : OPENAPI));
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(conditions()));
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
+  const fixtures = await startFixtureServer({ dir, mode: 'record', upstreams: { block: `http://127.0.0.1:${server.address().port}` } });
+  try {
+    assert.equal((await fetch(`${fixtures.url}/public/v1/conditions`)).status, 200);
+    assert.deepEqual(readdirSync(dir), [], 'an unchecked body is not saved');
+    assert.match(fixtures.contractFailures[0].failures[0], /OpenAPI could not be read/);
+    assert.equal((await fetch(`${fixtures.url}/public/v1/conditions`)).status, 200);
+    assert.equal(openapiCalls, 2);
+    assert.equal(readdirSync(dir).length, 1, 'checked and saved once the OpenAPI is readable');
+  } finally { await fixtures.close(); await new Promise((r) => server.close(r)); }
 });

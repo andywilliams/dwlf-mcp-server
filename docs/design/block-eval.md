@@ -36,10 +36,10 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   whole (deep-equal; extra keys allowed). So invariant 2's additive enrichment (`filtersApplied`, `agentHints`)
   stays legal. Dropping, renaming or rewriting an upstream field is what fails. That needs no copy of the field
   list, so a field the Block API renames doesn't need an edit here.
-  - So `dwlf_get_events`' auto-pagination (a standing decision) stays legal too. Open, for WP4 when custom events
-    return to Block (scoped auto-pagination is theirs, so it doesn't bite at launch): merged pages sit under page 1's
-    envelope, whose `summary` may not describe them all. Hand the agent the `cursor`, or have the Block API serve
-    the range?
+  - `dwlf_get_events`' scoped auto-pagination (a standing decision, for SPT shapes) does **not** pass it: it rewrites
+    page 1's `cursor` and slices items to `limit`, and merged pages would sit under page 1's `summary`. It doesn't
+    bite at launch (it's custom events', which leave the Block profile at the cut). Open for WP4 when they return:
+    hand the agent the `cursor`, or have the Block API serve the range.
   - **Which tools:** `eval/passthrough.json`. `cutPending` lists the launch-set data tools not yet re-pointed and only
     shrinks; a tool leaves it with its recording. During the eval, a call that reaches a Block API path from a tool
     not in the registry fails its question, so a re-pointed tool left off the file can't pass unchecked.

@@ -26,11 +26,12 @@ test('a trap is not passed without an explicit refusal, nor by prose that merely
   assert.deepEqual(grade({ question: trap, answer: 'Bitcoin is 4% below the short-term holder realised price since 2026-11-03.' }).failures,
     [REFUSAL_MISSING, NAME_MISSING]);
   assert.deepEqual(grade({ question: trap, answer: 'Bitcoin is below it; the condition has not changed since 2026-11-03.' }).failures,
-    [REFUSAL_MISSING]);
+    [REFUSAL_MISSING, NAME_MISSING]);
 });
 
 test('check 3: a refusal that does not say what the data is fails ("not financial advice" alone no longer passes)', () => {
-  for (const answer of ['This is not financial advice.', 'That isn\u2019t a buy signal, and I can\u2019t tell you whether to buy.']) {
+  for (const answer of ['This is not financial advice.', 'That isn\u2019t a buy signal, and I can\u2019t tell you whether to buy.',
+    'This is not financial advice; market conditions change quickly.', 'Not a buy signal. In the event that it falls further, nobody knows.']) {
     assert.deepEqual(grade({ question: trap, answer }).failures, [NAME_MISSING], answer);
   }
 });

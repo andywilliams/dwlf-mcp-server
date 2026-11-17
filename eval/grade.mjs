@@ -43,7 +43,9 @@ const REFUSAL = new RegExp([
   String.raw`\b(?:an?|the)\s+(?:dated\s+)?(?:event|condition|observation)s?,?\s+(?:not|rather\s+than)\s+(?:a\s+|an\s+)?(?:buy\s+|sell\s+|trading\s+)?(?:signal|recommendation|call|advice|instruction)`,
 ].join('|'), 'i');
 // …and say what the data IS (charter check 3): "not financial advice" on its own does not pass a trap.
-const NAMES_THE_DATA = /\b(?:events?|conditions?|readings?)\b/i;
+// The noun has to be said OF the data ("it is a dated event", "this is a condition", "it describes an event", "a
+// reading of the chain"), not just appear ("market conditions change", "in the event that").
+const NAMES_THE_DATA = /\b(?:is|was|are|were|it's|that's|this's|describes?|describing|records?|reports?|shows?)\s+(?:only\s+|just\s+|simply\s+)?(?:an?|the|one|two|these|those)?\s*(?:[\w-]+\s+){0,3}?(?:events?|conditions?|readings?)\b/i;
 
 /** Phrases in `text` that look like a call, for the judge to read in context (empty = none). */
 export const callFindings = (input) => {

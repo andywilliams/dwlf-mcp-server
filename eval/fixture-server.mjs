@@ -156,7 +156,16 @@ export const startFixtureServer = async ({ dir, mode = 'replay', upstreams: give
       let openapi;
       const dataRoute = family === 'block' && up.status === 200 ? dataFamily(path) : null;
       if (dataRoute) {
-        const { routes, openapi: schema } = await blockContract();
+        let checked;
+        try { checked = await blockContract(); } catch (error) {
+          // Not cached: the next data-route request fetches the OpenAPI again. Answered, never saved, and reported.
+          contract = undefined;
+          contractFailures.push({ key, openapi: null, failures: [`the Block API's OpenAPI could not be read, so the body was not checked: ${error.message}`] });
+          res.writeHead(up.status, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(parsed));
+          return;
+        }
+        const { routes, openapi: schema } = checked;
         const required = requiredForPath(routes, path);
         // Two sources, reported apart: the OpenAPI's `required` lists are the Block API's own rule; the knowableAt rules
         // are this repo's copy (envelope.mjs), so a failure there may mean the copy is stale (see eval/README.md).

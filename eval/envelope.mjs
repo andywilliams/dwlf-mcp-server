@@ -10,7 +10,9 @@
  *     (where the Block API promises it: "never the time of the request") no item at `asOf`.
  *   - `containmentFailures(result, pages)`: invariant 2's pass-through rule. A tool's result keeps the first upstream
  *     page's top-level fields unchanged and holds every item of every page whole. Extra keys are allowed (additive
- *     enrichment, auto-pagination); dropping, renaming or rewriting an upstream field fails.
+ *     enrichment); dropping, renaming or rewriting an upstream field fails. Auto-pagination as SPT's events tool does
+ *     it (page 1's `cursor` rewritten, items sliced to `limit`) does NOT pass: whether a Block-backed tool may merge
+ *     pages is open for WP4 (design doc §2).
  */
 import { isDeepStrictEqual } from 'node:util';
 
