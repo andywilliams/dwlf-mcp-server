@@ -56,7 +56,9 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   values are absent by design.
 - **`knowableAt` is checked by value** (DWLF-853, live 16-Nov: an item's `knowableAt` is when the reading it rests
   on became knowable). On every data-route response:
-  - an item's `knowableAt` is never the response's `asOf` and never later than the envelope's `knowableAt`;
+  - an item's `knowableAt` is never later than the envelope's `knowableAt`, and on conditions it is never the
+    response's `asOf` (the OpenAPI promises that for conditions only: the catalogue's definitions are knowable when
+    asked, and live catalogue items carry `asOf`, 17-Nov);
   - the envelope's `knowableAt` is the latest item's and no later than `asOf`;
   - where an item carries `values.sinceKnowableAt`, it equals the item's `knowableAt`;
   - an event's `knowableAt` is no earlier than its `date`.
@@ -191,7 +193,7 @@ None of them has a Block API route, so **the launch set is the table above** and
    - the judge's date instruction;
    - `wording:sync` with `--check`, and the list re-vendored and pinned;
    - an upstream per route family;
-   - check 4's `knowableAt` value rules;
+   - check 4's `knowableAt` value rules (checked against all four live routes, 17-Nov);
    - check 7 on, over all 39 Block descriptions, with the failing ones reworded neutrally.
    
    `npm test` only; no model calls in CI.

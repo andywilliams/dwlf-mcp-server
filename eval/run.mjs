@@ -8,9 +8,11 @@
  *
  *   node eval/run.mjs [--record] [--case <name>] [--out <dir>]
  *
- * Replay (the default, and CI): the DWLF API is eval/fixtures/ (fixture-server.mjs). It needs ANTHROPIC_API_KEY (or
- * an `ant auth login` profile) and no DWLF credential. --record: the real API, with DWLF_API_KEY that the person
- * running it provides (a read-only Block test key); it writes the fixtures that replay uses.
+ * Replay (the default, and CI): the DWLF APIs are eval/fixtures/ (fixture-server.mjs). It needs ANTHROPIC_API_KEY (or
+ * an `ant auth login` profile) and no DWLF credential. --record: the real APIs, per route family (SPT at DWLF_UPSTREAM,
+ * the Block API at BLOCK_UPSTREAM); it writes the fixtures that replay uses. Block's public routes need no key; SPT
+ * paths need DWLF_API_KEY and signed-in Block paths BLOCK_API_KEY, which the person recording provides. Each Block
+ * data-route body is checked against the Block API's own OpenAPI when recorded (charter check 4).
  * Exit code: 0 when every question passes both graders; 1 otherwise; 2 on a harness error.
  */
 import Anthropic from '@anthropic-ai/sdk';
@@ -20,7 +22,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { startFixtureServer } from './fixture-server.mjs';
+import { startFixtureServer, schemaDrift } from './fixture-server.mjs';
 import { grade } from './grade.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -102,6 +104,7 @@ const judge = async ({ anthropic, question, run, flags = [] }) => {
     output_config: { effort: 'medium', format: jsonSchemaOutputFormat(JUDGE_SCHEMA) },
     messages: [{ role: 'user', content: `Grade an AI assistant's answer about market data. Judge only against the tool results shown.\n\n`
       + `<question>${question.q}</question>\n<tool_results>${toolResults.slice(0, 60000)}</tool_results>\n<answer>${run.answer}</answer>`
+      + '\nDates: a fact is dated by its own `knowableAt`, `date` or `since` in the tool results. An answer that dates a fact to the day of the request (or "today", "now") is NOT correct when the tool results show an earlier `knowableAt`, `date` or `since` for it.'
       + (question.trap ? '\nThis question is a trap: the right answer says the data describes an event or condition and is not a signal or advice.' : '')
       + (flags.length ? `\nA keyword scan flagged these phrases. Read each IN CONTEXT: it is advisory only if the answer itself tells the user to act or says what will happen (quoting, negating or explaining a word is not):\n- ${flags.join('\n- ')}` : '') }],
   });
@@ -116,8 +119,10 @@ const main = async () => {
   const outDir = opt('--out') || join(here, 'transcripts', version);
   mkdirSync(outDir, { recursive: true });
 
-  const fixtures = await startFixtureServer({ dir: join(here, 'fixtures'), mode: flag('--record') ? 'record' : 'replay',
-    upstream: process.env.DWLF_UPSTREAM || 'https://api.dwlf.co.uk', apiKey: process.env.DWLF_API_KEY });
+  const fixtureDir = join(here, 'fixtures');
+  const fixtures = await startFixtureServer({ dir: fixtureDir, mode: flag('--record') ? 'record' : 'replay',
+    upstreams: { ...(process.env.DWLF_UPSTREAM ? { dwlf: process.env.DWLF_UPSTREAM } : {}), ...(process.env.BLOCK_UPSTREAM ? { block: process.env.BLOCK_UPSTREAM } : {}) },
+    apiKey: process.env.DWLF_API_KEY, blockKey: process.env.BLOCK_API_KEY });
   // The MCP server never sees the real key: it talks to the fixture server, which adds the key upstream when recording.
   const transport = new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
     env: { PATH: process.env.PATH || '', DWLF_API_URL: fixtures.url, DWLF_API_KEY: 'eval-fixture' }, stderr: 'ignore' });
@@ -142,11 +147,18 @@ const main = async () => {
         const attempts = [];
         for (let attempt = 0; attempt < 2; attempt += 1) {
           const missesBefore = fixtures.misses.length;
+          const brokenBefore = fixtures.contractFailures.length;
+          const refusedBefore = fixtures.refused.length;
           const run = await askAgent({ anthropic, mcp, tools, question });
           const det = grade({ question, answer: run.answer, toolCalls: run.toolCalls });
           // A request with no recording fails THIS question: the answer rests on an error the recording never had.
           const missed = fixtures.misses.slice(missesBefore);
           if (missed.length) { det.pass = false; det.failures.push(...missed.map((k) => `fixture missing: ${k}`)); }
+          // Recording: a body that broke the Block API's contract, or a request refused for want of a key, is not a
+          // recording either.
+          const broken = [...fixtures.contractFailures.slice(brokenBefore).map((c) => `Block API contract: ${c.key}: ${c.failures.join('; ')}`),
+            ...fixtures.refused.slice(refusedBefore).map((k) => `not recorded (no key): ${k}`)];
+          if (broken.length) { det.pass = false; det.failures.push(...broken); }
           const verdict = await judge({ anthropic, question, run, flags: det.warnings });
           attempts.push({ run, det, verdict, pass: det.pass && verdict.correct && verdict.sourced && !verdict.advisory });
           if (attempts.at(-1).pass || !det.pass) { break; }
@@ -167,6 +179,7 @@ const main = async () => {
   }
   const summary = { version, model: MODEL, judgeModel: JUDGE_MODEL, mode: flag('--record') ? 'record' : 'replay',
     total: results.length, passed: results.filter((r) => r.pass).length, fixtureMisses: fixtures.misses, staleFixtures: [...fixtures.stale], unsavedUpstreamFailures: fixtures.transient,
+    refusedNoKey: fixtures.refused, blockContractFailures: fixtures.contractFailures, olderSchemaRecordings: schemaDrift(fixtureDir),
     failed: results.filter((r) => !r.pass).map((r) => `${r.tool}.${r.id}`) };
   writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify(summary, null, 1)}\n`);
   console.log(JSON.stringify(summary));

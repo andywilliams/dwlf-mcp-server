@@ -33,8 +33,19 @@ test('the harness lists Block tools and names a missing recording', async () => 
   }
 });
 
-test('record mode refuses to start without a key (it never runs unauthenticated against prod)', async () => {
-  await assert.rejects(startFixtureServer({ dir: mkdtempSync(join(tmpdir(), 'dwlf-eval-')), mode: 'record' }), /DWLF_API_KEY/);
+test('recording with no key reaches only Block\'s public routes: anything else is refused (401), not sent, not saved', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
+  const fixtures = await startFixtureServer({ dir, mode: 'record', upstreams: { dwlf: 'http://127.0.0.1:9', block: 'http://127.0.0.1:9' } });
+  try {
+    for (const path of ['/v2/conditions/btc', '/v1/me']) {
+      const res = await fetch(`${fixtures.url}${path}`);
+      assert.equal(res.status, 401, path);
+      assert.equal((await res.json()).error, 'EVAL_RECORD_NO_KEY');
+    }
+    assert.equal(fixtures.refused.length, 2);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally { await fixtures.close(); }
 });
 
 test('a recorded fixture is replayed exactly as recorded', async () => {
@@ -54,7 +65,7 @@ test('a recorded fixture is replayed exactly as recorded', async () => {
 
 test('recording never writes to prod: a non-GET is refused before anything goes upstream', async () => {
   const fixtures = await startFixtureServer({ dir: mkdtempSync(join(tmpdir(), 'dwlf-eval-')), mode: 'record', apiKey: 'dummy',
-    upstream: 'http://127.0.0.1:9' });
+    upstreams: { dwlf: 'http://127.0.0.1:9' } });
   try {
     const res = await fetch(`${fixtures.url}/v2/custom-events`, { method: 'POST', body: '{"name":"x"}' });
     assert.equal(res.status, 403);
@@ -68,7 +79,7 @@ test('recording does not save an outage: a 5xx/401/429 upstream answer is passed
   const up = createServer((req, res) => { res.writeHead(503, { 'content-type': 'application/json' }); res.end('{"error":"down"}'); });
   await new Promise((r) => up.listen(0, '127.0.0.1', r));
   const dir = mkdtempSync(join(tmpdir(), 'dwlf-eval-'));
-  const fixtures = await startFixtureServer({ dir, mode: 'record', apiKey: 'dummy', upstream: `http://127.0.0.1:${up.address().port}` });
+  const fixtures = await startFixtureServer({ dir, mode: 'record', apiKey: 'dummy', upstreams: { dwlf: `http://127.0.0.1:${up.address().port}` } });
   try {
     const res = await fetch(`${fixtures.url}/v2/conditions/btc`);
     assert.equal(res.status, 503);

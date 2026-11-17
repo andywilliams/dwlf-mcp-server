@@ -151,7 +151,7 @@ A reviewer should be able to test a diff against each of these:
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
-   ⚠️ **`eval/` is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter): the Anthropic API (the eval agent and its judge); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
+   ⚠️ **`eval/` (with `scripts/wording-sync.mjs`) is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter): the Anthropic API (the eval agent and its judge); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
@@ -204,8 +204,8 @@ A reviewer should be able to test a diff against each of these:
      keeps no copy of the field list. The Block API owns its envelope: at record
      time, a live response is checked against the `required` lists in the Block API's own published
      `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.
-  3. `knowableAt` is checked by value (DWLF-853, live 16-Nov): an item's is when its reading became knowable, never
-     the request time; the envelope's is the latest item's. Dates in answers are graded by each case's own facts
+  3. `knowableAt` is checked by value (DWLF-853, live 16-Nov): an item's is when its reading became knowable (on
+     conditions never the request time); the envelope's is the latest item's. Dates in answers are graded by each case's own facts
      and by the judge.
   4. Block tool descriptions and the profile instructions pass the shared wording list (block-site, vendored with
      dwlf-block-api's port, one sync commit) as a hard `npm test` gate. A list change enters only through a sync

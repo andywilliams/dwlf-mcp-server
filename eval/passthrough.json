@@ -1,0 +1,4 @@
+{
+ "note": "Charter check 4 (DWLF-804): each Block data tool whose upstream is the Block API, with the arguments its pass-through test replays (test/evalEnvelope.test.mjs, against eval/fixtures/). Empty until WP4 re-points the Block profile at the Block API; that release adds every launch-set data tool here (conditions, events, the catalogue tools, series) with its recording.",
+ "tools": []
+}
