@@ -33,10 +33,10 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
   server.tool(
     'dwlf_explain_event',
     'Explain one Bitcoin on-chain event type (`onchain.*`) and, for the types the engine evaluates, its occurrences. ' +
-      'Returns the DEFINITION: meaning, method and version, inputs, threshold, history start, caveats, `revision` ' +
+      'Gives the DEFINITION: meaning, method and version, inputs, threshold, history start, caveats, `revision` ' +
       '(can this event\'s history change under you, and why: immutable / oracle / model / estimated), ' +
       '`measuredHistory` (how often it fired on DWLF\'s node, by year, dated) and `inEngine`. With `inEngine: true` ' +
-      'it also returns OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
+      'it also gives OCCURRENCES: `date` = that day\'s occurrence (or the nearest days either side); `since` = what ' +
       'changed, as three disjoint buckets placed by the day a row became knowable (`onchain.confirmedAt`; an on-chain row ' +
       'dated D is confirmed on D+1): `fired` (knowable on or after `since`), `published` (knowable before `since` but ' +
       'first served on or after it, e.g. a backfill: new to you, NOT a firing) and `revised` (served before `since`, ' +
@@ -44,7 +44,7 @@ export function registerExplainEventTools(server: McpServer, client: Pick<DWLFCl
       '`count`, not the rows listed. Neither = the 5 most recent. A `date` with nothing on it gives `occurrence: null` and the nearest days. Every occurrence answer carries `history` { count, first, last, ' +
       'methodVersions } from the live table. Use dwlf_describe_onchain_events to browse or search the types.\n\n' +
       '⚠️ Read before you report:\n' +
-      '- These are CONDITIONS on the chain, not calls. Describe them; never turn one into a buy/sell/hold.\n' +
+      '- These are CONDITIONS on the chain, not calls. Describe them; never turn them into buy, sell or hold recommendations.\n' +
       '- `definitionSource: "bundled"` means this API does not serve explain yet and the definition is this package\'s copy, ' +
       'dated by `bundledAsOf`: say so. A bundled definition has no `revision` or `measuredHistory` (null = UNKNOWN, ' +
       'not "cannot change") and no occurrences.\n' +

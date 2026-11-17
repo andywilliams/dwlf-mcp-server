@@ -9,7 +9,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
     'dwlf_get_regime',
     'Get the market regime classification for a symbol on one timeframe (daily by default) — trend, ' +
       'momentum, volatility and a confidence score, plus `insufficientHistory` (true when the symbol has too ' +
-      'little history on that timeframe: the fields are then placeholders, not a reading). With `history`, returns a dated regime series, newest ' +
+      'little history on that timeframe: the fields are then placeholders, not a reading). With `history`, gives a dated regime series, newest ' +
       'first. It carries no cycle phase: for where an asset is in its market cycle, use dwlf_get_stage (weekly ' +
       'Weinstein stage).',
     {

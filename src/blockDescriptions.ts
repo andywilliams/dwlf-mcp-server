@@ -21,18 +21,39 @@ const swap = (from: string, to: string) => (shared: string): string => {
   if (!shared.includes(from)) { throw new Error(`Block wording: the shared description no longer contains ${JSON.stringify(from)}`); }
   return shared.replace(from, to);
 };
+/** Several one-phrase changes, applied in order (each throws like `swap` when its phrase is gone). */
+const swaps = (...pairs: [string, string][]) => (shared: string): string => pairs.reduce((text, [from, to]) => swap(from, to)(text), shared);
 /**
  * What a Block agent must not do with a market reading (WP7, the 12-Nov input point 6). Appended to the read tools whose
  * shared description does not already say it in its own words; the profile test checks every one of them carries it.
  */
-export const READING_NOTE = 'What this returns describes the market or the chain as of its date: it is not a signal, a forecast or a ' +
-  'recommendation, so never present it as a reason to buy or sell.';
+// Worded in the shared list's own allowed phrases (block-site ops/wording-banned.json `allowPhrases`), so the wording
+// gate (test/wording.test.mjs) passes it without an exemption.
+export const READING_NOTE = 'What this tool gives describes the market or the chain as of its date. It is not a forecast and not a ' +
+  'recommendation, and nothing here is scored as a predictor: never turn it into buy, sell or hold recommendations.';
 export const NOTED_TOOLS = Object.freeze(['dwlf_get_events', 'dwlf_get_price_picture', 'dwlf_get_indicators', 'dwlf_get_regime',
   'dwlf_get_support_resistance', 'dwlf_get_trendlines', 'dwlf_get_market_data', 'dwlf_get_quote']);
 // A noted tool whose shared wording also needs a phrase changed: the phrase change, then the note.
 const NOTED_PHRASES: Readonly<Record<string, (shared: string) => string>> = {
   dwlf_get_quote: swap(' Ideal for marking a trade/skip to current price or pricing an arbitrary symbol.', ' Use it to price any tracked symbol.'),
-  dwlf_get_indicators: swap('For momentum, band and cross signals use', 'For momentum, band and cross events use'),
+  dwlf_get_indicators: swaps(
+    ['For momentum, band and cross signals use', 'For momentum, band and cross events use'],
+    ['`rsi.exit.*` / `rsi.midline.*` for RSI(14)', '`rsi.*` for RSI(14) moves back inside 70 / 30 and closes across 50'],
+  ),
+  // Block reads an event id inside a sentence as words (dwlf-block-api's charter), so its wording names id families
+  // and leaves each id to dwlf_explain_event; retail keeps the engine's ids in the shared text.
+  dwlf_get_events: swaps(
+    ['RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ',
+      'RSI(14) (`rsi.*`): a move back inside 70 / 30, and a close across 50. '],
+    ['Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
+      'compare price with RSI(14) or DSS at consecutive confirmed daily cycle lows (bullish) or highs (bearish). ',
+    'Divergence (`rsi.divergence.*` and `dss.divergence.*`, regular or hidden, at lows or at highs; dwlf_explain_event names each id) ' +
+      'compares price with RSI(14) or DSS at two consecutive confirmed daily cycle lows, or at two highs. '],
+    ['ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
+      '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); ',
+    'ADX / DMI (daily, Wilder 14; `adx.*`): a trend start, one id per side (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
+      '(ADX falls below 20: ranging again), and a DI cross, one id per side (DIs cross while ADX >= 20); '],
+  ),
 };
 const noted = (name: string) => (shared: string): string => `${(NOTED_PHRASES[name] ?? String)(shared)} ${READING_NOTE}`;
 
@@ -43,10 +64,16 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'Most used: toggle `enabled` to pause/resume without losing the subscription\'s history. Editable fields: enabled, ' +
     'symbols, timeframes, channels, quietHours, dedupeWindowMinutes, and customEventId (custom_event subscriptions ' +
     'only). `eventTypeId` is NOT patchable: switching what an alert listens for means delete + recreate.',
-  dwlf_get_ranges: swap(' "at the TOP of the range — think twice about entering here",', ' "at the TOP of the range",'),
+  dwlf_get_ranges: swap('"at the BOTTOM of a range" (near_floor — significant alongside a daily cycle low), "at the TOP of the range — ' +
+    'think twice about entering here",', '"near the floor of a range" (near_floor, read alongside a confirmed daily cycle low), "near the ' +
+    'ceiling of the range",'),
+  dwlf_get_divergences: swaps(
+    ['Bullish = measured at lows, bearish = at highs.', 'The `direction` parameter says where it was measured: one value for lows, the other for highs.'],
+    ['`direction` (bullish | bearish)', '`direction` (lows or highs)'],
+  ),
   ...Object.fromEntries(NOTED_TOOLS.map((name) => [name, noted(name)])),
   dwlf_get_custom_event_notifications: (shared: string) => `${shared} A fire records that a condition the user defined held on that ` +
-    'date: it is the output of their own rule, not a DWLF signal or recommendation.',
+    'date: it is the output of their own rule, not a DWLF call.',
   dwlf_create_subscription:
     'Create an alert subscription: get told when an event fires. Two shapes, distinguished by `eventTypeId`:\n' +
     '  - any event id (e.g. `onchain.mvrv.cross_above_1`, `cycle.low.confirmed`, `swing_low_break`): fires when that event is recorded;\n' +
@@ -68,13 +95,13 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'static nodes are listed.',
   dwlf_create_custom_event:
     '⚠️ Create a new custom event (a condition you define, recorded each time it holds). WORKFLOW: 1) create (saving ' +
-    'compiles it; a graph that will not compile is refused with 400) → 2) MUST call dwlf_activate_event_symbols (or the ' +
-    'event will never fire) → 3) dwlf_evaluate_custom_event to fill its history. Until symbols are activated the event ' +
+    'compiles it; a graph that does not compile is refused with 400) → 2) call dwlf_activate_event_symbols next (without ' +
+    'it the event never fires) → 3) dwlf_evaluate_custom_event to fill its history. Until symbols are activated the event ' +
     'exists but the evaluation engine does not see it, so it records nothing. Activate symbols straight after creating it.',
   dwlf_evaluate_custom_event:
     '⚠️ Trigger an on-demand evaluation run for a custom event: the step BETWEEN activating symbols and reading its fires. ' +
-    'Without it the event only evaluates on the daily run, and its history is not filled until then. Returns ' +
-    '{ requestId, status: "pending" }; poll dwlf_get_evaluation_status(requestId) until status is "completed", then read ' +
+    'Without it the event only evaluates on the daily run, and its history is not filled until then. It answers ' +
+    'with { requestId, status: "pending" }; poll dwlf_get_evaluation_status(requestId) until status is "completed", then read ' +
     'the fires via dwlf_get_events(type: "custom_event"). Consumes one EVALUATION quota. By default only the most recent ' +
     '~400 candles (~14 months of daily data) are evaluated, so older history has NO fires: to fill a longer history pass ' +
     '`lookbackDays` covering it (e.g. 2200 for ~5-6 years).',
@@ -89,7 +116,7 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'processedItems: 1` when done. When the request named symbols this tool adds `symbolsRequested: <count>` beside the ' +
     'summary. When status is "completed", read the fires via dwlf_get_events(type: "custom_event").',
   dwlf_register_agent:
-    'Programmatically register a new DWLF account: no browser or Google sign-in required. Returns an API key ' +
+    'Programmatically register a new DWLF account: no browser or Google sign-in required. It issues an API key ' +
     'immediately. Email verification unlocks the compute features (custom event evaluations). Useful for onboarding ' +
     'flows where an agent registers itself.',
   dwlf_get_cycle_setups:
@@ -104,9 +131,9 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     '`unverified` while the detection gate stands failed), `rulerAgreesWithState`, `generation` and `projectionHash`; ' +
     'null when no window is stored for the series. ⚠️ A symbol whose weekly window is not yet open is ABSENT from every ' +
     'list: for its window dates call `dwlf_get_cycle_windows`. DEPTH (`depth: true`): each row also carries `depth`, ' +
-    'its weekly window\'s price band from past cycles\' moves (the same object `dwlf_get_cycle_windows` returns), and ' +
+    'its weekly window\'s price band from past cycles\' moves (the same object `dwlf_get_cycle_windows` gives), and ' +
     '`depth.reading.position` places the last weekly close: `in-zone` (inside the p25–p75 of past moves), `shallow` / ' +
-    '`deep` / `beyond`, or `not-reached`. It is context, not a target, and it does not change the stage or the order. ' +
+    '`deep` / `beyond`, or `not-reached`. It is context (no targets), and it does not change the stage or the order. ' +
     'A missing band says why in `depthUnavailable`. Everything here is a dated state of the cycle engine, not a call.',
 });
 

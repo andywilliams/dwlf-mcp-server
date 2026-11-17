@@ -66,7 +66,7 @@ export function registerMarketDataTools(
     'dwlf_get_quote',
     'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
       'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
-      'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
+      'Gives ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
       'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
       'an arbitrary symbol. Unknown symbols come back with found:false (not an error).',
     {
@@ -166,8 +166,8 @@ export function registerMarketDataTools(
       'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
       'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
       '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
-      'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
-      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+      'AUTO-FOLLOWS the cursor and gives the event’s COMPLETE history in one call ' +
+      '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you still need to pass a ' +
       'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
@@ -182,7 +182,7 @@ export function registerMarketDataTools(
       'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one. ' +
       'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
       '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
-      '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger, and events only: not builder ' +
+      '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not a call, and events only: not builder ' +
       'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them.',
     {
       symbol: z
@@ -415,7 +415,7 @@ export function registerMarketDataTools(
       'Each row carries date + price (or level) + a human-readable label. ' +
       'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
       'or when you want a clean one-call summary instead of stitching together multiple `dwlf_get_events` queries. ' +
-      'Returns events sorted newest-first.',
+      'Events come sorted newest-first.',
     {
       symbol: z
         .string()
@@ -655,7 +655,7 @@ export function registerMarketDataTools(
       '⚠️ A symbol whose weekly window is not yet open is ABSENT from every list, not ' +
       'suppressed — for its window dates call `dwlf_get_cycle_windows`. ' +
       'DEPTH (`depth: true`, DWLF-416): each row also carries `depth`, its weekly window\'s derived price band ' +
-      '(the same object `dwlf_get_cycle_windows` returns; long rows = the fall into the weekly low, short rows = ' +
+      '(the same object `dwlf_get_cycle_windows` gives; long rows = the fall into the weekly low, short rows = ' +
       'the rise into the weekly high), and `depth.reading.position` places the last weekly close: ' +
       '`in-zone` (inside the p25–p75 of past cycles\' moves — call it out), `shallow` / `deep` / `beyond`, or ' +
       '`not-reached` (short of the smallest move on record — not worth raising). Context, NOT a gate or target: it ' +

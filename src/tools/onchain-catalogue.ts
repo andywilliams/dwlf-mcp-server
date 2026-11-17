@@ -112,7 +112,7 @@ export function registerOnchainCatalogueTools(server: McpServer, client: Pick<DW
       'event on a type, check that type\'s own `inEngine`.\n' +
       '- Every type describes a CONDITION on the chain, not advice. `estimated: true` marks types built on an ' +
       'attribution or a proxy: read their caveats. `confirmedAt` on a row is when it became knowable. Frequencies are ' +
-      'historical counts, not predictions.',
+      'historical counts, not a forecast.',
     {
       pack: z.string().optional().describe(`One pack: ${[ENGINE_PACK, ...BUNDLE_PACKS].join(', ')}`),
       eventType: z.string().optional().describe('One event type id, e.g. onchain.mining.hash_ribbon.capitulation.enter'),

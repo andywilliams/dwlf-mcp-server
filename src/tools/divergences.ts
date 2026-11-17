@@ -14,14 +14,14 @@ export const DEFAULT_LIMIT = 50;
 export function registerDivergenceTools(server: McpServer, client: DWLFClient): void {
   server.tool(
     'dwlf_get_divergences',
-    'Recent price/oscillator DIVERGENCES across every symbol DWLF tracks: dated events that happened, not signals. ' +
+    'Recent price/oscillator DIVERGENCES across every symbol DWLF tracks: dated events that happened, not calls. ' +
       'A divergence compares two consecutive confirmed cycle pivots: a `regular` one is price making a lower low (or a ' +
       'higher high) while RSI(14) or DSS does not; a `hidden` one is the reverse, a pullback inside the trend. ' +
       'Bullish = measured at lows, bearish = at highs.\n\n' +
       'FILTERS: `days` (1-365, default 30) windows the later pivot\'s date; `oscillator` (rsi | dss), `kind` (regular | ' +
       'hidden), `direction` (bullish | bearish), `symbols` (restrict to these), `limit` (1-500; this tool sends ' +
       `${DEFAULT_LIMIT} unless you set it), \`timeframe\` (daily, the default | weekly | all), \`includeRetired\` (also ` +
-      'return divergences whose pivot the cycle ledger later superseded; by default they are left out and counted in ' +
+      'include divergences whose pivot the cycle ledger later superseded; by default they are left out and counted in ' +
       '`retiredOmitted`).\n' +
       'CONFLUENCE: `confluence` names the layers to check around each divergence: `cycle` (a confirmed daily cycle low ' +
       'or high near the pivot, and whether it sits in the weekly window), `smc` (Smart Money Concepts events), `tl` (a ' +
@@ -29,13 +29,13 @@ export function registerDivergenceTools(server: McpServer, client: DWLFClient): 
       'default 10) is the window; `minLayers` keeps only items matching at least that many layers (filtered by the API). ' +
       'Each item then carries `confluence: { matched, layers, … }`: a layer not requested is null, requested and absent ' +
       'is `{ matched: false }`, and a matched layer lists its dated events and a one-line `why`. Passing `timeframe` or ' +
-      '`confluence` returns `responseVersion: 2`, which always includes `definitions` (stable wording you can quote); ' +
+      '`confluence` gives `responseVersion: 2`, which always includes `definitions` (stable wording you can quote); ' +
       '`explain: true` adds them to the plain read.\n\n' +
       'READING IT: each item has `summary` (one plain sentence, the DWLF page\'s own wording: use it), both pivots\' ' +
       'dates, prices and oscillator readings, `knowableAt` (when it could first be known: never imply it was visible ' +
       'earlier) and `chartUrl`. When the user wants to see one, give them its `chartUrl`. `cyclePivot.ledgerState` ' +
-      '`unknown` or `missing` means the pivot is unverified, not confirmed. A divergence is something that happened on ' +
-      'the chart, not a recommendation: never present one, or a confluence of layers, as a reason to buy or sell. ' +
+      '`unknown` or `missing` means the pivot is unverified, not confirmed. A divergence, or a confluence of layers, is something that happened on ' +
+      'the chart, not a recommendation: never turn them into buy, sell or hold recommendations. ' +
       '`truncated: true` means more matched than were returned. A key whose plan lacks the cycles family gets a teaser ' +
       '(`locked: true`, `newThisWeek`, `requiredPlan`, `pricingUrl`) and no items: tell your human what unlocks it.',
     {
