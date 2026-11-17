@@ -47,8 +47,10 @@ const countBy = (items: Json[], key: string): Record<string, number> => {
   return out;
 };
 const describeCounts = (counts: Record<string, number>): string => Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ');
-const pick = <T extends Record<string, string>>(defs: T, keys: string[]): Partial<T> =>
-  Object.fromEntries(keys.filter((k) => k in defs).map((k) => [k, defs[k]])) as Partial<T>;
+// SPT owns the vocabulary; a value this version does not know is named, not dropped, so drift shows.
+const UNKNOWN = 'Not described by this version of @dwlf/mcp-server (SPT added it): see dwlf_list_thesis_condition_types.';
+const pick = (defs: Record<string, string>, keys: string[]): Record<string, string> =>
+  Object.fromEntries([...new Set(keys)].filter((k) => k !== 'undefined').map((k) => [k, defs[k] ?? UNKNOWN]));
 
 const thesisLine = (t: Thesis): string => {
   const steps = Array.isArray(t.steps) ? t.steps.length : 0;
@@ -87,15 +89,17 @@ const fail = (error: unknown) => {
   return { content: [{ type: 'text' as const, text: `Error: ${message}${detail}` }], isError: true };
 };
 
-// ── condition schemas (SPT validates; these tell the agent the shape) ──────────────────────────────────────────
+// ── condition schemas (SPT validates and sets the limits; these tell the agent the shape) ──
+// Loose objects and a catch-all type: a field or type SPT adds later reaches it unchanged (stripping a field would
+// change the condition, which re-arms it), so an older MCP version can still revise a newer thesis.────────────────────────────────────────
 
 const symbolField = z.string().optional().describe('Defaults to the thesis symbol. Set it when the chart and the instrument differ (e.g. watch QQQ for a CNX1 trade).');
 const timeframe = z.enum(['daily', 'weekly']);
 const idField = z.string().optional().describe('Keep the id you read when revising: an unchanged condition keeps its arming and its result. Omit for a new condition.');
 const label = z.string().optional().describe('Your short name for the condition (≤120 chars).');
 
-const conditionSchema = z.discriminatedUnion('type', [
-  z.object({
+const knownCondition = z.discriminatedUnion('type', [
+  z.looseObject({
     type: z.literal('pivot_confirmed'), id: idField, label, symbol: symbolField, timeframe,
     side: z.enum(['low', 'high']),
     after: z.string().optional().describe('YYYY-MM-DD. Only a pivot DATED after this counts: for "the next daily cycle low", set it to the last low you already know of.'),
@@ -104,24 +108,28 @@ const conditionSchema = z.discriminatedUnion('type', [
       z.object({ op: z.literal('inside'), low: z.number().positive(), high: z.number().positive(), label: z.string().optional() }),
     ]).optional().describe('The first such pivot inside the level = met; outside = missed (the thesis is challenged). Compared with the pivot bar\'s intraday low/high.'),
   }),
-  z.object({
+  z.looseObject({
     type: z.literal('close_vs_level'), id: idField, label, symbol: symbolField,
     basis: z.enum(['daily_close', 'weekly_close', 'intraday']), op: z.enum(['above', 'below']), value: z.number().positive(),
   }),
-  z.object({ type: z.literal('window_opens'), id: idField, label, symbol: symbolField, timeframe, side: z.enum(['low', 'high']) }),
-  z.object({ type: z.literal('trendline_break'), id: idField, label, symbol: symbolField, timeframe, direction: z.enum(['bullish', 'bearish']) }),
-  z.object({
+  z.looseObject({ type: z.literal('window_opens'), id: idField, label, symbol: symbolField, timeframe, side: z.enum(['low', 'high']) }),
+  z.looseObject({ type: z.literal('trendline_break'), id: idField, label, symbol: symbolField, timeframe, direction: z.enum(['bullish', 'bearish']) }),
+  z.looseObject({
     type: z.literal('engine_event'), id: idField, label, symbol: symbolField, timeframe,
     eventType: z.string().describe('One of the allow-list in dwlf_list_thesis_condition_types (e.g. cycle.low.higher_low).'),
   }),
-  z.object({ type: z.literal('manual'), id: idField, label: z.string().describe('What you will mark (required).'), symbol: symbolField }),
+  z.looseObject({ type: z.literal('manual'), id: idField, label: z.string().describe('What you will mark (required).'), symbol: symbolField }),
+]);
+const conditionSchema = z.union([
+  knownCondition,
+  z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') }),
 ]);
 
 const stepsSchema = z.array(z.object({
   match: z.enum(['any', 'all']).default('any').describe('The step is met when any (or all) of its conditions are.'),
-  conditions: z.array(conditionSchema).min(1).max(6),
-})).min(1).max(4).describe('Ordered: step n+1 is checked only after step n is met.');
-const invalidationSchema = z.array(conditionSchema).max(4).describe('Any one of these happening marks the thesis challenged (review it). Optional.');
+  conditions: z.array(conditionSchema).min(1),
+})).min(1).describe('Ordered: step n+1 is checked only after step n is met. Limits: dwlf_list_thesis_condition_types.');
+const invalidationSchema = z.array(conditionSchema).describe('Any one of these happening marks the thesis challenged (review it). Optional.');
 
 const textFields = {
   title: z.string().describe('One line: what you are waiting for.'),
@@ -323,7 +331,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_thesis_fires',
-    'The feed of thesis fires, oldest first: each time a step was met, a condition was missed, an invalidation was hit or a deciding event was withdrawn, across all the user\'s theses. Pass back the returned `cursor` next time to read only new fires (each fire is read once). `knowableAt` is when DWLF could first know it; `session` the bar. Closes are withheld for keys not entitled to raw prices. After telling the user, acknowledge with dwlf_ack_thesis_fires.',
+    'The feed of thesis fires, oldest first: each time a step was met, a condition was missed, an invalidation was hit or a deciding event was withdrawn, across all the user\'s theses. Pass back the returned `cursor` next time to read only new fires (each fire is read once). The cursor is yours to keep (this server stores nothing): with none, the feed pages from the oldest fire, and the ones the user has not seen are the loud fires with `acknowledgedAt` null. `knowableAt` is when DWLF could first know it; `session` the bar. Closes are withheld for keys not entitled to raw prices. After telling the user, acknowledge with dwlf_ack_thesis_fires.',
     {
       cursor: z.string().optional().describe('The cursor from your last read; omit to start from the oldest.'),
       limit: z.number().int().min(1).max(100).optional().describe('Default 50.'),

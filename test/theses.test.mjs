@@ -115,3 +115,23 @@ test('registered in the full server, and not in the Block profile', () => {
   assert.equal(theses.length, 11);
   assert.deepEqual(theses.filter((n) => BLOCK_TOOLS.has(n)), []);
 });
+
+test('★ drift is visible, not lossy: an unknown status is named; a newer field or condition type reaches SPT unchanged', async () => {
+  const { z } = await import('zod');
+  const { tools, call } = setup(() => ({ theses: [thesis({ status: 'paused' })] }));
+  const { body } = await call('dwlf_list_theses');
+  assert.match(body.agentHints.definitions.status.paused, /Not described by this version/);
+  const shape = z.object(tools.get('dwlf_revise_thesis').schema);
+  const parsed = shape.parse({
+    thesisId: 't1', expectedRevision: 1,
+    steps: [{ conditions: [
+      { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3 },
+      { type: 'volume_spike', multiple: 2 },
+    ] }],
+  });
+  assert.deepEqual(parsed.steps[0].conditions, [
+    { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3 },
+    { type: 'volume_spike', multiple: 2 },
+  ]);
+  assert.equal(parsed.steps[0].match, 'any');
+});
