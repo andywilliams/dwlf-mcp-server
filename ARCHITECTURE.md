@@ -49,10 +49,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
-- **~100 `dwlf_*` tools** grouped in 27 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
+- **~100 `dwlf_*` tools** grouped in 28 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
-  subscriptions, onchain-catalogue, explain-event), each wired by `registerAll` in `src/register.ts` via a
+  subscriptions, onchain-catalogue, explain-event, theses), each wired by `registerAll` in `src/register.ts` via a
   `register*Tools(server, client)` call; `src/index.ts` builds the server and hands `registerAll` the profile's view
   *(inferred from: `src/register.ts` imports + phase comments; `server.tool(` counts per file)*.
 - **Tool profiles (DWLF-621):** `--profile <name>` / `DWLF_TOOL_PROFILE` selects `full` (default, every tool) or
@@ -80,6 +80,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   answers are its own summary lines (`id`, `pack` flattened to an id, the `engine` pseudo-pack), not the index passed
   through; one type's full definition IS passed through unchanged, as `definition` *(inferred from:
   `src/tools/onchain-catalogue.ts`)*.
+- **Thesis alerts** (`src/tools/theses.ts`, DWLF-855, 17-Nov): 11 tools over SPT `/v2/theses`, **full profile only**: theses are an SPT `/v2` feature for DWLF accounts, and the Block API has no theses route at the cut, so a Block key would get nothing. Revisit if Block gains one. Each answer is the backend body plus an additive `agentHints` (`summary`, `definitions` of the statuses/kinds present, `why`); SPT owns the vocabulary, and a value this version does not define is named as unknown, never dropped. The condition schemas are loose (a field or type SPT adds passes through to SPT, which validates and sets the limits). The fire cursor is the agent's to keep.
 - **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
   is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:
   `src/profiles.ts`)*.

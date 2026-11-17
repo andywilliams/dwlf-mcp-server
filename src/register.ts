@@ -25,6 +25,7 @@ import { registerTradePlanTools } from './tools/trade-plans.js';
 import { registerSemanticTools } from './tools/semantic.js';
 import { registerAccountTools } from './tools/account.js';
 import { registerSubscriptionTools } from './tools/subscriptions.js';
+import { registerThesisTools } from './tools/theses.js';
 import { registerSymbolsResource } from './resources/symbols.js';
 
 import { registerOnchainCatalogueTools } from './tools/onchain-catalogue.js';
@@ -76,6 +77,9 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
 
   // Register all tools — Phase 7 (Subscription CRUD — pairs event sources with delivery channels)
   registerSubscriptionTools(server, client);
+
+  // Register all tools — Phase 8 (Thesis alerts, "Waiting for": DWLF-855; full profile only)
+  registerThesisTools(server, client);
 
   // Register resources
   registerSymbolsResource(server, client);
