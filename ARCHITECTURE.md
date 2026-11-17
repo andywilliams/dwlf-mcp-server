@@ -199,8 +199,9 @@ A reviewer should be able to test a diff against each of these:
      advice" on its own fails.
   2. **Pass-through, checked deterministically in `npm test`:** for every Block data tool whose upstream is the Block
      API, the result replayed from a recording keeps the first page's top-level fields unchanged, and every
-     upstream item appears whole in it (extra keys and merged pages allowed: invariant 2's additive enrichment and
-     `dwlf_get_events`' pagination stay legal). This repo owns not stripping the envelope (invariant 2), and it
+     upstream item appears whole in it (extra keys allowed: invariant 2's additive enrichment stays legal). SPT-style
+     auto-pagination does not pass it (it rewrites page 1's `cursor` and slices to `limit`); whether a Block-backed
+     tool may merge pages is WP4's open question, for when custom events return. This repo owns not stripping the envelope (invariant 2), and it
      keeps no copy of the field list. The Block API owns its envelope: at record
      time, a live response is checked against the `required` lists in the Block API's own published
      `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.

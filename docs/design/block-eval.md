@@ -76,8 +76,9 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 **Check 7: the wording gate.**
 - It's a hard gate because it's DWLF's own wording, and no context excuses a word there. The standing decision
   already applies the same rule to the Block API's templates.
-- It uses the Block API's JS port of the list's rules (`bannedWordIn`, dwlf-block-api PR #26, open 16-Nov). That
-  port agrees with block-site's `wording.py` on 1,100 texts. It's vendored once #26 merges; there's no third port.
+- It uses the Block API's JS port of the list's rules (`bannedWordIn`, dwlf-block-api #26, merged). That port
+  agrees with block-site's `wording.py` on its parity corpus. It's vendored in `eval/wording/` as plain ESM (types
+  stripped by `wording:sync`, nothing else); there's no third port.
 - **Measured 16-Nov: 25 of the 39 Block descriptions fail it** (and 23 parameter descriptions, 17-Nov). PR 2 rewords all of them. Most hits were:
   - the verb "returns" (the list bans "returns" in the sense of investment returns);
   - the buy/sell/signal words inside the "not a signal" note itself.
@@ -96,7 +97,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - A `full`-only release waits on the eval too. Every merge and publish already needs Andy's tap, so
   `eval_override` adds no new approver.
 - **One list:** block-site's `ops/wording-banned.json` (Jenna's decision, 15-Nov), vendored byte for byte with its
-  sha256 pinned, the same as dwlf-block-api #26 (`525fecb4…e849`).
+  sha256 pinned in `eval/wording/SOURCES.json`, the same pin dwlf-block-api keeps (`872dbce1…` at PR 2).
 - **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site commit
   and one named dwlf-block-api commit, in one commit here. `npm run wording:sync -- --check` fails if either source
   has moved on. The pinned sha alone only proves the local copy wasn't edited.
@@ -105,7 +106,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - A list change enters only through a sync commit, so it can't block a release (a `full`-profile hotfix, say)
   that didn't pull it. A sync that tightens the list can hold up the next release on any Block description. That
   is intended: the descriptions must pass the current list.
-- ⚠️ The copy vendored in `eval/` today is an older export (`9990fca5…`). That drift has already happened once.
+- The older export once vendored in `eval/` (`9990fca5…`) had drifted, which is why `--check` exists. PR 2 replaced it.
 
 **Transcripts are stored with the release.** `eval/transcripts/<version>/` holds one file per question, plus
 `summary.json`. `publish.yml` uploads it as a GitHub release asset, beside the tag it gated. It is not in the npm
@@ -187,7 +188,7 @@ None of them has a Block API route, so **the launch set is the table above** and
 | Needs | From | When |
 |---|---|---|
 | The envelope on every data route | WP2 (live: verified on `/public/v1/conditions`, 16-Nov) | done |
-| The wording port and the pinned list | WP2, dwlf-block-api PR #26 | before check 7 |
+| The wording port and the pinned list | WP2, dwlf-block-api #26 | done; vendored in PR 2 |
 | The Block profile re-pointed at the Block API | WP4 (MCP step) | before the post-cut recordings |
 | The post-cut tool list | Andy (DWLF-852, §3) | done 16-Nov |
 | A `block-staging` key for the signed-in recordings | WP4 | for the account tool and plan views |
