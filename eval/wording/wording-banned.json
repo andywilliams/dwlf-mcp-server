@@ -58,6 +58,14 @@
    "why": "valuation call"
   },
   {
+   "pattern": "\\brecommend\\w*",
+   "why": "recommendation"
+  },
+  {
+   "pattern": "\\b(entry|exit)\\b",
+   "why": "trading word (entry/exit)"
+  },
+  {
    "pattern": "\\b(the\\s+)?bottom\\s+is\\s+in\\b|\\btop\\s+is\\s+in\\b",
    "why": "call on direction"
   },
@@ -85,9 +93,11 @@
   "in profit",
   "spent output profit ratio",
   "not (financial |investment )?advice",
+  "not (?:an? )?recommendations?",
+  "nothing here is an offer, a recommendation or personal advice",
+  "gate\\[entry\\]",
   "confirmed (daily |weekly )?cycle lows?"
  ],
  "urlsIgnored": "https?://\\S+",
- "disclaimer": "Conditions, not calls",
- "vendoredFrom": "block-site ops/wording-banned.json @ 05d2b63 (11-Nov-2026); refresh with: cp <block-site>/ops/wording-banned.json eval/"
+ "disclaimer": "Conditions, not calls"
 }
