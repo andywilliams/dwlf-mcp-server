@@ -77,14 +77,28 @@ test('get / revise / review / mark / archive / delete reach their routes, ids en
   await call('dwlf_get_thesis', { thesisId: 'a/b' });
   await call('dwlf_revise_thesis', { thesisId: 't1', expectedRevision: 2, title: 'y' });
   await call('dwlf_review_thesis', { thesisId: 't1', answer: 'close', outcome: { kind: 'not_acted' } });
+  await call('dwlf_review_thesis', { thesisId: 't1', answer: 'revise', expectedRevision: 2, allowAlreadyMet: true, nextStep: 'z' });
   await call('dwlf_mark_thesis_condition_met', { thesisId: 't1', conditionId: 'm1' });
   await call('dwlf_archive_thesis', { thesisId: 't1' });
   await call('dwlf_delete_thesis', { thesisId: 't1' });
   assert.deepEqual(calls.map((c) => `${c.method} ${c.path}`), [
-    'get /theses/a%2Fb', 'patch /theses/t1', 'post /theses/t1/review', 'post /theses/t1/mark-met', 'post /theses/t1/archive', 'delete /theses/t1',
+    'get /theses/a%2Fb', 'patch /theses/t1', 'post /theses/t1/review', 'post /theses/t1/review', 'post /theses/t1/mark-met', 'post /theses/t1/archive', 'delete /theses/t1',
   ]);
   assert.deepEqual(calls[1].a, { expectedRevision: 2, title: 'y', source: 'mcp' });
   assert.deepEqual(calls[2].a, { answer: 'close', outcome: { kind: 'not_acted' }, source: 'mcp' });
+  assert.deepEqual(calls[3].a, { answer: 'revise', expectedRevision: 2, nextStep: 'z', allowAlreadyMet: true, source: 'mcp' });
+  assert.deepEqual(calls[5].a, {});
+});
+
+test('get: agentHints from the thesis and its fires; a body without a thesis still reaches the agent', async () => {
+  let reply = { thesis: thesis({ fires: [{ kind: 'condition_missed' }] }) };
+  const { call } = setup(() => reply);
+  let { body } = await call('dwlf_get_thesis', { thesisId: 't1' });
+  assert.match(body.agentHints.summary, /^AMZN "Next DCL above 220" \(t1\): challenged\./);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.fireKind), ['condition_missed']);
+  reply = { thesis: null };
+  ({ body } = await call('dwlf_get_thesis', { thesisId: 't1' }));
+  assert.equal(body.thesis, null);
 });
 
 test('fires: cursor passed through; summary counts kinds and unacknowledged loud fires', async () => {
@@ -125,12 +139,13 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
   const parsed = shape.parse({
     thesisId: 't1', expectedRevision: 1,
     steps: [{ conditions: [
-      { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3 },
+      { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3, level: { op: 'inside', low: 1, high: 2, tolerancePct: 0.5 } },
       { type: 'volume_spike', multiple: 2 },
-    ] }],
+    ], weight: 1 }],
   });
+  assert.equal(parsed.steps[0].weight, 1);
   assert.deepEqual(parsed.steps[0].conditions, [
-    { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3 },
+    { id: 'c1', type: 'pivot_confirmed', timeframe: 'daily', side: 'low', confirmBars: 3, level: { op: 'inside', low: 1, high: 2, tolerancePct: 0.5 } },
     { type: 'volume_spike', multiple: 2 },
   ]);
   assert.equal(parsed.steps[0].match, 'any');

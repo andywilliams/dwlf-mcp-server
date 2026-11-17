@@ -43,14 +43,15 @@ type Thesis = { thesisId?: string; symbol?: string; title?: string; status?: str
 
 const countBy = (items: Json[], key: string): Record<string, number> => {
   const out: Record<string, number> = {};
-  for (const i of items) { const k = String(i[key] ?? 'unknown'); out[k] = (out[k] || 0) + 1; }
+  for (const i of items) { const k = String(i[key] ?? 'without one'); out[k] = (out[k] || 0) + 1; }
   return out;
 };
 const describeCounts = (counts: Record<string, number>): string => Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ');
 // SPT owns the vocabulary; a value this version does not know is named, not dropped, so drift shows.
 const UNKNOWN = 'Not described by this version of @dwlf/mcp-server (SPT added it): see dwlf_list_thesis_condition_types.';
-const pick = (defs: Record<string, string>, keys: string[]): Record<string, string> =>
-  Object.fromEntries([...new Set(keys)].filter((k) => k !== 'undefined').map((k) => [k, defs[k] ?? UNKNOWN]));
+/** The definition of each distinct value present (nullish values skipped), UNKNOWN for one the table lacks. */
+const definitionsFor = (defs: Record<string, string>, values: unknown[]): Record<string, string> =>
+  Object.fromEntries([...new Set(values.filter((v) => v !== null && v !== undefined).map(String))].map((k) => [k, defs[k] ?? UNKNOWN]));
 
 const thesisLine = (t: Thesis): string => {
   const steps = Array.isArray(t.steps) ? t.steps.length : 0;
@@ -65,9 +66,9 @@ const thesisDefinitions = (theses: Thesis[], fires: Json[] = []) => {
     ...(((t as Json).invalidation || []) as Json[]),
   ]);
   return {
-    status: pick(STATUS_DEFINITIONS, theses.map((t) => String(t.status))),
-    conditionState: pick(CONDITION_STATE_DEFINITIONS, conditions.map((c) => String((c.state as Json | undefined)?.status))),
-    ...(fires.length ? { fireKind: pick(FIRE_KIND_DEFINITIONS, fires.map((f) => String(f.kind))) } : {}),
+    status: definitionsFor(STATUS_DEFINITIONS, theses.map((t) => t.status)),
+    conditionState: definitionsFor(CONDITION_STATE_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.status)),
+    ...(fires.length ? { fireKind: definitionsFor(FIRE_KIND_DEFINITIONS, fires.map((f) => f.kind)) } : {}),
   };
 };
 
@@ -84,14 +85,14 @@ const fail = (error: unknown) => {
   const body = axios.isAxiosError(error) ? error.response?.data : undefined;
   const disabled = body && typeof body === 'object' && (body as Json).error === 'THESES_DISABLED';
   const detail = disabled
-    ? ' Thesis alerts are not switched on for this platform yet (the theses.enabled setting); nothing was saved.'
+    ? ' Thesis alerts are not switched on for this platform yet (the theses.enabled setting).'
     : body && typeof body === 'object' ? `\n${JSON.stringify(body, null, 2)}` : '';
   return { content: [{ type: 'text' as const, text: `Error: ${message}${detail}` }], isError: true };
 };
 
-// ── condition schemas (SPT validates and sets the limits; these tell the agent the shape) ──
+// Condition schemas: SPT validates and sets the limits; these tell the agent the shape.
 // Loose objects and a catch-all type: a field or type SPT adds later reaches it unchanged (stripping a field would
-// change the condition, which re-arms it), so an older MCP version can still revise a newer thesis.────────────────────────────────────────
+// change the condition, which re-arms it), so an older MCP version can still revise a newer thesis. Every nested object is loose too.
 
 const symbolField = z.string().optional().describe('Defaults to the thesis symbol. Set it when the chart and the instrument differ (e.g. watch QQQ for a CNX1 trade).');
 const timeframe = z.enum(['daily', 'weekly']);
@@ -104,8 +105,8 @@ const knownCondition = z.discriminatedUnion('type', [
     side: z.enum(['low', 'high']),
     after: z.string().optional().describe('YYYY-MM-DD. Only a pivot DATED after this counts: for "the next daily cycle low", set it to the last low you already know of.'),
     level: z.union([
-      z.object({ op: z.enum(['above', 'below']), value: z.number().positive(), label: z.string().optional() }),
-      z.object({ op: z.literal('inside'), low: z.number().positive(), high: z.number().positive(), label: z.string().optional() }),
+      z.looseObject({ op: z.enum(['above', 'below']), value: z.number().positive(), label: z.string().optional() }),
+      z.looseObject({ op: z.literal('inside'), low: z.number().positive(), high: z.number().positive(), label: z.string().optional() }),
     ]).optional().describe('The first such pivot inside the level = met; outside = missed (the thesis is challenged). Compared with the pivot bar\'s intraday low/high.'),
   }),
   z.looseObject({
@@ -125,7 +126,7 @@ const conditionSchema = z.union([
   z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') }),
 ]);
 
-const stepsSchema = z.array(z.object({
+const stepsSchema = z.array(z.looseObject({
   match: z.enum(['any', 'all']).default('any').describe('The step is met when any (or all) of its conditions are.'),
   conditions: z.array(conditionSchema).min(1),
 })).min(1).describe('Ordered: step n+1 is checked only after step n is met. Limits: dwlf_list_thesis_condition_types.');
@@ -225,7 +226,8 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
     async ({ thesisId }) => {
       try {
         const data = await client.get(`/theses/${encodeURIComponent(thesisId)}`) as Json;
-        const t = data.thesis as Thesis & { fires?: Json[] };
+        const t = data.thesis as (Thesis & { fires?: Json[] }) | undefined;
+        if (!t) { return ok(data, { summary: 'The response carried no thesis.', why: WHY }); }
         return ok(data, { summary: thesisLine(t), definitions: thesisDefinitions([t], t.fires || []), why: WHY });
       } catch (error) { return fail(error); }
     }
@@ -263,7 +265,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
     {
       thesisId: z.string().describe('Thesis ID'),
       answer: z.enum(['keep', 'revise', 'close']),
-      outcome: z.object({
+      outcome: z.looseObject({
         kind: z.enum(['acted', 'not_acted', 'note']),
         note: z.string().optional(),
         links: z.array(z.string()).max(5).optional(),
@@ -274,11 +276,12 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
       nextStep: textFields.nextStep,
       steps: stepsSchema.optional(),
       invalidation: invalidationSchema.optional(),
+      allowAlreadyMet: z.boolean().optional().describe('For revise: save even if a step condition is already true now.'),
     },
-    async ({ thesisId, answer, outcome, expectedRevision, title, context, nextStep, steps, invalidation }) => {
+    async ({ thesisId, answer, outcome, expectedRevision, title, context, nextStep, steps, invalidation, allowAlreadyMet }) => {
       try {
         const body = defined({
-          answer, outcome, expectedRevision, title, context, nextStep, source: 'mcp',
+          answer, outcome, expectedRevision, title, context, nextStep, allowAlreadyMet, source: 'mcp',
           steps: stepsWithSymbols(steps as { match: string; conditions: Json[] }[] | undefined), invalidation: withSymbols(invalidation as Json[] | undefined),
         });
         const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/review`, body) as Json;
@@ -311,7 +314,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
     { thesisId: z.string().describe('Thesis ID') },
     async ({ thesisId }) => {
       try {
-        const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/archive`) as Json;
+        const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/archive`, {}) as Json;
         return ok(data, { summary: `Archived ${thesisId}: kept, no longer checked.`, why: WHY });
       } catch (error) { return fail(error); }
     }
@@ -344,7 +347,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
         const summary = fires.length
           ? `${fires.length} fire(s): ${describeCounts(countBy(fires, 'kind'))}; ${unacked} not yet acknowledged. Keep \`cursor\` for the next read.`
           : 'No new fires. Keep `cursor` for the next read.';
-        return ok(data, { summary, definitions: { fireKind: pick(FIRE_KIND_DEFINITIONS, fires.map((f) => String(f.kind))) }, why: WHY });
+        return ok(data, { summary, definitions: { fireKind: definitionsFor(FIRE_KIND_DEFINITIONS, fires.map((f) => f.kind)) }, why: WHY });
       } catch (error) { return fail(error); }
     }
   );
