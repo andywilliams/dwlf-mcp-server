@@ -159,13 +159,18 @@ export const BLOCK_SCHEMAS: Readonly<Record<string, (shared: Shape) => Shape>> =
     ...shared,
     side: z.enum(['low', 'high']).optional().describe('Omit for both sides. `low` = the next cycle-low window; `high` = the next cycle-high window.'),
   }),
+  // The values stay the engine's (identifiers); the words around them are Block's.
+  dwlf_get_divergences: (shared: Shape) => ({
+    ...shared,
+    direction: z.enum(['bullish', 'bearish']).optional().describe('Where it was measured: the first value at lows, the second at highs.'),
+  }),
   dwlf_get_evaluation_status: (shared: Shape) => ({
     ...shared,
     requestId: z.string().describe('Evaluation request ID returned by dwlf_evaluate_custom_event'),
   }),
   dwlf_describe_strategy_nodes: (shared: Shape) => ({
     ...shared,
-    nodeType: z.string().optional().describe('Return only this one node (a condition or a logic gate, by its node type id).'),
+    nodeType: z.string().optional().describe('Give only this one node (a condition or a logic gate, by its node type id).'),
     category: z.enum(['condition', 'logic']).optional().describe('`condition` (indicator and event conditions) or `logic` (the and/or/not/then gates that combine them).'),
   }),
 });

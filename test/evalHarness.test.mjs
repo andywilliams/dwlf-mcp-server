@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { startFixtureServer } from '../eval/fixture-server.mjs';
+import { startFixtureServer, replayEnv } from '../eval/fixture-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -18,7 +18,7 @@ test('the harness lists Block tools and names a missing recording', async () => 
   const fixtures = await startFixtureServer({ dir });
   const mcp = new Client({ name: 'eval-test', version: '0' });
   await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-    env: { PATH: process.env.PATH || '', DWLF_API_URL: fixtures.url, DWLF_API_KEY: 'eval-fixture' }, stderr: 'ignore' }));
+    env: replayEnv(fixtures.url), stderr: 'ignore' }));
   try {
     const names = (await mcp.listTools()).tools.map((t) => t.name);
     assert.ok(names.includes('dwlf_get_conditions'));
@@ -96,4 +96,18 @@ test('an undated fixture is reported stale', async () => {
   writeFileSync(fixtureFile(dir, key), JSON.stringify({ key, status: 200, body: {} }));
   const fixtures = await startFixtureServer({ dir });
   try { await fetch(`${fixtures.url}/v2/x`); assert.deepEqual([...fixtures.stale], [key]); } finally { await fixtures.close(); }
+});
+
+test('under replay a tool cannot reach a live host: anything but the fixture origin goes to a closed proxy', async () => {
+  const mcp = new Client({ name: 'eval-test', version: '0' });
+  // A base URL the harness did not point at the fixtures (as a re-pointed client with its own variable would have).
+  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+    env: { ...replayEnv('http://127.0.0.1:1'), DWLF_API_URL: 'https://api.dwlf.invalid' }, stderr: 'ignore' }));
+  try {
+    const r = await mcp.callTool({ name: 'dwlf_get_divergences', arguments: {} });
+    assert.equal(r.isError, true);
+    const text = r.content.map((c) => c.text).join(' ');
+    assert.match(text, /ECONNREFUSED|127\.0\.0\.1:9/, text);
+    assert.doesNotMatch(text, /ENOTFOUND/, 'the request went to DNS, not the closed proxy');
+  } finally { await mcp.close(); }
 });

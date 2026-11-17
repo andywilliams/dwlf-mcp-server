@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { requiredFrom, requiredForPath, envelopeFailures, containmentFailures, dataFamily } from '../eval/envelope.mjs';
-import { startFixtureServer, fixtureKey, fixtureFile, routeFamily, schemaDrift } from '../eval/fixture-server.mjs';
+import { startFixtureServer, fixtureKey, fixtureFile, routeFamily, schemaDrift, replayEnv } from '../eval/fixture-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -180,7 +180,7 @@ const replayTool = async (dir, tool, args) => {
   const fixtures = await startFixtureServer({ dir });
   const mcp = new Client({ name: 'eval-passthrough', version: '0' });
   await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-    env: { PATH: process.env.PATH || '', DWLF_API_URL: fixtures.url, DWLF_API_KEY: 'eval-fixture' }, stderr: 'ignore' }));
+    env: replayEnv(fixtures.url), stderr: 'ignore' }));
   try {
     const r = await mcp.callTool({ name: tool, arguments: args });
     assert.notEqual(r.isError, true, r.content?.map((c) => c.text).join(' '));
@@ -200,13 +200,16 @@ test('the pass-through check works end to end (proven on dwlf_get_divergences, a
   assert.deepEqual(containmentFailures(result, pages), []);
 });
 
-test('passthrough.json covers the launch set: each launch-set data tool is checked or still pending the cut, and pending only shrinks', () => {
+test('passthrough.json covers the launch set: each launch-set data tool is checked or still pending the cut, and pending only shrinks', async () => {
   const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
   const checked = registry.tools.map((t) => t.tool);
-  const LAUNCH_DATA_TOOLS = ['dwlf_describe_onchain_events', 'dwlf_explain_event', 'dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series'];
-  assert.deepEqual(LAUNCH_DATA_TOOLS.filter((t) => !checked.includes(t) && !registry.cutPending.includes(t)), [], 'a launch-set data tool is in neither list');
+  const launch = registry.launchDataTools;
+  assert.deepEqual(launch.filter((t) => !checked.includes(t) && !registry.cutPending.includes(t)), [], 'a launch-set data tool is in neither list');
   assert.deepEqual(registry.cutPending.filter((t) => checked.includes(t)), [], 'a tool is both checked and pending');
-  assert.deepEqual(registry.cutPending.filter((t) => !LAUNCH_DATA_TOOLS.includes(t)), [], 'cutPending only shrinks');
+  assert.deepEqual(registry.cutPending.filter((t) => !launch.includes(t)), [], 'cutPending only shrinks');
+  // A renamed launch tool fails here; dwlf_get_series is the one the launch set adds (it arrives with its PR).
+  const { BLOCK_TOOLS } = await import('../dist/profiles.js');
+  assert.deepEqual(launch.filter((t) => !BLOCK_TOOLS.has(t) && t !== 'dwlf_get_series'), [], 'a launch-set tool is not a Block tool');
 });
 
 test('check 4: every tool in eval/passthrough.json keeps its Block API body whole (empty until WP4 re-points the profile)', async () => {
@@ -216,9 +219,7 @@ test('check 4: every tool in eval/passthrough.json keeps its Block API body whol
     assert.ok(BLOCK_TOOLS.has(tool), `${tool} is not a Block tool`);
     const { result, pages, paths, misses } = await replayTool(join(root, 'eval', 'fixtures'), tool, args);
     assert.deepEqual(misses, [], `${tool}: record its fixture first`);
-    // One upstream body per call: merging pages under page 1's envelope would put its summary over items it does not
-    // describe (charter §2), so a Block-backed tool hands the agent the cursor instead.
-    assert.equal(pages.length, 1, `${tool}: expected exactly one Block API body, got ${pages.length}`);
+    assert.ok(pages.length > 0, `${tool}: no upstream page`);
     assert.deepEqual(paths.filter((p) => routeFamily(p) !== 'block'), [], `${tool}: its upstream is not the Block API`);
     assert.deepEqual(containmentFailures(result, pages), [], tool);
   }

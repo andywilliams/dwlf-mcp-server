@@ -50,7 +50,7 @@ export function registerDivergenceTools(server: McpServer, client: DWLFClient): 
       confluenceDays: z.number().int().min(1).max(30).optional().describe('The confluence window in bars (weekly: weeks); default 10.'),
       minLayers: z.number().int().min(0).max(CONFLUENCE_LAYERS.length).optional()
         .describe('Keep only items matching at least this many of the requested layers. Needs `confluence`.'),
-      includeRetired: z.boolean().optional().describe('Also return divergences on pivots the cycle ledger later superseded.'),
+      includeRetired: z.boolean().optional().describe('Also include divergences on pivots the cycle ledger later superseded.'),
       explain: z.boolean().optional().describe('Add `definitions` to a plain (version 1) read; version 2 always has them.'),
     },
     async (args) => {

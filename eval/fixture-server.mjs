@@ -46,6 +46,18 @@ const readBody = (req) => new Promise((resolve, reject) => {
 });
 
 /**
+ * The environment for the MCP server under replay: pointed at the fixture origin, with a dummy key, and every other
+ * host made unreachable. HTTP(S)_PROXY names a closed local port and NO_PROXY exempts only the fixture origin, so a
+ * tool that calls a live host directly (a base URL the harness does not set, a hardcoded CDN) fails loudly instead of
+ * passing the eval on live data. axios honours these variables; NODE_USE_ENV_PROXY makes Node's fetch honour them too.
+ */
+export const replayEnv = (fixtureUrl) => ({
+  PATH: process.env.PATH || '', DWLF_API_URL: fixtureUrl, DWLF_API_KEY: 'eval-fixture',
+  HTTP_PROXY: 'http://127.0.0.1:9', HTTPS_PROXY: 'http://127.0.0.1:9', http_proxy: 'http://127.0.0.1:9', https_proxy: 'http://127.0.0.1:9',
+  NO_PROXY: '127.0.0.1', no_proxy: '127.0.0.1', NODE_USE_ENV_PROXY: '1',
+});
+
+/**
  * The saved recordings checked against an OpenAPI other than the newest one in `dir` (by `recordedAt`): a `required`
  * list tightened since shows up here even while replay stays green. Returns `[{ key, openapi, newest }]`.
  */

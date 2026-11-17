@@ -36,7 +36,7 @@ export function registerStageTools(server: McpServer, client: DWLFClient) {
         .min(1)
         .max(150)
         .optional()
-        .describe('Several symbols: returns each stage plus breadth over them'),
+        .describe('Several symbols: each one\'s stage plus breadth over them'),
       group: z
         .string()
         .min(1)

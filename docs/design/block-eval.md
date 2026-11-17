@@ -36,11 +36,10 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   whole (deep-equal; extra keys allowed). So invariant 2's additive enrichment (`filtersApplied`, `agentHints`)
   stays legal. Dropping, renaming or rewriting an upstream field is what fails. That needs no copy of the field
   list, so a field the Block API renames doesn't need an edit here.
-  - **One Block body per call.** `dwlf_get_events`' auto-pagination (a standing decision) merges pages under page 1's
-    envelope, so page 1's `summary` would sit over items it doesn't describe. For SPT shapes it stays; a
-    Block-backed tool returns one Block body and hands the agent the `cursor`. The pass-through test fails a
-    registered tool that fetched more than one. (It doesn't bite at launch: scoped auto-pagination is custom
-    events', which leave the Block profile at the cut.)
+  - So `dwlf_get_events`' auto-pagination (a standing decision) stays legal too. Open, for WP4 when custom events
+    return to Block (scoped auto-pagination is theirs, so it doesn't bite at launch): merged pages sit under page 1's
+    envelope, whose `summary` may not describe them all. Hand the agent the `cursor`, or have the Block API serve
+    the range?
   - **Which tools:** `eval/passthrough.json`. `cutPending` lists the launch-set data tools not yet re-pointed and only
     shrinks; a tool leaves it with its recording. During the eval, a call that reaches a Block API path from a tool
     not in the registry fails its question, so a re-pointed tool left off the file can't pass unchecked.
@@ -239,7 +238,7 @@ None of them has a Block API route, so **the launch set is the table above** and
     decided through its own `lgtm arch`, not here.
   - What the harness assumes today, for WP4 to keep or change in the re-point PR: one fixture origin for both
     upstreams, split by path (`/v1/…`, `/public/v1/…` = Block); a signed-in Block path sent `Bearer`; and the
-    server under test pointed at the fixtures by `DWLF_API_URL` only, with a dummy `DWLF_API_KEY`. If the Block
-    client reads its own base-URL variable, `run.mjs` and the pass-through test must set it to the fixture origin,
-    or replay would reach the live Block API. If it picks public routes by having no key, the eval must not set
-    the dummy key for it.
+    server under test pointed at the fixtures by `DWLF_API_URL` only, with a dummy `DWLF_API_KEY`. Every other host is
+    unreachable under replay (`replayEnv`: a closed proxy, with only the fixture origin exempt), so a Block client
+    reading its own base-URL variable fails the eval loudly until `replayEnv` sets it. If the client picks public
+    routes by having no key, the eval must not set the dummy key for it.

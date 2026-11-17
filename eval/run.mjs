@@ -22,7 +22,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { startFixtureServer, schemaDrift, routeFamily } from './fixture-server.mjs';
+import { startFixtureServer, schemaDrift, routeFamily, replayEnv } from './fixture-server.mjs';
 import { grade } from './grade.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -135,7 +135,7 @@ const main = async () => {
     apiKey: process.env.DWLF_API_KEY, blockKey: process.env.BLOCK_API_KEY });
   // The MCP server never sees the real key: it talks to the fixture server, which adds the key upstream when recording.
   const transport = new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-    env: { PATH: process.env.PATH || '', DWLF_API_URL: fixtures.url, DWLF_API_KEY: 'eval-fixture' }, stderr: 'ignore' });
+    env: replayEnv(fixtures.url), stderr: 'ignore' });
   const mcp = new Client({ name: 'dwlf-eval', version });
   await mcp.connect(transport);
   const listed = (await mcp.listTools()).tools;

@@ -26,11 +26,27 @@ test('the port flags what the list bans and lets its allowed phrases through', (
   assert.equal(bannedWordIn('See https://block.dwlf.co.uk/chart/smc.bos.bullish/ for the chart.'), null);
 });
 
-test('check 7: every Block tool description and the Block instructions pass the wording list', () => {
-  const seen = {};
-  registerAll(profiledServer({ tool: (name, description) => { seen[name] = String(description); }, resource: () => {} }, 'block'), {});
-  assert.deepEqual(Object.keys(seen).sort(), [...BLOCK_TOOLS].sort());
-  const hits = Object.entries({ ...seen, '(block instructions)': String(PROFILE_INSTRUCTIONS.block) })
+/** Every parameter description in a zod shape, with its path (nested objects and arrays too). Enum VALUES are not text: they are the engine's identifiers. */
+const parameterTexts = (shape, prefix = '') => Object.entries(shape || {}).flatMap(([key, schema]) => {
+  const out = [];
+  for (let s = schema, depth = 0; s && depth < 10; depth += 1) {
+    if (typeof s.description === 'string') { out.push([`${prefix}${key}`, s.description]); }
+    const def = s._def || {};
+    if (typeof def.shape === 'function') { out.push(...parameterTexts(def.shape(), `${prefix}${key}.`)); }
+    s = def.innerType || (def.type && typeof def.type === 'object' ? def.type : undefined);
+  }
+  return [...new Map(out.map(([k, v]) => [`${k}\u0000${v}`, [k, v]])).values()];
+});
+
+test('check 7: every Block tool description, parameter description and the Block instructions pass the wording list', () => {
+  const texts = {};
+  registerAll(profiledServer({ tool: (name, description, shape) => {
+    texts[name] = String(description);
+    for (const [path, text] of parameterTexts(shape)) { texts[`${name} (${path})`] = text; }
+  }, resource: () => {} }, 'block'), {});
+  assert.deepEqual(Object.keys(texts).filter((k) => !k.includes(' (')).sort(), [...BLOCK_TOOLS].sort());
+  assert.ok(Object.keys(texts).length > BLOCK_TOOLS.size * 2, 'parameter descriptions were read');
+  const hits = Object.entries({ ...texts, '(block instructions)': String(PROFILE_INSTRUCTIONS.block) })
     .map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
   assert.deepEqual(hits, [], `reword these neutrally (shared text where the change is neutral, blockDescriptions.ts where it is not): ${JSON.stringify(hits)}`);
 });

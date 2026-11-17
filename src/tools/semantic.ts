@@ -21,14 +21,14 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       history: z
         .boolean()
         .optional()
-        .describe('If true, return the dated regime series (newest first) instead of just the current regime'),
+        .describe('If true, give the dated regime series (newest first) instead of just the current regime'),
       limit: z
         .number()
         .int()
         .min(1)
         .max(500)
         .optional()
-        .describe('History entries to return when `history` is true (default 90).'),
+        .describe('History entries to give when `history` is true (default 90).'),
     },
     async ({ symbol, timeframe, history, limit }) => {
       try {
@@ -182,7 +182,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
       purpose: z
         .string()
         .optional()
-        .describe('Optional description of what this account will be used for'),
+        .describe('Optional description of what this account is for'),
     },
     async ({ email, agentId, purpose }) => {
       try {

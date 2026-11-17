@@ -72,7 +72,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
         .max(20)
         .optional()
         .describe(
-          'How many windows OLDER than `current` to return, newest first (0-20, default 0). Use ~10 to see ' +
+          'How many windows OLDER than `current` to include, newest first (0-20, default 0). Use ~10 to see ' +
             'past outcomes and judge how often this symbol\'s lows landed inside the window.'
         ),
       depth: z
@@ -80,7 +80,7 @@ export function registerCycleWindowTools(server: McpServer, client: DWLFClient) 
         .optional()
         .describe(
           'Add each window\'s derived price zone (`depth`, DWLF-416): the typical move into this side\'s pivots, ' +
-            'and as prices from the current cycle\'s anchor. Historical context, not a target.'
+            'and as prices from the current cycle\'s anchor. Historical context, no targets.'
         ),
       generation: z
         .number()

@@ -28,7 +28,7 @@ export function registerMarketDataTools(
       limit: z
         .number()
         .optional()
-        .describe(`Number of most-recent candles to return (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
+        .describe(`Number of most-recent candles to fetch (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
     },
     async ({ symbol, timeframe, limit }) => {
       try {
@@ -201,13 +201,13 @@ export function registerMarketDataTools(
         .optional()
         .describe(
           'Filter by event type (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
-            '`bullish_reversal`, `dss_breakout`).'
+            '`custom_event`).'
         ),
       timeframe: z
         .enum(['1w', '1d', '4h', '1h'])
         .optional()
         .describe(
-          'Filter by candle timeframe. Strongly recommended — without it the API returns ' +
+          'Filter by candle timeframe. Set it — without it the API answers with ' +
             'mostly hourly events and daily-bar fires get truncated past the limit. ' +
             'Use `1w` to query weekly cycle events (e.g. for multi-timeframe DCL analysis).'
         ),
@@ -217,7 +217,7 @@ export function registerMarketDataTools(
         .describe(
           'Restrict to events fired in the last N days (e.g. `5` for the last 5 days). ' +
             '⚠️ DEFAULT IS 7 DAYS if omitted — anything older is silently hidden. ' +
-            'For historical lookups (verifying old cycle pivots, debugging "where did that signal go") ' +
+            'For historical lookups (verifying old cycle pivots, finding an event that seems to have gone) ' +
             'pass an explicit larger value like `days: 120` or use `fromDate`/`toDate` for a precise window. ' +
             'Hit this footgun multiple times across sessions; documenting loudly.'
         ),
@@ -232,11 +232,11 @@ export function registerMarketDataTools(
       uniquePerSymbol: z
         .boolean()
         .optional()
-        .describe('If true, return only the most recent event per symbol (useful for "latest fire" snapshots).'),
+        .describe('If true, give only the most recent event per symbol (useful for "latest fire" snapshots).'),
       limit: z
         .number()
         .optional()
-        .describe('Number of events to return (default: 20).'),
+        .describe('Number of events to give (default: 20).'),
       customEventId: z
         .string()
         .optional()
@@ -244,7 +244,7 @@ export function registerMarketDataTools(
           'Filter to fires of a specific custom event by its event definition ID. ' +
             'Only honoured when `type` is `custom_event` (the tool defaults `type` to `custom_event` ' +
             'when you set this and leave `type` unset). The tool auto-follows pagination for this scoped ' +
-            'query and returns the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
+            'query and gives the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
             '`fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
             'Combine with `symbol` / `symbols` to scope to a single asset, or omit to see fires across the watchlist.'
         ),
@@ -252,7 +252,7 @@ export function registerMarketDataTools(
         .string()
         .optional()
         .describe(
-          'Filter custom event fires by their human-readable name (e.g. `bullish_reversal_1`). ' +
+          'Filter custom event fires by their human-readable name (e.g. `wcl_confirmed`). ' +
             'Only honoured when `type` is `custom_event`. Useful when you know the name but not the ID.'
         ),
     },
@@ -432,7 +432,7 @@ export function registerMarketDataTools(
       limit: z
         .number()
         .optional()
-        .describe('Max events to return (default: 50). Most useful narratives fit in 20-40 rows.'),
+        .describe('Max events to give (default: 50). Most useful narratives fit in 20-40 rows.'),
     },
     async ({ symbol, days, timeframe, limit }) => {
       try {
@@ -667,8 +667,8 @@ export function registerMarketDataTools(
         .boolean()
         .optional()
         .describe(
-          'Add each setup\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
-            'Historical context, not a target.'
+          'Add each row\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
+            'Historical context, no targets.'
         ),
     },
     async ({ depth }) => {

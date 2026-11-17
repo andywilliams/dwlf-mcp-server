@@ -68,7 +68,7 @@ export function registerIndicatorTools(
         .min(1)
         .max(250)
         .optional()
-        .describe('Daily values to return per average (default 1 = latest only; max 250).'),
+        .describe('Daily values to give per average (default 1 = latest only; max 250).'),
     },
     async ({ symbol, days }) => {
       try {
