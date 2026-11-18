@@ -206,7 +206,7 @@ test('passthrough.json covers the launch set: each launch-set data tool is check
   const launch = registry.launchDataTools;
   assert.deepEqual(launch.filter((t) => !checked.includes(t) && !registry.cutPending.includes(t)), [], 'a launch-set data tool is in neither list');
   assert.deepEqual(registry.cutPending.filter((t) => checked.includes(t)), [], 'a tool is both checked and pending');
-  // cutPending never grows past its 17-Nov baseline (a hand-kept copy here, as evalGrade.test.mjs does for pending.json).
+  // cutPending never grows past its 17-Nov baseline (a hand-kept copy here).
   const CUT_PENDING_BASELINE_2026_11_17 = ['dwlf_describe_onchain_events', 'dwlf_explain_event', 'dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series'];
   assert.deepEqual(registry.cutPending.filter((t) => !CUT_PENDING_BASELINE_2026_11_17.includes(t)), [], 'a tool was ADDED to cutPending');
   assert.deepEqual(registry.cutPending.filter((t) => !launch.includes(t)), [], 'cutPending holds launch-set tools only');

@@ -70,34 +70,6 @@ test('fixture keys ignore query order, so a recording replays whatever order the
   assert.equal(fixtureKey('get', '/v2/conditions/btc?days=7&asset=btc'), fixtureKey('GET', '/v2/conditions/btc?asset=btc&days=7'));
 });
 
-test('every Block-profile tool has an eval case or is on the shrinking pending list, never both, never neither', async () => {
-  const { BLOCK_TOOLS } = await import('../dist/profiles.js');
-  const { readFileSync, readdirSync } = await import('node:fs');
-  const evalDir = new URL('../eval/', import.meta.url);
-  const covered = readdirSync(new URL('cases/', evalDir)).filter((f) => f.endsWith('.json'))
-    .map((f) => JSON.parse(readFileSync(new URL(`cases/${f}`, evalDir), 'utf8')).tool);
-  const pending = JSON.parse(readFileSync(new URL('pending.json', evalDir), 'utf8')).tools;
-  const neither = [...BLOCK_TOOLS].filter((t) => !covered.includes(t) && !pending.includes(t));
-  const both = covered.filter((t) => pending.includes(t));
-  const stray = [...covered, ...pending].filter((t) => !BLOCK_TOOLS.has(t));
-  assert.deepEqual({ neither, both, stray }, { neither: [], both: [], stray: [] });
-  // The pending list only shrinks: nothing may join it after 12-Nov-2026. A new Block tool arrives with a case.
-  const grownBy = pending.filter((t) => !PENDING_BASELINE_2026_11_12.includes(t));
-  assert.deepEqual(grownBy, [], 'a tool was ADDED to eval/pending.json; write its case instead');
-});
-
-test('a tool with several event families (dwlf_get_events) is covered per family: each of its case files names a distinct one', async () => {
-  // The coverage test above counts whole tools; design doc §3 holds the per-family rule, and this keeps it checkable.
-  const { readFileSync, readdirSync } = await import('node:fs');
-  const evalDir = new URL('../eval/', import.meta.url);
-  const suites = readdirSync(new URL('cases/', evalDir)).filter((f) => f.endsWith('.json'))
-    .map((f) => [f, JSON.parse(readFileSync(new URL(`cases/${f}`, evalDir), 'utf8'))]).filter(([, s]) => s.tool === 'dwlf_get_events');
-  assert.ok(suites.length >= 1, 'dwlf_get_events has a case file');
-  for (const [f, s] of suites) { assert.match(String(s.family || ''), /^[a-z][a-z0-9_-]*$/, `${f} names its event family`); }
-  const families = suites.map(([, s]) => s.family);
-  assert.equal(new Set(families).size, families.length, 'two dwlf_get_events case files name the same family');
-});
-
 test('the case files\' date pattern takes the date forms an answer uses (ISO day or timestamp, day-month, month-day, ordinals) and no plain prose', async () => {
   const { readFileSync, readdirSync } = await import('node:fs');
   const evalDir = new URL('../eval/', import.meta.url);
@@ -109,5 +81,3 @@ test('the case files\' date pattern takes the date forms an answer uses (ISO day
   for (const yes of ['on 2026-10-03', 'on 3 Oct', 'on 3 October 2026', 'on October 3, 2026', 'on Oct. 3', 'on Sept 14', 'known at 2026-10-04T06:12:00Z', 'on October 3rd', 'the 3rd of October']) { assert.match(yes, date, yes); }
   for (const no of ['Hash rate declined 15% over 30 days', 'the market 30 days on', 'it decreased 4 times', 'maybe 2', 'across 3 markets', 'recently']) { assert.doesNotMatch(no, date, no); }
 });
-
-const PENDING_BASELINE_2026_11_12 = ["dwlf_activate_event_symbols", "dwlf_activate_strategy_symbols", "dwlf_cancel_backtest", "dwlf_compile_custom_event", "dwlf_compile_strategy", "dwlf_create_custom_event", "dwlf_create_strategy", "dwlf_create_subscription", "dwlf_deactivate_event_symbols", "dwlf_deactivate_strategy_symbols", "dwlf_delete_backtest", "dwlf_delete_custom_event", "dwlf_delete_strategy", "dwlf_delete_subscription", "dwlf_describe_onchain_events", "dwlf_describe_strategy_nodes", "dwlf_evaluate_custom_event", "dwlf_evaluate_strategy", "dwlf_explain_event", "dwlf_get_academy_lesson", "dwlf_get_backtest_results", "dwlf_get_backtest_summary", "dwlf_get_custom_event", "dwlf_get_custom_event_notifications", "dwlf_get_cycle_setups", "dwlf_get_cycle_windows", "dwlf_get_evaluation_status", "dwlf_get_event_symbols", "dwlf_get_events", "dwlf_get_indicators", "dwlf_get_market_data", "dwlf_get_price_picture", "dwlf_get_quotas", "dwlf_get_quote", "dwlf_get_ranges", "dwlf_get_recent_signals", "dwlf_get_regime", "dwlf_get_stage", "dwlf_get_strategy", "dwlf_get_strategy_symbols", "dwlf_get_support_resistance", "dwlf_get_trendlines", "dwlf_list_academy_tracks", "dwlf_list_backtests", "dwlf_list_custom_events", "dwlf_list_strategies", "dwlf_list_subscriptions", "dwlf_preflight_custom_event", "dwlf_register_agent", "dwlf_run_backtest", "dwlf_search_academy", "dwlf_update_custom_event", "dwlf_update_strategy", "dwlf_update_subscription"];

@@ -1,6 +1,6 @@
 {
   "tool": "dwlf_get_conditions",
-  "note": "Three questions per Block tool, one a trap (DWLF-804). Facts are graded against the recorded tool output by the judge; these expectations are the parts that must not depend on its opinion.",
+  "note": "Three questions per Block tool, one a trap (DWLF-804). Facts are graded against the tool output with the rubric (eval/MANUAL.md); these expectations are the parts that must not depend on its opinion.",
   "questions": [
     {
       "id": "where-is-btc",

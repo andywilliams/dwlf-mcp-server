@@ -19,7 +19,6 @@
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
     "test": "npm run build && node --test test/*.test.mjs",
-    "eval": "npm run build && node eval/run.mjs",
     "wording:sync": "node scripts/wording-sync.mjs"
   },
   "keywords": [
@@ -55,7 +54,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
     "@types/node": "^25.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
