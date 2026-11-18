@@ -186,8 +186,8 @@ export function registerMarketDataTools(
       'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them. ' +
       'On-chain (`onchain.*`, Bitcoin): only on BTCOC/USD and only daily, so pass `symbol: "BTCOC"` and `timeframe: "1d"`; ' +
       'with no `type` its TA events come too, so name a type to read one (dwlf_describe_onchain_events lists them; ' +
-      'dwlf_explain_event gives one type\'s definition and occurrences). Each on-chain row carries an `onchain` block whose ' +
-      '`confirmedAt` is when it became knowable: a row dated D is confirmed on D+1, so give `confirmedAt` as when it was known.',
+      'dwlf_explain_event gives one type\'s definition and occurrences). When a row became knowable: its `confirmedAt` ' +
+      '(inside the `onchain` block on on-chain rows) when it has one, else its `eventTimestamp`; give that, not the row\'s date, as when it was known.',
     {
       symbol: z
         .string()

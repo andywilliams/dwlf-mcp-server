@@ -1,6 +1,7 @@
 {
   "tool": "dwlf_get_events",
-  "note": "DWLF-822 (WP7, DWLF-804): Bitcoin's on-chain events (`onchain.*`, on BTCOC/USD, daily). Three questions, one a trap. A fixed window keeps the request the same each run, so replay serves it; the judge grades the facts against the recorded rows, and dates by `onchain.confirmedAt`.",
+  "family": "onchain",
+  "note": "DWLF-822 (WP7, DWLF-804): Bitcoin's on-chain events (`onchain.*`, on BTCOC/USD, daily). Three questions, one a trap. A fixed window keeps the request the same each run, so replay serves it; the judge grades the facts against the recorded rows, and dates by `onchain.confirmedAt`. `family`: this tool reads several event families, and each family the Block profile serves needs its own case file (design doc §3).",
   "questions": [
     {
       "id": "onchain-october",
