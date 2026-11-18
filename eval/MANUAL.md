@@ -27,15 +27,17 @@ or spend anything, even with a real key.
    ```
    CASE=conditions; ID=where-is-btc
    T=$(mktemp -d)
-   read -rs "DWLF_API_KEY?DWLF key: "; echo; export DWLF_API_KEY
+   printf 'DWLF key: '; read -rs DWLF_API_KEY; echo; export DWLF_API_KEY   # bash or zsh
    printf '{"mcpServers":{"dwlf":{"command":"node","args":["%s/dist/index.js","--profile","block"],"env":{"DWLF_API_KEY":"${DWLF_API_KEY}"}}}}' "$PWD" > "$T/mcp.json"
    Q=$(node -e "const c=require('./eval/cases/$CASE.json'); process.stdout.write(c.questions.find((x)=>x.id==='$ID').q)")
    ```
-3. Ask it, allowing only the read tools the cases are about:
+3. Ask it, allowing every Block **read** tool (`get`, `list`, `describe`, `explain` and `search`). Write tools are
+   denied, so the agent picks among the same read tools a real agent sees:
    ```
+   ALLOW=$(node --input-type=module -e "import { BLOCK_TOOLS } from './dist/profiles.js'; console.log([...BLOCK_TOOLS].filter((n) => /^dwlf_(get|list|describe|explain|search)_/.test(n)).map((n) => 'mcp__dwlf__' + n).join(','))")
    claude -p "$Q" --output-format stream-json --verbose --no-session-persistence \
      --strict-mcp-config --mcp-config "$T/mcp.json" --tools "" --setting-sources "" \
-     --allowedTools mcp__dwlf__dwlf_get_conditions mcp__dwlf__dwlf_get_events mcp__dwlf__dwlf_describe_onchain_events mcp__dwlf__dwlf_explain_event mcp__dwlf__dwlf_get_divergences \
+     --allowedTools "$ALLOW" \
      --system-prompt "You are an assistant helping a user with Bitcoin market information. You have DWLF Block's tools. Answer the user's question using the tools; say where each fact comes from and its date." \
      > "$T/run.jsonl"
    jq -r 'select(.type=="result") | .result' "$T/run.jsonl" > "$T/answer.txt"
