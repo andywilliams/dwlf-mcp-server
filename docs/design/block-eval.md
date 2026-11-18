@@ -28,9 +28,18 @@ a PR check. Free, with no secrets and no model calls.**
     So a routine re-record changes no snapshot unless the MCP's own layer or its selection changed, and the diff a
     reviewer reads is only that.
   - A changed MCP layer fails until the snapshot is regenerated in the same PR. A call with no recording fails.
+  - **Coverage rule (replaces run.mjs's runtime check):**
+    - every tool in `passthrough.json` `tools` has a calls file with at least one call, and a snapshot;
+    - every launch-set data tool is either in `tools` or still in `cutPending`;
+    - during the snapshot run, a call that reaches a Block API path from a tool not in `tools` fails.
+    So a B4 PR that re-points a tool but leaves it in `cutPending`, or adds no calls file, is red.
+  - **Scope:** the Block profile only. Whether the `full` profile's outstanding "add tests" decision reuses this
+    runner is not decided here. Its tools are SPT-backed, and their recordings would carry vendor data that the
+    T3 rule keeps out of this public repo.
 - **T2 · The banned-terms check on sentence text.** The vendored list (check 7) runs over:
   - every tool's description, parameter descriptions and the Block instructions (as today);
-  - **every string in every snapshot that contains a space.** A single token is an identifier or an enum value
+  - **every string that contains a space in each tool's actual output**, computed in the test from the recordings.
+    That is the whole output, upstream sentences included, not the slimmed snapshot file. A single token is an identifier or an enum value
     (`rsi.midline.bullish`, `direction: "bearish"`) and is skipped, the rule check 7 already applies to enum values.
   - Measured 18-Nov on all three public Block API routes (9,552 strings): every sentence passes, and the only hits
     are identifiers.
@@ -44,8 +53,12 @@ a PR check. Free, with no secrets and no model calls.**
   - Recorded from the Block API's **public routes**: keyless, the Free view, data the API already publishes.
     - Checked 18-Nov: every public body is DWLF's own data. Events are all `BTCOC/USD` (DWLF's node), and series
       say "on DWLF's own data". There are no vendor (Twelve Data) values.
-    - This repo is public and keeps its history, so every fixture diff is read before commit for vendor-derived
-      or personal values. A fixture holding either isn't committed.
+    - This repo is public and keeps its history, so a fixture holding vendor-derived or personal values isn't
+      committed. Two guards:
+      - a **fixture lint in `npm test`**: every item with a `symbol` is `BTCOC/USD`, and no item carries a price
+        field (`price`, `close`, `level`, `value`) under any other symbol or with `priceWithheld: false`;
+      - a person reads the fixture diff. The conditions price ladder and the on-chain price crosses are checked
+        by hand at the first recording, since a sentence could quote a vendor close: the lint can't read prose.
     - Publishing DWLF's own Free-view data in an MIT repo is Andy's call, made by tapping the PR that adds it.
   - Recorded once by hand (GETs only, the key never written), then replayed in CI with no credential.
   - Signed-in views (`/v1/*`, the account tool) are recorded when keys exist, with a Block **test** account's
