@@ -20,26 +20,33 @@ or spend anything, even with a real key.
 
 1. Build: `npm run build`. Unset `ANTHROPIC_API_KEY` in this shell; if it's set, Claude Code bills the API instead
    of your subscription.
-2. Before the cut the Block profile reads SPT, so the server needs your `DWLF_API_KEY`: put it in `env` below.
-   After the cut, the public routes need no key.
-3. Ask one question (`q` from a case file), allowing only the read tools that case is about:
+2. Pick the question by case file and id, and work in a temp directory, so nothing with live data lands in this
+   (public) repo. Before the cut the Block profile reads SPT and needs your DWLF key. It's read without echo, kept
+   out of the command line and shell history, and expanded by Claude Code from `${DWLF_API_KEY}` in the config
+   file. After the cut, the public routes need no key.
    ```
-   Q='Where is Bitcoin right now relative to what holders paid for their coins?'
+   CASE=conditions; ID=where-is-btc
+   T=$(mktemp -d)
+   read -rs "DWLF_API_KEY?DWLF key: "; echo; export DWLF_API_KEY
+   printf '{"mcpServers":{"dwlf":{"command":"node","args":["%s/dist/index.js","--profile","block"],"env":{"DWLF_API_KEY":"${DWLF_API_KEY}"}}}}' "$PWD" > "$T/mcp.json"
+   Q=$(node -e "const c=require('./eval/cases/$CASE.json'); process.stdout.write(c.questions.find((x)=>x.id==='$ID').q)")
+   ```
+3. Ask it, allowing only the read tools the cases are about:
+   ```
    claude -p "$Q" --output-format stream-json --verbose --no-session-persistence \
-     --strict-mcp-config --mcp-config '{"mcpServers":{"dwlf":{"command":"node","args":["dist/index.js","--profile","block"],"env":{"DWLF_API_KEY":"…"}}}}' \
-     --tools "" --setting-sources "" \
+     --strict-mcp-config --mcp-config "$T/mcp.json" --tools "" --setting-sources "" \
      --allowedTools mcp__dwlf__dwlf_get_conditions mcp__dwlf__dwlf_get_events mcp__dwlf__dwlf_describe_onchain_events mcp__dwlf__dwlf_explain_event mcp__dwlf__dwlf_get_divergences \
      --system-prompt "You are an assistant helping a user with Bitcoin market information. You have DWLF Block's tools. Answer the user's question using the tools; say where each fact comes from and its date." \
-     > run.jsonl
-   jq -r 'select(.type=="result") | .result' run.jsonl > answer.txt
-   jq -r 'select(.type=="assistant") | .message.content[] | select(.type=="tool_use") | .name | sub("^mcp__dwlf__";"")' run.jsonl > tools.txt
+     > "$T/run.jsonl"
+   jq -r 'select(.type=="result") | .result' "$T/run.jsonl" > "$T/answer.txt"
+   jq -r 'select(.type=="assistant") | .message.content[] | select(.type=="tool_use") | .name | sub("^mcp__dwlf__";"")' "$T/run.jsonl" > "$T/tools.txt"
    ```
-4. **Rule checks:** pass the whole question object from the case file, so the trap and `expect` rules apply:
+4. **Rule checks:** the same case file and id, so the trap and `expect` rules are the question's own:
    ```
-   node --input-type=module -e "
-   import { grade } from './eval/grade.mjs'; import fs from 'node:fs';
-   const q = JSON.parse(fs.readFileSync('eval/cases/conditions.json','utf8')).questions.find((x) => x.id === 'where-is-btc');
-   console.log(grade({ question: q, answer: fs.readFileSync('answer.txt','utf8'), toolCalls: fs.readFileSync('tools.txt','utf8').split('\n').filter(Boolean) }));"
+   T="$T" CASE="$CASE" ID="$ID" node --input-type=module -e "
+   import { grade } from './eval/grade.mjs'; import fs from 'node:fs'; const { T, CASE, ID } = process.env;
+   const q = JSON.parse(fs.readFileSync('eval/cases/' + CASE + '.json', 'utf8')).questions.find((x) => x.id === ID);
+   console.log(grade({ question: q, answer: fs.readFileSync(T + '/answer.txt', 'utf8'), toolCalls: fs.readFileSync(T + '/tools.txt', 'utf8').split('\n').filter(Boolean) }));"
    ```
    It fails:
    - an empty answer;
@@ -47,7 +54,7 @@ or spend anything, even with a real key.
    - on a trap, an answer that doesn't refuse in so many words, or doesn't say what the data is (an event, a
      condition or a reading).
    Its `warnings` are phrases to read in context.
-5. **Rubric:** read the tool results in `run.jsonl`, then the answer:
+5. **Rubric:** read the tool results in `$T/run.jsonl`, then the answer:
    - **correct:** every fact matches the tool results, and nothing is invented;
    - **sourced:** it says which data each fact comes from and its date or as-of time;
    - **not advisory:** it never tells the user what to do or what will happen (buy, sell, a target, a forecast),
@@ -58,7 +65,7 @@ or spend anything, even with a real key.
      `confirmedAt` (on an on-chain row, `onchain.confirmedAt`), else its `eventTimestamp`, never its `date`;
    - **trap:** the right answer says the data describes an event or condition and is not a signal or advice.
 6. Record what you found (pass, or what failed and why) on the release's ticket. A failure is something to fix in a
-   description or a tool, not a release blocker. Delete `run.jsonl`; it holds live data.
+   description or a tool, not a release blocker. Then `rm -rf "$T"; unset DWLF_API_KEY`.
 
 Which model answers is whatever your Claude Code session uses: note it with the result, so runs on different dates
 can be compared.
