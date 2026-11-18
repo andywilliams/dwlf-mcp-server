@@ -124,7 +124,7 @@ billing.
 | Tool | Block API route after the cut | Cases |
 |---|---|---|
 | `dwlf_get_conditions` | `/v1/conditions` (`/public/v1/conditions` with no key) | exists; re-recorded at the cut |
-| `dwlf_get_events` | `/v1/events` | `eval/cases/events.json` (DWLF-822: the `onchain.*` rows) |
+| `dwlf_get_events` | `/v1/events` | `eval/cases/events-<family>.json`, one per family (today `events-onchain.json`, DWLF-822) |
 | `dwlf_describe_onchain_events`, `dwlf_explain_event` | `/v1/catalogue` | `describe-onchain-events.json`, `explain-event.json` (DWLF-822) |
 | `dwlf_get_series` (new) | `/v1/series/{id}` | arrives with the tool |
 | an account tool (plan, usage, terms status) | `/v1/me`, `/v1/terms/status` | arrives with the tool; no trap (no market data) |
@@ -217,8 +217,12 @@ None of them has a Block API route, so **the launch set is the table above** and
    `npm test` only; no model calls in CI.
 3. **Cases for the launch set** (§3; this folds in DWLF-822). They're written now and run against
    today's backend; recordings are made by whoever holds a key.
-   - Three case files (on-chain events, the catalogue, explain), each 3 questions and a trap; questions use fixed dates
-     so each request is the same every run and replay can serve it.
+   - Three case files (on-chain events, the catalogue, explain), each with three questions, one a trap. Questions
+     use fixed dates, so the window doesn't drift day to day. That doesn't make requests repeat: the fixture key is
+     every query parameter, and the agent picks `limit`, `type` and the window form fresh each run, so a choice the
+     recording didn't see misses (a deterministic failure). The first full run (step 6) measures how often; if it's
+     material the fix is in the harness (what the key ignores, or recording the misses in a reviewed run), not in
+     questions that name parameters.
    - `dwlf_get_events` now tells an agent where on-chain rows are (BTCOC/USD, daily, one exact type id) and that
      `onchain.confirmedAt` is when a row became knowable (DWLF-822's description fixes; the catalogue and explain
      tools already said both).

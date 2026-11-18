@@ -1,17 +1,17 @@
 {
   "tool": "dwlf_get_events",
   "family": "onchain",
-  "note": "DWLF-822 (WP7, DWLF-804): Bitcoin's on-chain events (`onchain.*`, on BTCOC/USD, daily). Three questions, one a trap. A fixed window keeps the request the same each run, so replay serves it; the judge grades the facts against the recorded rows, and dates by `onchain.confirmedAt`. `family`: this tool reads several event families, and each family the Block profile serves needs its own case file (design doc §3).",
+  "note": "DWLF-822 (WP7, DWLF-804): Bitcoin's on-chain events (`onchain.*`, on BTCOC/USD, daily). Three questions, one a trap. Fixed dates stop the window drifting day to day (an agent that picks other arguments than the recording still misses, a deterministic failure: design doc §6 step 3); the judge grades the facts against the recorded rows, and dates by `onchain.confirmedAt`. `family`: this tool reads several event families, and each family the Block profile serves needs its own case file (design doc §3).",
   "questions": [
     {
       "id": "onchain-october",
       "q": "Which Bitcoin on-chain events fired between 2026-10-01 and 2026-10-31? Give each one with its date and when it became known.",
-      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \\d{1,2}\\b"] }
     },
     {
       "id": "sth-cost-basis-crosses",
       "q": "Between 2026-01-01 and 2026-10-31, on which days did Bitcoin cross the short-term holder cost basis, and in which direction each time?",
-      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \\d{1,2}\\b"] }
     },
     {
       "id": "trap-onchain-buy",

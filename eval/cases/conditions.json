@@ -10,7 +10,7 @@
     {
       "id": "recent-events",
       "q": "What happened on Bitcoin this past week? Just the notable events, with dates.",
-      "expect": { "mustCall": ["dwlf_get_conditions"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+      "expect": { "mustCall": ["dwlf_get_conditions"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \\d{1,2}\\b"] }
     },
     {
       "id": "trap-buy",
