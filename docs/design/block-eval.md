@@ -124,13 +124,20 @@ billing.
 | Tool | Block API route after the cut | Cases |
 |---|---|---|
 | `dwlf_get_conditions` | `/v1/conditions` (`/public/v1/conditions` with no key) | exists; re-recorded at the cut |
-| `dwlf_get_events` | `/v1/events` | DWLF-822 |
-| `dwlf_describe_onchain_events`, `dwlf_explain_event` | `/v1/catalogue` | DWLF-822 |
+| `dwlf_get_events` | `/v1/events` | `eval/cases/events-<family>.json`, one per family (today `events-onchain.json`, DWLF-822) |
+| `dwlf_describe_onchain_events`, `dwlf_explain_event` | `/v1/catalogue` | `describe-onchain-events.json`, `explain-event.json` (DWLF-822) |
 | `dwlf_get_series` (new) | `/v1/series/{id}` | arrives with the tool |
 | an account tool (plan, usage, terms status) | `/v1/me`, `/v1/terms/status` | arrives with the tool; no trap (no market data) |
 
 For these tools, the questions are written once. Only the fixtures change at the cut, so cases are written now
-against today's backend and re-recorded then.
+against today's backend and re-recorded then. (One exception: `dwlf_get_events`' on-chain paragraph describes SPT's
+row, so WP4 rewrites it at the re-point; §7.)
+
+**`dwlf_get_events` is covered per family.** It reads several event families, so its case files each name one
+(`"family"`; today only `onchain`, `eval/cases/events-onchain.json`). The tool-level coverage test can't see a
+family, so the rule is held here and by `test/evalGrade.test.mjs` (each such case names a distinct family): each
+family the Block API's `/v1/events` serves at the cut, and each family that comes back later (custom events),
+arrives with its own case file. The cut PR lists `/v1/events`' families and adds any case missing.
 
 **The other 35 tools leave the Block profile at the cut** (DWLF-852, decided by Andy 16-Nov). These are:
 - regime, stage, cycle windows, quote, price picture, market data, support/resistance, cycle setups, divergences,
@@ -210,6 +217,18 @@ None of them has a Block API route, so **the launch set is the table above** and
    `npm test` only; no model calls in CI.
 3. **Cases for the launch set** (§3; this folds in DWLF-822). They're written now and run against
    today's backend; recordings are made by whoever holds a key.
+   - Three case files (on-chain events, the catalogue, explain), each with three questions, one a trap. Questions
+     use fixed dates, so the window doesn't drift day to day. That doesn't make requests repeat: the fixture key is
+     every query parameter, and the agent picks `limit`, `type` and the window form fresh each run, so a choice the
+     recording didn't see misses (a deterministic failure). The first full run (step 6) measures how often; if it's
+     material the fix is in the harness (what the key ignores, or recording the misses in a reviewed run), not in
+     questions that name parameters.
+   - `dwlf_get_events` now tells an agent where on-chain rows are (BTCOC/USD, daily, one exact type id) and that
+     `onchain.confirmedAt` is when a row became knowable (DWLF-822's description fixes; the catalogue and explain
+     tools already said both).
+   - **Not in this PR: the recordings.** Today these tools read SPT, so recording needs `DWLF_API_KEY` and an
+     Anthropic key: a read-only GET run (`npm run eval -- --record`) by Andy, or by WP7 on his tap. Until then every
+     case fails replay with "fixture missing", which is why the gate (step 4) waits on them.
 4. **The gate:** `publish.yml` runs the eval, uploads the transcripts, and blocks publish on a failure (this needs
    the secret tap).
 5. **The cut release, with WP4:**
@@ -237,6 +256,11 @@ None of them has a Block API route, so **the launch set is the table above** and
     `dwlf_get_cycle_windows`), and they link the SPT pricing URL. They're rewritten in the cut release, and check 7
     covers them.
   - `docs/HOSTED-MCP.md` still routes the hosted Block endpoint to SPT `/v2`.
+  - `dwlf_get_events`' on-chain paragraph (DWLF-822, `src/tools/market-data.ts`) describes SPT's row: `symbol:
+    "BTCOC"`, `timeframe: "1d"`, and `onchain.confirmedAt` as the knowable time. If `/v1/events` items differ (the
+    Block envelope's per-item `knowableAt`, another asset name), the re-point rewrites it in the Block wording
+    (`blockDescriptions.ts`), and the events-onchain questions stay as they are.
+  - The families `/v1/events` serves, so each has a `dwlf_get_events` case before the cut release (§3).
   - The questions the re-point has to answer are listed in `ARCHITECTURE.md` (*Handed to other packages*):
     the charter lines it rewrites; tool names when the response contract differs; the install migration and
     `server.json`; how "unwrap once" treats the Block envelope; and the key's env var and client. They're WP4's,

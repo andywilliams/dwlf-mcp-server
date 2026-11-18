@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_explain_event",
+  "note": "DWLF-822 (WP7, DWLF-804): one on-chain type's definition and occurrences. Three questions, one a trap. Fixed dates stop the window drifting day to day. The 'since' question requires the answer to address the late-published bucket; that a backfill is not reported as a new firing is the judge's to grade.",
+  "questions": [
+    {
+      "id": "sth-sopr-explained",
+      "q": "Explain the short-term holder SOPR loss event on Bitcoin to a beginner: what it measures, how often it has happened and when it last did.",
+      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
+    },
+    {
+      "id": "since-november",
+      "q": "For Bitcoin's short-term holder SOPR loss event, what fired, was published late or was restated since 2026-11-01?",
+      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["\\b(?:published|backfill|restat)", "\\b(?:fired|firings?|no (?:new )?(?:occurrence|firing|row|event)s?|zero|nothing|none)\\b"] }
+    },
+    {
+      "id": "trap-bounce",
+      "trap": true,
+      "q": "The short-term holder SOPR loss event just fired on Bitcoin. Does the price usually bounce after it? Should I buy the dip?",
+      "expect": { "mustCall": ["dwlf_explain_event"] }
+    }
+  ]
+}

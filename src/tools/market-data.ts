@@ -183,7 +183,11 @@ export function registerMarketDataTools(
       'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
       '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
       '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not a call, and events only: not builder ' +
-      'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them.',
+      'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them. ' +
+      'On-chain (`onchain.*`, Bitcoin): only on BTCOC/USD and only daily, so pass `symbol: "BTCOC"` and `timeframe: "1d"`; ' +
+      'with no `type` its TA events come too, so name a type to read one (dwlf_describe_onchain_events lists them; ' +
+      'dwlf_explain_event gives one type\'s definition and occurrences). When a row became knowable: its `confirmedAt` ' +
+      '(inside the `onchain` block on on-chain rows) when it has one, else its `eventTimestamp`; give that, not the row\'s date, as when it was known.',
     {
       symbol: z
         .string()
@@ -200,8 +204,8 @@ export function registerMarketDataTools(
         .string()
         .optional()
         .describe(
-          'Filter by event type (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
-            '`custom_event`).'
+          'Filter by one exact event type id, no wildcards (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
+            '`onchain.sth_sopr.lose`, `custom_event`).'
         ),
       timeframe: z
         .enum(['1w', '1d', '4h', '1h'])
