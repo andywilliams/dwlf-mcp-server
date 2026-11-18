@@ -13,7 +13,13 @@ run by hand: see [`MANUAL.md`](MANUAL.md).
   against the Block API's own OpenAPI and the `knowableAt` rules (`envelope.mjs`) before it's saved. A failure
   names its source: `required by the Block API's OpenAPI` (raise it with WP2) or `knowableAt rule
   (eval/envelope.mjs)` (this repo's copy of DWLF-853: check whether the Block API changed the meaning; never loosen
-  the copy to fit a refused body). Recording and output snapshots arrive with the snapshot runner (PR 4c).
+  the copy to fit a refused body).
+- **The gate (`snapshot.mjs`, run by `test/snapshots.test.mjs`):** for each `calls/<tool>.json` (`{ tool, calls: [{ id,
+  args }] }`), the built server replays each call and must match `snapshots/<tool>.<id>.json` (only the MCP's own layer:
+  what it adds, rewrites or selects). Every sentence in the output passes the banned-terms list, and a Block API
+  request from a tool not in `passthrough.json` `tools` fails. `node eval/snapshot.mjs --update` rewrites the
+  snapshots (read the diff). `--record` first records from the Block API's public routes (no key; SPT is never
+  recorded). `fixture-lint.mjs` refuses a recording with a price on any symbol but `BTCOC/USD`.
 - **Fixtures go into a public repo:** read every fixture diff for vendor-derived or personal values before
   committing it (design doc §0 T3).
 
