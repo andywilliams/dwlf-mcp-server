@@ -21,20 +21,32 @@ a PR check. Free, with no secrets and no model calls.**
 - **T1 · Output snapshots (contract tests).**
   - For each launch-set tool, a fixed list of calls (`eval/calls/<tool>.json`: arguments, no agent) runs the built
     server against recorded responses in `eval/fixtures/`. Each result must equal its committed snapshot.
-  - A changed output fails until the snapshot is regenerated in the same PR, so every change to what an agent
-    receives is a reviewed diff. A call with no recording fails.
-  - Pass-through (check 4, `passthrough.json`) stays: a snapshot pins *this* output, and containment pins *the
-    rule* (the envelope arrives whole).
+  - **A snapshot pins what the MCP adds or chooses, not the upstream data.** It records:
+    - every output key or value that isn't in the recording (hints, `filtersApplied`, error text, wrappers);
+    - for a tool that selects items (the catalogue tools), the ids it selected, in order.
+  - Upstream content is pinned by pass-through instead (check 4: page 1's fields unchanged, every item whole).
+    So a routine re-record changes no snapshot unless the MCP's own layer or its selection changed, and the diff a
+    reviewer reads is only that.
+  - A changed MCP layer fails until the snapshot is regenerated in the same PR. A call with no recording fails.
 - **T2 · The banned-terms check on sentence text.** The vendored list (check 7) runs over:
   - every tool's description, parameter descriptions and the Block instructions (as today);
   - **every string in every snapshot that contains a space.** A single token is an identifier or an enum value
     (`rsi.midline.bullish`, `direction: "bearish"`) and is skipped, the rule check 7 already applies to enum values.
   - Measured 18-Nov on all three public Block API routes (9,552 strings): every sentence passes, and the only hits
-    are identifiers. Upstream sentences are checked as well as the MCP's own: an agent reads both, and the Block API
-    pins the same list.
+    are identifiers.
+  - Upstream sentences are checked as well as the MCP's own (Andy: every tool's output), because an agent reads
+    both. **Who unblocks a red upstream sentence:** the recordings only change in a re-record PR or a list-sync PR.
+    - A hit there fails *that* PR alone, and it isn't merged until dwlf-block-api fixes the sentence. That repo
+      pins the same list, so its own test fails first.
+    - The existing recordings keep replaying green, so a `full`-profile hotfix that doesn't re-record or sync is
+      never blocked by upstream text.
 - **T3 · Recordings.**
-  - Recorded from the Block API's **public routes**: keyless, the Free view, data the API already publishes, so
-    there's nothing licensed or private to keep out of a public repo.
+  - Recorded from the Block API's **public routes**: keyless, the Free view, data the API already publishes.
+    - Checked 18-Nov: every public body is DWLF's own data. Events are all `BTCOC/USD` (DWLF's node), and series
+      say "on DWLF's own data". There are no vendor (Twelve Data) values.
+    - This repo is public and keeps its history, so every fixture diff is read before commit for vendor-derived
+      or personal values. A fixture holding either isn't committed.
+    - Publishing DWLF's own Free-view data in an MIT repo is Andy's call, made by tapping the PR that adds it.
   - Recorded once by hand (GETs only, the key never written), then replayed in CI with no credential.
   - Signed-in views (`/v1/*`, the account tool) are recorded when keys exist, with a Block **test** account's
     `dwlfk_` key. That fixture diff is read for anything personal before it's committed.
@@ -47,15 +59,18 @@ a PR check. Free, with no secrets and no model calls.**
     backend's output, reviewed in that PR.
 
 **M · The agent eval, kept as a document.** `eval/cases/` (the 15 questions, 3 per tool, one a trap),
-`eval/grade.mjs` (what an answer must do) and the judge's rubric stay in the repo.
+`eval/grade.mjs` (what an answer must do) and the judge's rubric stay in the repo as a **frozen reference**.
 - `eval/MANUAL.md` says how to run them by hand in a fresh Claude Code session with only this server connected.
 - It isn't a gate, has no schedule and needs no API key.
 - The model-calling runner (`eval/run.mjs`) and the `@anthropic-ai/sdk` dev dependency are removed.
-- A tool still arrives with its case file (the pending list stays), so the questions stay current.
+- **The case-file requirement goes too** (`eval/pending.json`, the coverage test and the per-family test). With
+  nothing running the cases, a stale case would fail nothing, so the requirement would be on paper only. A new tool
+  may add questions; nothing forces it to.
 
 **Plan, one PR each, `npm test` only, no version bump:**
 - **4a.** This decision (docs only).
-- **4b.** M: remove `run.mjs` and the SDK, add `MANUAL.md` with the rubric, keep cases and grader.
+- **4b.** M: remove `run.mjs`, the SDK, `pending.json` and its coverage tests; add `MANUAL.md` with the rubric;
+  keep the cases and the grader.
 - **4c.** T1/T2 machinery (calls file, snapshot runner, `--update`, the sentence-text wording check), proved on a
   synthetic fixture, plus `.github/workflows/test.yml` (pull requests: build and `npm test`).
 - **Then, inside B4:** each re-pointed tool lands with its recording, calls and snapshot (T3).
