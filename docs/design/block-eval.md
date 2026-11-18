@@ -35,7 +35,8 @@ a PR check. Free, with no secrets and no model calls.**
     So a B4 PR that re-points a tool but leaves it in `cutPending`, or adds no calls file, is red.
   - **Scope:** the Block profile only. Whether the `full` profile's outstanding "add tests" decision reuses this
     runner is not decided here. Its tools are SPT-backed, and their recordings would carry vendor data that the
-    T3 rule keeps out of this public repo.
+    T3 rule keeps out of this public repo, so they would need synthetic fixtures or a private store. That's
+    Andy's to decide in the charter's open "add tests" decision, not by default here.
 - **T2 · The banned-terms check on sentence text.** The vendored list (check 7) runs over:
   - every tool's description, parameter descriptions and the Block instructions (as today);
   - **every string that contains a space in each tool's actual output**, computed in the test from the recordings.
@@ -49,6 +50,9 @@ a PR check. Free, with no secrets and no model calls.**
       pins the same list, so its own test fails first.
     - The existing recordings keep replaying green, so a `full`-profile hotfix that doesn't re-record or sync is
       never blocked by upstream text.
+    - **Sync order:** dwlf-block-api syncs the list first, then this repo. A `wording:sync` here is merged only when
+      it reports that dwlf-block-api pins the same sha256; it prints `DIFFERS` otherwise. So a re-point PR is never
+      blocked by a list newer than the Block API's.
 - **T3 · Recordings.**
   - Recorded from the Block API's **public routes**: keyless, the Free view, data the API already publishes.
     - Checked 18-Nov: every public body is DWLF's own data. Events are all `BTCOC/USD` (DWLF's node), and series
@@ -60,6 +64,10 @@ a PR check. Free, with no secrets and no model calls.**
       - a person reads the fixture diff. The conditions price ladder and the on-chain price crosses are checked
         by hand at the first recording, since a sentence could quote a vendor close: the lint can't read prose.
     - Publishing DWLF's own Free-view data in an MIT repo is Andy's call, made by tapping the PR that adds it.
+    - Why real bodies and not synthetic ones: containment, the record-time OpenAPI and `knowableAt` checks, and T2
+      on upstream sentences only mean something against what the Block API really sends. A synthetic body drifts
+      from it silently.
+    - A public repo can't reliably un-publish (forks, caches). That's why both guards act before commit.
   - Recorded once by hand (GETs only, the key never written), then replayed in CI with no credential.
   - Signed-in views (`/v1/*`, the account tool) are recorded when keys exist, with a Block **test** account's
     `dwlfk_` key. That fixture diff is read for anything personal before it's committed.
@@ -80,6 +88,9 @@ a PR check. Free, with no secrets and no model calls.**
   nothing running the cases, a stale case would fail nothing, so the requirement would be on paper only. A new tool
   may add questions; nothing forces it to.
 
+**In force by stage:** this note's rules apply as 4b and 4c merge. Until 4b, `run.mjs` and the case-coverage
+tests are still in the tree; until 4c, no snapshot runner exists.
+
 **Plan, one PR each, `npm test` only, no version bump:**
 - **4a.** This decision (docs only).
 - **4b.** M: remove `run.mjs`, the SDK, `pending.json` and its coverage tests; add `MANUAL.md` with the rubric;
@@ -93,7 +104,8 @@ a PR check. Free, with no secrets and no model calls.**
 Block sells to agents as much as to people. An agent with **only this MCP server** must give an answer that is
 **correct, sourced, dated and not advisory**. Design §1.10 says "acceptance is an eval, not a review". The eval
 was to gate the Block profile. **Since 18-Nov (§0) it is a document for a manual check:** releases are gated by
-standard tests (output snapshots and the banned-terms check), and a tool still arrives with its case file.
+standard tests (output snapshots and the banned-terms check). The case files are a reference set, and a new tool
+needs none.
 
 ## 2 · What it measures
 
