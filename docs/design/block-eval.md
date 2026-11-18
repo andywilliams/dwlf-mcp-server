@@ -3,12 +3,109 @@
 *16-Nov-2026. Design §1.10 and §4 WP7 of the Block 3-layer design (Andy approved 12-Nov 16:25). Docs only: this
 file, plus in `ARCHITECTURE.md` an amendment to the eval standing decision (accepted by Andy, tap c-dc40) and a note marking the lines the Block cut touches. No code.*
 
+## 0 · Decision, 18-Nov-2026: releases are gated by standard tests; the agent eval is a doc (B14)
+
+**Andy, 18-Nov:** *"I'm not spending $50 to release an MCP server"* (17:03), then *"it's deterministic and could
+be caught with standard testing… we just need a dictionary of banned words/terms"* (17:07, agreed "sounds good").
+Relayed by Jenna; in force when the PR adding this merges on his tap.
+- **Why:** cost and flakiness.
+  - A model-run gate costs about $10–20 a release (up to $50), on every release of both profiles.
+  - An LLM grader needs retries and an override path.
+  - No Block-profile tool returns model-written text (checked 18-Nov). Every output is data from the API plus
+    templated sentences, so standard tests can pin it.
+- **Given up:** a release no longer proves that an agent *answers well*. It proves each tool still gives the output
+  that was reviewed, with clean wording. Answer quality is re-checked by hand, if ever, with the doc in M.
+
+**The release gate: `npm test`, which `publish.yml` already runs before every publish, plus the same `npm test` as
+a PR check. Free, with no secrets and no model calls.**
+- **T1 · Output snapshots (contract tests).**
+  - For each launch-set tool, a fixed list of calls (`eval/calls/<tool>.json`: arguments, no agent) runs the built
+    server against recorded responses in `eval/fixtures/`. Each result must equal its committed snapshot.
+  - **A snapshot pins what the MCP adds or chooses, not the upstream data.** It records:
+    - every output key or value that isn't in the recording (hints, `filtersApplied`, error text, wrappers);
+    - for a tool that selects items (the catalogue tools), the ids it selected, in order.
+  - Upstream content is pinned by pass-through instead (check 4: page 1's fields unchanged, every item whole).
+    So a routine re-record changes no snapshot unless the MCP's own layer or its selection changed, and the diff a
+    reviewer reads is only that.
+  - A changed MCP layer fails until the snapshot is regenerated in the same PR. A call with no recording fails.
+  - **Coverage rule (replaces run.mjs's runtime check):**
+    - every tool in `passthrough.json` `tools` has a calls file with at least one call, and a snapshot;
+    - every launch-set data tool is either in `tools` or still in `cutPending`;
+    - during the snapshot run, a call that reaches a Block API path from a tool not in `tools` fails.
+    So a B4 PR that re-points a tool but leaves it in `cutPending`, or adds no calls file, is red.
+  - **Scope:** the Block profile only. Whether the `full` profile's outstanding "add tests" decision reuses this
+    runner is not decided here. Its tools are SPT-backed, and their recordings would carry vendor data that the
+    T3 rule keeps out of this public repo, so they would need synthetic fixtures or a private store. That's
+    Andy's to decide in the charter's open "add tests" decision, not by default here.
+- **T2 · The banned-terms check on sentence text.** The vendored list (check 7) runs over:
+  - every tool's description, parameter descriptions and the Block instructions (as today);
+  - **every string that contains a space in each tool's actual output**, computed in the test from the recordings.
+    That is the whole output, upstream sentences included, not the slimmed snapshot file. A single token is an identifier or an enum value
+    (`rsi.midline.bullish`, `direction: "bearish"`) and is skipped, the rule check 7 already applies to enum values.
+  - Measured 18-Nov on all three public Block API routes (9,552 strings): every sentence passes, and the only hits
+    are identifiers.
+  - Upstream sentences are checked as well as the MCP's own (Andy: every tool's output), because an agent reads
+    both. **Who unblocks a red upstream sentence:** the recordings only change in a re-record PR or a list-sync PR.
+    - A hit there fails *that* PR alone, and it isn't merged until dwlf-block-api fixes the sentence. That repo
+      pins the same list, so its own test fails first.
+    - The existing recordings keep replaying green, so a `full`-profile hotfix that doesn't re-record or sync is
+      never blocked by upstream text.
+    - **Sync order:** dwlf-block-api syncs the list first, then this repo. A `wording:sync` here is merged only when
+      it reports that dwlf-block-api pins the same sha256; it prints `DIFFERS` otherwise. So a re-point PR is never
+      blocked by a list newer than the Block API's.
+- **T3 · Recordings.**
+  - Recorded from the Block API's **public routes**: keyless, the Free view, data the API already publishes.
+    - Checked 18-Nov: every public body is DWLF's own data. Events are all `BTCOC/USD` (DWLF's node), and series
+      say "on DWLF's own data". There are no vendor (Twelve Data) values.
+    - This repo is public and keeps its history, so a fixture holding vendor-derived or personal values isn't
+      committed. Two guards:
+      - a **fixture lint in `npm test`**: every item with a `symbol` is `BTCOC/USD`, and no item carries a price
+        field (`price`, `close`, `level`, `value`) under any other symbol or with `priceWithheld: false`;
+      - a person reads the fixture diff. The conditions price ladder and the on-chain price crosses are checked
+        by hand at the first recording, since a sentence could quote a vendor close: the lint can't read prose.
+    - Publishing DWLF's own Free-view data in an MIT repo is Andy's call, made by tapping the PR that adds it.
+    - Why real bodies and not synthetic ones: containment, the record-time OpenAPI and `knowableAt` checks, and T2
+      on upstream sentences only mean something against what the Block API really sends. A synthetic body drifts
+      from it silently.
+    - A public repo can't reliably un-publish (forks, caches). That's why both guards act before commit.
+  - Recorded once by hand (GETs only, the key never written), then replayed in CI with no credential.
+  - Signed-in views (`/v1/*`, the account tool) are recorded when keys exist, with a Block **test** account's
+    `dwlfk_` key. That fixture diff is read for anything personal before it's committed.
+  - The SPT-backed versions are never recorded: B4 replaces them.
+- *Accepted debt: before the cut.*
+  - Until B4 re-points a tool, its output has no snapshot. Block releases are then gated by T2 on descriptions and
+    the existing tests, as on 17-Nov.
+  - The 35 tools that leave at the cut never get snapshots.
+  - The re-point PR for each tool lands with its recording and snapshot, so the first snapshot pins the new
+    backend's output, reviewed in that PR.
+
+**M · The agent eval, kept as a document.** `eval/cases/` (the 15 questions, 3 per tool, one a trap),
+`eval/grade.mjs` (what an answer must do) and the judge's rubric stay in the repo as a **frozen reference**.
+- `eval/MANUAL.md` says how to run them by hand in a fresh Claude Code session with only this server connected.
+- It isn't a gate, has no schedule and needs no API key.
+- The model-calling runner (`eval/run.mjs`) and the `@anthropic-ai/sdk` dev dependency are removed.
+- **The case-file requirement goes too** (`eval/pending.json`, the coverage test and the per-family test). With
+  nothing running the cases, a stale case would fail nothing, so the requirement would be on paper only. A new tool
+  may add questions; nothing forces it to.
+
+**In force by stage:** this note's rules apply as 4b and 4c merge. Until 4b, `run.mjs` and the case-coverage
+tests are still in the tree; until 4c, no snapshot runner exists.
+
+**Plan, one PR each, `npm test` only, no version bump:**
+- **4a.** This decision (docs only).
+- **4b.** M: remove `run.mjs`, the SDK, `pending.json` and its coverage tests; add `MANUAL.md` with the rubric;
+  keep the cases and the grader.
+- **4c.** T1/T2 machinery (calls file, snapshot runner, `--update`, the sentence-text wording check), proved on a
+  synthetic fixture, plus `.github/workflows/test.yml` (pull requests: build and `npm test`).
+- **Then, inside B4:** each re-pointed tool lands with its recording, calls and snapshot (T3).
+
 ## 1 · What the eval is for
 
 Block sells to agents as much as to people. An agent with **only this MCP server** must give an answer that is
 **correct, sourced, dated and not advisory**. Design §1.10 says "acceptance is an eval, not a review". The eval
-gates the Block profile: a tool without a passing case is unfinished, and a release whose eval fails isn't
-published.
+was to gate the Block profile. **Since 18-Nov (§0) it is a document for a manual check:** releases are gated by
+standard tests (output snapshots and the banned-terms check). The case files are a reference set, and a new tool
+needs none.
 
 ## 2 · What it measures
 
@@ -94,8 +191,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
 - **Shared wording changes for both profiles where the change is neutral.** "Returns" → "gives" changes nothing
   for `full`, so the shared docstring changes. Only wording that differs in content goes into
   `blockDescriptions.ts`, as it does today.
-- A `full`-only release waits on the eval too. Every merge and publish already needs Andy's tap, so
-  `eval_override` adds no new approver.
+- The wording check is in `npm test`, so a `full`-only release waits on it too (18-Nov: no other release gate).
 - **One list:** block-site's `ops/wording-banned.json` (Jenna's decision, 15-Nov), vendored byte for byte with its
   sha256 pinned in `eval/wording/SOURCES.json`, the same pin dwlf-block-api keeps (`872dbce1…` at PR 2).
 - **One command shows drift:** `npm run wording:sync` copies the list and the port from one named block-site commit
@@ -108,9 +204,7 @@ neutral system prompt. Each answer is graded twice, and it passes only if both g
   is intended: the descriptions must pass the current list.
 - The older export once vendored in `eval/` (`9990fca5…`) had drifted, which is why `--check` exists. PR 2 replaced it.
 
-**Transcripts are stored with the release.** `eval/transcripts/<version>/` holds one file per question, plus
-`summary.json`. `publish.yml` uploads it as a GitHub release asset, beside the tag it gated. It is not in the npm
-package.
+**Transcripts** of a manual run (§0 M) go on the release's ticket. They're not in the repo or the npm package.
 
 ## 3 · Which tools it covers
 
@@ -157,38 +251,13 @@ None of them has a Block API route, so **the launch set is the table above** and
 
 ## 4 · How it runs
 
-- **Replay in CI, record by hand.** Replay needs only `ANTHROPIC_API_KEY`. Recording forwards GETs only, never
-  writes, and never writes a key to disk (unchanged). Its upstream becomes configurable per route family, so
-  recordings come from `api.block.dwlf.co.uk` after the re-point.
-- The public routes need **no key**. They're a keyless GET to our own public, cached API, so the public half
-  doesn't wait on the "read-only test key" tap. The signed-in half (plan views, `/v1/me`) is recorded with a
-  `block-staging` key once WP4 issues one. Either way the key never reaches the MCP server or the disk.
-- **The gate:** `publish.yml` builds, runs `npm test`, then runs `npm run eval` in replay. It publishes **only if
-  every question passes**.
-  - On a failure, nothing is published and the transcripts are kept as a workflow artifact.
-  - A missing recording fails the gate.
-  - Block API conformance is a release dependency **for new recordings only**. Existing recordings keep
-    replaying. If a recording a new case needs can't be saved because the Block API fails its own schema, that's
-    a failure outside this repo, and `eval_override` covers it like a judge flake.
-  - **The eval also runs as a PR check on any PR that bumps the version** (a release PR), so a failure is found
-    before merge. Master never holds a version bump the gate then refuses. The run in `publish.yml` repeats it.
-  - A recording older than 30 days is reported, and the release checklist says to re-record before a release
-    candidate.
-- **Flake policy (unchanged):** a deterministic failure is never retried. A judge-only failure gets one fresh run,
-  and both attempts are kept.
-- **Models:** Opus 5.5 for the agent and the judge (the env overrides stay). The cost per release is measured on
-  the first full run and written here; it isn't guessed now.
-- **The eval runs in its own job.** `publish.yml` gets an `eval` job that holds `ANTHROPIC_API_KEY` and has no
-  `id-token` permission. The `publish` job `needs: eval`, and only it can mint the OIDC credential. So model-driven
-  test code never runs where an npm publish credential exists.
-- **One publish path, no hand publish.** Gating publish on the eval was decided on 12-Nov. If the Anthropic API is
-  down, a release waits. For an urgent fix blocked by a known judge flake, or by a failure outside this repo, Andy can tap a `workflow_dispatch` run
-  with an `eval_override` reason. That run still goes through the same OIDC job, tags the release and attaches the
-  failing transcripts, and the reason and the overridden cases go into the release notes. The next release must
-  pass those cases; the same case can't be overridden twice. A version is never published outside
-  `publish.yml`, so it always has its provenance, its tag and its transcripts.
-- **Accepted:** every release of the package (both profiles) depends on the Anthropic API being up and on the
-  Block eval passing. One package means one gate.
+**Rewritten 18-Nov by §0** (the 16-Nov model-run gate, its secret, its PR check and `eval_override` are withdrawn;
+git history keeps the text). What still holds:
+- Recording forwards GETs only, never writes, and never writes a key to disk. Its upstream is chosen per route
+  family (`/v1`, `/public/v1` → the Block API), and each Block body is checked against the Block API's own OpenAPI
+  when recorded (check 4).
+- Replay needs no credential, and under replay no other host is reachable (`replayEnv`).
+- A recording older than 30 days is reported (`staleFixtures`). Re-record before a release candidate.
 
 ## 5 · Dependencies
 
@@ -200,7 +269,6 @@ None of them has a Block API route, so **the launch set is the table above** and
 | The post-cut tool list | Andy (DWLF-852, §3) | done 16-Nov |
 | A `block-staging` key for the signed-in recordings | WP4 | for the account tool and plan views |
 | What an item's `knowableAt` means (DWLF-853) | WP2 (dwlf-block-api #27, live 6d77171) | done 16-Nov; check 4 checks it by value |
-| `ANTHROPIC_API_KEY` as a dwlf-mcp-server Actions secret | Andy (tap) | before the gate PR merges |
 
 ## 6 · Plan: one PR at a time
 
@@ -226,17 +294,13 @@ None of them has a Block API route, so **the launch set is the table above** and
    - `dwlf_get_events` now tells an agent where on-chain rows are (BTCOC/USD, daily, one exact type id) and that
      `onchain.confirmedAt` is when a row became knowable (DWLF-822's description fixes; the catalogue and explain
      tools already said both).
-   - **Not in this PR: the recordings.** Today these tools read SPT, so recording needs `DWLF_API_KEY` and an
-     Anthropic key: a read-only GET run (`npm run eval -- --record`) by Andy, or by WP7 on his tap. Until then every
-     case fails replay with "fixture missing", which is why the gate (step 4) waits on them.
-4. **The gate:** `publish.yml` runs the eval, uploads the transcripts, and blocks publish on a failure (this needs
-   the secret tap).
+   - No recordings: §0 T3 (recorded from the Block API in B4, never from SPT).
+4. **Replaced 18-Nov by §0** (4a–4c: standard tests and the banned-terms check; the eval a document).
 5. **The cut release, with WP4:**
    - recordings from the Block API;
    - `eval/pending.json` re-based to that list.
-6. **First full run** on the release candidate. The transcripts are attached to DWLF-804, and the cost is written
-   into §4. WP7 is done when that run passes and the gate is live (the design: "the eval runs in CI for the MCP repo
-   and gates publish").
+6. **WP7 is done** when 4a–4c are merged and every launch-set tool has its snapshot (after B4). The 16-Nov "first
+   full run" and its cost are dropped with the model gate (§0).
 
 ## 7 · Findings handed on (not WP7's code)
 
