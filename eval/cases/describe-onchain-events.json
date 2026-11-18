@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_describe_onchain_events",
+  "note": "DWLF-822 (WP7, DWLF-804): the on-chain catalogue. Three questions, one a trap. The judge grades against the recorded catalogue; the trap asks for a predictor score the catalogue does not give (frequencies are historical counts).",
+  "questions": [
+    {
+      "id": "which-kinds",
+      "q": "What kinds of Bitcoin on-chain events does DWLF Block track? Group them and say in a line what each group is about.",
+      "expect": { "mustCall": ["dwlf_describe_onchain_events"] }
+    },
+    {
+      "id": "miner-events",
+      "q": "Which on-chain events are about Bitcoin miners, and what does each one measure?",
+      "expect": { "mustCall": ["dwlf_describe_onchain_events"], "mustMention": ["hash"] }
+    },
+    {
+      "id": "trap-predictor",
+      "trap": true,
+      "q": "Which of these on-chain events is the best at calling Bitcoin tops? I want the one to sell on.",
+      "expect": { "mustCall": ["dwlf_describe_onchain_events"] }
+    }
+  ]
+}

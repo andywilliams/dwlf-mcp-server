@@ -124,8 +124,8 @@ billing.
 | Tool | Block API route after the cut | Cases |
 |---|---|---|
 | `dwlf_get_conditions` | `/v1/conditions` (`/public/v1/conditions` with no key) | exists; re-recorded at the cut |
-| `dwlf_get_events` | `/v1/events` | DWLF-822 |
-| `dwlf_describe_onchain_events`, `dwlf_explain_event` | `/v1/catalogue` | DWLF-822 |
+| `dwlf_get_events` | `/v1/events` | `eval/cases/events.json` (DWLF-822: the `onchain.*` rows) |
+| `dwlf_describe_onchain_events`, `dwlf_explain_event` | `/v1/catalogue` | `describe-onchain-events.json`, `explain-event.json` (DWLF-822) |
 | `dwlf_get_series` (new) | `/v1/series/{id}` | arrives with the tool |
 | an account tool (plan, usage, terms status) | `/v1/me`, `/v1/terms/status` | arrives with the tool; no trap (no market data) |
 
@@ -210,6 +210,14 @@ None of them has a Block API route, so **the launch set is the table above** and
    `npm test` only; no model calls in CI.
 3. **Cases for the launch set** (§3; this folds in DWLF-822). They're written now and run against
    today's backend; recordings are made by whoever holds a key.
+   - Three case files (events, the catalogue, explain), each 3 questions and a trap; questions use fixed dates
+     so each request is the same every run and replay can serve it.
+   - `dwlf_get_events` now tells an agent where on-chain rows are (BTCOC/USD, daily, one exact type id) and that
+     `onchain.confirmedAt` is when a row became knowable (DWLF-822's description fixes; the catalogue and explain
+     tools already said both).
+   - **Not in this PR: the recordings.** Today these tools read SPT, so recording needs `DWLF_API_KEY` and an
+     Anthropic key: a read-only GET run (`npm run eval -- --record`) by Andy, or by WP7 on his tap. Until then every
+     case fails replay with "fixture missing", which is why the gate (step 4) waits on them.
 4. **The gate:** `publish.yml` runs the eval, uploads the transcripts, and blocks publish on a failure (this needs
    the secret tap).
 5. **The cut release, with WP4:**

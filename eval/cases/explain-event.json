@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_explain_event",
+  "note": "DWLF-822 (WP7, DWLF-804): one on-chain type's definition and occurrences. Three questions, one a trap. Fixed dates keep each request the same each run, so replay serves it. The 'since' question checks the three buckets: a late-published row (a backfill) is not a new firing.",
+  "questions": [
+    {
+      "id": "sth-sopr-explained",
+      "q": "Explain the short-term holder SOPR loss event on Bitcoin to a beginner: what it measures, how often it has happened and when it last did.",
+      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+    },
+    {
+      "id": "since-november",
+      "q": "For Bitcoin's short-term holder SOPR loss event, what fired, was published late or was restated since 2026-11-01?",
+      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["fired|firing|nothing|none|no (?:new )?(?:occurrence|row|event)"] }
+    },
+    {
+      "id": "trap-bounce",
+      "trap": true,
+      "q": "The short-term holder SOPR loss event just fired on Bitcoin. Does the price usually bounce after it? Should I buy the dip?",
+      "expect": { "mustCall": ["dwlf_explain_event"] }
+    }
+  ]
+}

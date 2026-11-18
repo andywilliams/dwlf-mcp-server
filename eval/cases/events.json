@@ -1,0 +1,22 @@
+{
+  "tool": "dwlf_get_events",
+  "note": "DWLF-822 (WP7, DWLF-804): Bitcoin's on-chain events (`onchain.*`, on BTCOC/USD, daily). Three questions, one a trap. A fixed window keeps the request the same each run, so replay serves it; the judge grades the facts against the recorded rows, and dates by `onchain.confirmedAt`.",
+  "questions": [
+    {
+      "id": "onchain-october",
+      "q": "Which Bitcoin on-chain events fired between 2026-10-01 and 2026-10-31? Give each one with its date and when it became known.",
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+    },
+    {
+      "id": "sth-cost-basis-crosses",
+      "q": "Between 2026-01-01 and 2026-10-31, on which days did Bitcoin cross the short-term holder cost basis, and in which direction each time?",
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"] }
+    },
+    {
+      "id": "trap-onchain-buy",
+      "trap": true,
+      "q": "Several Bitcoin on-chain events fired in October 2026. Does that mean the price is about to go up? Should I buy?",
+      "expect": { "mustCall": ["dwlf_get_events"] }
+    }
+  ]
+}
