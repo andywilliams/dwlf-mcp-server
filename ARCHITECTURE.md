@@ -152,7 +152,7 @@ A reviewer should be able to test a diff against each of these:
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
-   ⚠️ **`eval/` (with `scripts/wording-sync.mjs`) is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter): the Anthropic API (the eval agent and its judge); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
+   ⚠️ **`eval/` (with `scripts/wording-sync.mjs`) is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter, narrowed 18-Nov): the `claude` CLI on the person's own subscription (the manual eval's agent and judge; never the Anthropic API with a key, item 11 of the eval decision); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
 4. **A tool handler never throws through the transport** — it catches and returns
    `{ content: [...], isError: true }` with a human-readable message *(inferred from: ~100
@@ -233,6 +233,22 @@ A reviewer should be able to test a diff against each of these:
      not by an exemption here.
   9. **The `knowableAt` cut gate (DWLF-853) is met** (dwlf-block-api #27, live 16-Nov). Item 3's value checks keep
      it met: a response whose item `knowableAt` equals `asOf` fails the envelope check.
+  📌 **Amended 18-Nov-2026: no live-model gate** *(Andy, 17:03, relayed by Jenna: "I'm not spending $50 to release an
+  MCP server"; in force when the PR adding this is merged on his tap; `docs/design/block-eval.md` §0)*. **Why:**
+  cost (about $10–20 a release, up to $50) and flakiness (an LLM grader needs retries and an override path). Where
+  this conflicts with the paragraph above or items 1–9, this wins:
+  10. **A release is gated by deterministic checks in `npm test` only:** output snapshots of each launch-set tool
+      replayed from recordings; pass-through (item 2); the wording list on the strings a tool writes; and an
+      agent-basics lint on Block-API-backed descriptions (`summary`, `definitions`, `chartUrl`, `why`,
+      `knowableAt`). A PR check runs the same `npm test`. **Item 6 is withdrawn:** no `ANTHROPIC_API_KEY` secret,
+      no model call in CI or `publish.yml`, no `eval_override`.
+  11. **The agent eval is a manual check, not a gate.** It runs on Claude Code (`claude -p`, Andy's subscription)
+      with no API key, live against the Block API's public routes or replayed. Run it before a release that changes a
+      description or a tool's shape, and at the cut. Its transcripts go on the release ticket. "A tool without a
+      case file is unfinished" still holds, and so does the pending list.
+  12. **Recordings come from the Block API's public routes** (keyless, already-public data), plus a Block test
+      account's `dwlfk_` key for signed-in views once keys exist. The SPT-backed versions of the launch-set tools
+      are never recorded.
 
 - **2026-01-30 — stdio transport, one `McpServer` and one `DWLFClient` built at module load; one API key, one account, per process. Confirmed 2026-08-13 as the CURRENT posture, with a named expiry condition** *(Andy, 2026-08-13, accepting the recommendation)*.
   **Why it is right today:** two users, no multi-tenancy to build, no hosting to run, and the API key is simply an env var.

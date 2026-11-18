@@ -3,6 +3,67 @@
 *16-Nov-2026. Design §1.10 and §4 WP7 of the Block 3-layer design (Andy approved 12-Nov 16:25). Docs only: this
 file, plus in `ARCHITECTURE.md` an amendment to the eval standing decision (accepted by Andy, tap c-dc40) and a note marking the lines the Block cut touches. No code.*
 
+## 0 · Re-plan, 18-Nov-2026: no live-model gate (B14)
+
+**Decision (Andy, 18-Nov 17:03, relayed by Jenna; in force when this PR's merge is tapped):** *"I'm not spending
+$50 to release an MCP server."* Releases are gated by checks that cost nothing and give the same answer every run.
+The agent eval (the questions, the trap and the judge) becomes an occasional manual check on Andy's Claude
+subscription. **Why:** cost (one full run is about $10–20 of API spend, up to $50, on every release of both
+profiles) and flakiness (an LLM grader needs a retry policy and an override path a deterministic check doesn't).
+**What this gives up:** a release no longer proves that an agent *answers well*, only that each tool still gives
+the same, wording-clean, envelope-intact output it gave when reviewed. The manual check is how answer quality is
+re-checked, by hand, at the moments listed in M3.
+
+Where this section conflicts with §2 (checks 1, 2, 5, 6 as a release gate), §4 (the gate, the secret, the
+override) or §6 (steps 4 and 6), this section wins. Checks 3, 4 and 7 keep their meaning; 3 moves to the manual
+check, and 4 and 7 stay in `npm test`.
+
+**The release gate (deterministic, in `npm test`, which `publish.yml` already runs before every publish):**
+- **G1 · Output snapshots.** For each launch-set tool, a fixed list of calls (`eval/calls/<tool>.json`: tool name
+  plus arguments, no agent) runs the built server against `eval/fixtures/`. Each result is compared with its
+  committed snapshot. A changed output fails until the snapshot is updated in the same PR (`--update`), so every
+  change to what an agent receives is a reviewed diff. A call with no recording fails.
+- **G2 · Pass-through** (check 4, unchanged): containment of the upstream body, per `eval/passthrough.json`.
+- **G3 · Wording on tool output.** Every string a tool *writes* passes the shared wording list: that is, every
+  output string that isn't an upstream value in the recording it came from. Upstream text is the Block API's,
+  under its own gate.
+- **G4 · Agent-basics lint** (the design-for-agents rule) on each Block-API-backed tool's description: it tells
+  the agent to lead with `summary`, use `definitions` for terms, give `chartUrl` as the deep link, explain with
+  `why`, and date by `knowableAt`. It applies to the tools in `passthrough.json` `tools`, so it goes live tool by
+  tool as B4 re-points them.
+- **G5 · Recordings.** Recorded once, by hand, then replayed in CI with no credential.
+  - Launch-set tools are recorded from the Block API's **public routes**: keyless, the Free view, data the API
+    already publishes, so nothing licensed or private.
+  - The SPT-backed versions aren't recorded. B4 replaces them, so recording them would be throwaway work that
+    needs a DWLF key. This differs from the 18-Nov ask ("a Block-plan DWLF key") for that reason.
+  - Signed-in views (`/v1/*`, the account tool) are recorded when keys exist, with a Block **test** account's
+    `dwlfk_` key. The fixture diff is read for anything personal before it's committed.
+- **G6 · A PR check.** `.github/workflows/test.yml` runs build and `npm test` on every pull request, with no
+  secrets. A gate failure shows before merge, and master never holds a version bump the publish run then refuses.
+  `publish.yml` is unchanged: it stays OIDC-only and makes no model calls.
+
+**The manual agent eval (not a gate; no API key, no per-run bill):**
+- **M1.** The question set (`eval/cases/`), the deterministic grader (`eval/grade.mjs`) and the judge rubric stay,
+  so the 15 questions remain reusable.
+- **M2.** `eval/run.mjs` drives **Claude Code headless** (`claude -p`, the logged-in subscription), not the
+  Anthropic API.
+  - One fresh session per question, with `--strict-mcp-config` and a config naming only this server
+    (`dist/index.js --profile block`), `--tools ""` (no built-in tools: no web, no files), `--setting-sources ""`
+    (none of Andy's CLAUDE.md or settings), `--no-session-persistence` and the eval's own `--system-prompt`. The judge is a second `claude -p` with the rubric's JSON schema.
+  - By default it runs live against the Block API's public routes (free, keyless). `--replay` uses the fixtures.
+  - The runner removes `ANTHROPIC_API_KEY` from the child environment, so a key that happens to be set never
+    turns a manual run into API spend.
+  - The `@anthropic-ai/sdk` dev dependency goes.
+- **M3. When:** by hand, before a release that changes a description or a tool's shape, and at the cut. Andy, or a
+  session on his behalf, runs it. The transcripts go on the release's ticket. A failure is a finding to fix; it
+  doesn't block a publish.
+
+**Plan (replaces §6 steps 4 and 6), one PR at a time, each `npm test` only, no version bump:**
+- **4a.** This note plus the charter amendment (docs only).
+- **4b.** The runner on `claude -p`, the rubric in its own module, and the runbook in `eval/README.md`.
+- **4c.** G6 (`test.yml`) plus the G1/G3/G4 machinery, tested on synthetic fixtures. Real recordings and
+  snapshots arrive tool by tool with B4's re-point PRs (G5), so no SPT recording is ever made.
+
 ## 1 · What the eval is for
 
 Block sells to agents as much as to people. An agent with **only this MCP server** must give an answer that is
