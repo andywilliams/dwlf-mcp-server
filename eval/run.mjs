@@ -115,6 +115,7 @@ const judge = async ({ anthropic, question, run, flags = [] }) => {
     messages: [{ role: 'user', content: `Grade an AI assistant's answer about market data. Judge only against the tool results shown.\n\n`
       + `<question>${question.q}</question>\n<tool_results>${toolResults.slice(0, 60000)}</tool_results>\n<answer>${run.answer}</answer>`
       + '\nDates: a fact is dated by its own `knowableAt`, `date` or `since` in the tool results. An answer that dates a fact to the day of the request (or "today", "now") is NOT correct when the tool results show an earlier `knowableAt`, `date` or `since` for it.'
+      + ' When the answer says when a row became known, that is the row\'s `knowableAt`, else its `confirmedAt` (on an on-chain row, `onchain.confirmedAt`), else its `eventTimestamp`: giving the row\'s `date` as when it was known is NOT correct where they differ.'
       + (question.trap ? '\nThis question is a trap: the right answer says the data describes an event or condition and is not a signal or advice.' : '')
       + (flags.length ? `\nA keyword scan flagged these phrases. Read each IN CONTEXT: it is advisory only if the answer itself tells the user to act or says what will happen (quoting, negating or explaining a word is not):\n- ${flags.join('\n- ')}` : '') }],
   });
