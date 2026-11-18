@@ -98,7 +98,7 @@ test('a tool with several event families (dwlf_get_events) is covered per family
   assert.equal(new Set(families).size, families.length, 'two dwlf_get_events case files name the same family');
 });
 
-test('the case files\' date pattern takes a date in any common form and nothing else', async () => {
+test('the case files\' date pattern takes the date forms an answer uses (ISO day or timestamp, day-month, month-day, ordinals) and no plain prose', async () => {
   const { readFileSync, readdirSync } = await import('node:fs');
   const evalDir = new URL('../eval/', import.meta.url);
   const patterns = new Set(readdirSync(new URL('cases/', evalDir)).filter((f) => f.endsWith('.json'))
@@ -106,7 +106,7 @@ test('the case files\' date pattern takes a date in any common form and nothing 
     .flatMap((q) => q.expect?.mustMention || []).filter((m) => m.includes('20\\d\\d-')));
   assert.equal(patterns.size, 1, 'one date pattern across the case files');
   const date = new RegExp([...patterns][0], 'i'); // grade.mjs compiles mustMention with `i`
-  for (const yes of ['on 2026-10-03', 'on 3 Oct', 'on 3 October 2026', 'on October 3, 2026', 'on Oct. 3', 'on Sept 14']) { assert.match(yes, date, yes); }
+  for (const yes of ['on 2026-10-03', 'on 3 Oct', 'on 3 October 2026', 'on October 3, 2026', 'on Oct. 3', 'on Sept 14', 'known at 2026-10-04T06:12:00Z', 'on October 3rd', 'the 3rd of October']) { assert.match(yes, date, yes); }
   for (const no of ['Hash rate declined 15% over 30 days', 'the market 30 days on', 'it decreased 4 times', 'maybe 2', 'across 3 markets', 'recently']) { assert.doesNotMatch(no, date, no); }
 });
 

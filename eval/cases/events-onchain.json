@@ -6,12 +6,12 @@
     {
       "id": "onchain-october",
       "q": "Which Bitcoin on-chain events fired between 2026-10-01 and 2026-10-31? Give each one with its date and when it became known.",
-      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}\\b"] }
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
     },
     {
       "id": "sth-cost-basis-crosses",
       "q": "Between 2026-01-01 and 2026-10-31, on which days did Bitcoin cross the short-term holder cost basis, and in which direction each time?",
-      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}\\b"] }
+      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
     },
     {
       "id": "trap-onchain-buy",

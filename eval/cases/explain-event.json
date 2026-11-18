@@ -5,7 +5,7 @@
     {
       "id": "sth-sopr-explained",
       "q": "Explain the short-term holder SOPR loss event on Bitcoin to a beginner: what it measures, how often it has happened and when it last did.",
-      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b|\\b\\d{1,2} (?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}\\b"] }
+      "expect": { "mustCall": ["dwlf_explain_event"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
     },
     {
       "id": "since-november",
