@@ -59,9 +59,14 @@ test('T2: a banned term in a sentence anywhere in the output fails; identifiers 
 
 test('mcpLayer pins only what the tool adds, rewrites or selects', () => {
   const page = { asOf: 'a', summary: 's', items: [{ id: 'x', v: 1 }, { id: 'y', v: 2 }] };
-  assert.deepEqual(mcpLayer({ ...page }, [page]), { added: {}, itemIds: ['x', 'y'] }, 'a pure pass-through has an empty layer');
+  assert.deepEqual(mcpLayer({ ...page }, [page]), { added: {} }, 'a pure pass-through has an empty layer');
   assert.deepEqual(mcpLayer({ asOf: 'a', summary: 'changed', hint: 'h', items: [{ id: 'y', v: 2, note: 'n' }] }, [page]),
-    { added: { summary: 'changed', hint: 'h' }, itemIds: ['y'], itemsAdded: [{ id: 'y', added: { note: 'n' } }] });
+    { added: { summary: 'changed', hint: 'h' }, selection: [1], itemsAdded: [{ index: 0, added: { note: 'n' } }] });
+  const noIds = { items: [{ t: 1 }, { t: 2 }, { t: 2 }] };
+  assert.deepEqual(mcpLayer({ ...noIds }, [noIds]), { added: {} }, 'items with no id or repeated values still match');
+  const definition = { kind: 'def', text: 'x' };
+  assert.deepEqual(mcpLayer({ definitionSource: 'api', definition }, [definition]), { added: { definitionSource: 'api', definition: { $upstreamPage: 0 } } },
+    'an upstream body nested under a key is referenced, not copied');
   assert.deepEqual(mcpLayer('Usage: …', [page]), { output: 'Usage: …' });
   assert.deepEqual(mcpLayer({ a: 1 }, []), { output: { a: 1 } }, 'no upstream: the whole output is the MCP\'s');
 });
@@ -98,4 +103,6 @@ test('T3 fixture lint: no committed recording carries a price on a symbol other 
   assert.equal(vendorFailures({ items: [{ symbol: 'BTC/USD', values: { close: 1 } }] }).length, 1);
   assert.equal(vendorFailures({ items: [{ priceWithheld: false }] }).length, 1);
   assert.deepEqual(vendorFailures({ items: [{ symbol: 'BTC/USD', summary: 'no price here' }] }), []);
+  assert.equal(vendorFailures({ symbol: 'BTC/USD', price: { close: 82974, withheld: false } }).length, 2, 'nested under a symbol parent, and the withheld flag');
+  assert.equal(vendorFailures({ symbol: 'BTC/USD', items: [{ level: 60000 }] }).length, 1, 'a symbol applies to its children');
 });
