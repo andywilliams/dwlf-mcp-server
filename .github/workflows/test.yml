@@ -1,0 +1,22 @@
+name: Test
+
+# The release gate (docs/design/block-eval.md §0): the same `npm test` publish.yml runs before every publish, on every
+# pull request, so a failure shows before merge. No secrets, no model calls.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - run: npm test

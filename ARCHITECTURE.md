@@ -239,7 +239,6 @@ A reviewer should be able to test a diff against each of these:
   merges on his tap; `docs/design/block-eval.md` §0)*. **Why:** cost (about $10–20 a release, up to $50) and
   flakiness. No Block-profile tool returns model-written text, so standard tests can pin every output. This wins
   over the paragraph above and items 1–9:
-  *(Items 10–12 describe the tree once block-eval §0's PRs 4b and 4c merge; until then `eval/run.mjs` and the case-coverage tests remain.)*
   10. **The release gate is `npm test` (run by `publish.yml` before every publish, and by a PR check), with no
       secrets and no model calls.** It holds:
       - output snapshots of each launch-set tool, replayed from recordings. A snapshot pins only what the MCP adds

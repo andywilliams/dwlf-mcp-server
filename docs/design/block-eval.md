@@ -21,12 +21,14 @@ a PR check. Free, with no secrets and no model calls.**
 - **T1 · Output snapshots (contract tests).**
   - For each launch-set tool, a fixed list of calls (`eval/calls/<tool>.json`: arguments, no agent) runs the built
     server against recorded responses in `eval/fixtures/`. Each result must equal its committed snapshot.
-  - **A snapshot pins what the MCP adds or chooses, not the upstream data.** It records:
+  - **A snapshot pins what the MCP adds or chooses, not the upstream data** (one fresh server per call, so no tool
+    cache carries between calls). It records:
     - every output key or value that isn't in the recording (hints, `filtersApplied`, error text, wrappers);
-    - for a tool that selects items (the catalogue tools), the ids it selected, in order.
+    - for a tool that selects items (the catalogue tools), the ids it selected, in order (the index where an item
+      has no id).
   - Upstream content is pinned by pass-through instead (check 4: page 1's fields unchanged, every item whole).
-    So a routine re-record changes no snapshot unless the MCP's own layer or its selection changed, and the diff a
-    reviewer reads is only that.
+    So a re-record changes a pass-through tool's snapshot only when the MCP's own layer changed, and a selecting
+    tool's when its selection did. That is the diff a reviewer reads.
   - A changed MCP layer fails until the snapshot is regenerated in the same PR. A call with no recording fails.
   - **Coverage rule (replaces run.mjs's runtime check):**
     - every tool in `passthrough.json` `tools` has a calls file with at least one call, and a snapshot;
@@ -87,9 +89,6 @@ a PR check. Free, with no secrets and no model calls.**
 - **The case-file requirement goes too** (`eval/pending.json`, the coverage test and the per-family test). With
   nothing running the cases, a stale case would fail nothing, so the requirement would be on paper only. A new tool
   may add questions; nothing forces it to.
-
-**In force by stage:** this note's rules apply as 4b and 4c merge. Until 4b, `run.mjs` and the case-coverage
-tests are still in the tree; until 4c, no snapshot runner exists.
 
 **Plan, one PR each, `npm test` only, no version bump:**
 - **4a.** This decision (docs only).
@@ -257,7 +256,7 @@ git history keeps the text). What still holds:
   family (`/v1`, `/public/v1` → the Block API), and each Block body is checked against the Block API's own OpenAPI
   when recorded (check 4).
 - Replay needs no credential, and under replay no other host is reachable (`replayEnv`).
-- A recording older than 30 days is reported (`staleFixtures`). Re-record before a release candidate.
+- A recording older than 30 days is reported (`stale`, printed by `eval/snapshot.mjs` and by the gate test). Re-record before a release candidate.
 
 ## 5 · Dependencies
 

@@ -179,14 +179,15 @@ test('recordings checked against an older OpenAPI than the newest are listed (a 
 const replayTool = async (dir, tool, args) => {
   const fixtures = await startFixtureServer({ dir });
   const mcp = new Client({ name: 'eval-passthrough', version: '0' });
-  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-    env: replayEnv(fixtures.url), stderr: 'ignore' }));
   try {
+    // connect inside the try: a server that fails to start must still close the fixture server, or the file hangs.
+    await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+      env: replayEnv(fixtures.url), stderr: 'ignore' }));
     const r = await mcp.callTool({ name: tool, arguments: args });
     assert.notEqual(r.isError, true, r.content?.map((c) => c.text).join(' '));
     return { result: JSON.parse(r.content.map((c) => c.text).join('')), pages: fixtures.served.map((s) => s.body),
       paths: fixtures.served.map((s) => s.key.split(' ')[1].split('?')[0]), misses: fixtures.misses };
-  } finally { await mcp.close(); await fixtures.close(); }
+  } finally { await mcp.close().catch(() => {}); await fixtures.close(); } // close() rejects if connect failed: ignored
 };
 
 test('the pass-through check works end to end (proven on dwlf_get_divergences, an SPT pass-through tool)', async () => {
