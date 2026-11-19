@@ -138,3 +138,32 @@ export const containmentFailures = (result, pages) => {
   }));
   return failures;
 };
+
+/**
+ * The catalogue tools' scoped exception (DWLF-876 D4): a SELECTION of the first page, never a rewrite. Its top-level
+ * fields are unchanged except `items` (each one whole, equal to an upstream item) and keyed maps the tool narrowed
+ * (each kept entry equal to the upstream entry: `definitions`). Every later page (a nested body, e.g.
+ * dwlf_explain_event's `occurrences`) appears whole as one top-level value. Extra keys are allowed. Empty = it passes.
+ */
+export const selectionFailures = (result, pages) => {
+  if (!pages.length) { return ['no upstream page to compare with']; }
+  if (!result || typeof result !== 'object') { return ['the tool result is not a JSON object']; }
+  const failures = [];
+  const page0 = pages[0];
+  const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  for (const [k, v] of Object.entries(page0)) {
+    if (k === 'items') { continue; }
+    if (!(k in result)) { failures.push(`dropped \`${k}\``); continue; }
+    if (isDeepStrictEqual(result[k], v)) { continue; }
+    if (isMap(v) && isMap(result[k]) && Object.entries(result[k]).every(([ek, ev]) => ek in v && isDeepStrictEqual(ev, v[ek]))) { continue; }
+    failures.push(`changed \`${k}\` (neither as served nor whole entries of it)`);
+  }
+  const upstreamItems = Array.isArray(page0.items) ? page0.items : [];
+  (Array.isArray(result.items) ? result.items : []).forEach((item, i) => {
+    if (!upstreamItems.some((u) => isDeepStrictEqual(u, item))) { failures.push(`items[${i}] (${item?.id ?? '?'}) is not an upstream item, whole`); }
+  });
+  pages.slice(1).forEach((page, p) => {
+    if (!Object.values(result).some((v) => isDeepStrictEqual(v, page))) { failures.push(`page ${p + 1} does not appear whole in the result`); }
+  });
+  return failures;
+};

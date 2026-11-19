@@ -1,0 +1,48 @@
+{
+ "isError": false,
+ "added": {
+  "definitions": {
+   "$subsetOf": "definitions",
+   "keys": [
+    "onchain.mvrv.deep_value.enter",
+    "onchain.mvrv.deep_value.exit",
+    "onchain.mvrv.overheated.enter",
+    "onchain.mvrv.overheated.exit",
+    "onchain.supply_in_profit.capitulation.enter",
+    "onchain.supply_in_profit.capitulation.exit",
+    "onchain.sth_sopr.reclaim",
+    "onchain.sth_sopr.lose",
+    "onchain.realised_price.cross.above",
+    "onchain.realised_price.cross.below",
+    "onchain.sth_realised_price.cross.above",
+    "onchain.sth_realised_price.cross.below",
+    "onchain.lth_realised_price.cross.above",
+    "onchain.lth_realised_price.cross.below"
+   ]
+  }
+ },
+ "selection": [
+  "onchain.mvrv.deep_value.enter",
+  "onchain.mvrv.deep_value.exit",
+  "onchain.mvrv.overheated.enter",
+  "onchain.mvrv.overheated.exit",
+  "onchain.supply_in_profit.capitulation.enter",
+  "onchain.supply_in_profit.capitulation.exit",
+  "onchain.sth_sopr.reclaim",
+  "onchain.sth_sopr.lose",
+  "onchain.realised_price.cross.above",
+  "onchain.realised_price.cross.below",
+  "onchain.sth_realised_price.cross.above",
+  "onchain.sth_realised_price.cross.below",
+  "onchain.lth_realised_price.cross.above",
+  "onchain.lth_realised_price.cross.below",
+  "realized-price",
+  "sth-realized-price",
+  "lth-realized-price",
+  "mvrv",
+  "sopr",
+  "sth-sopr-7d",
+  "supply-in-profit-pct",
+  "sth-supply-in-profit-pct"
+ ]
+}

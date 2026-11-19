@@ -78,8 +78,10 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
   one to one: `types` (comma-separated, at most 20), `from`/`to`, a series `id` and `from`.
 - **The catalogue tools** keep the scoped exception the charter already gives them, narrowed: `/catalogue` is
   355 KB (578 items), too big to hand an agent whole.
-  - **`dwlf_describe_onchain_events`** gives the catalogue envelope with its top-level fields unchanged and `items`
-    narrowed to whole items matching the agent's filter (`family`, `search`, `eventType`). With no filter it gives
+  - **`dwlf_describe_onchain_events`** gives the catalogue envelope with its top-level fields unchanged, except two:
+    `items`, narrowed to whole items matching the agent's filter (`family`, `search`, `eventType`), and
+    `definitions` (42 KB, keyed by id), narrowed to those items' own entries, whole. Nothing is rewritten. The gate
+    holds both tools to that (`selectionFailures`). With no filter it gives
     no items, only a count per family, computed from the catalogue and added as its own key.
   - **Interim, and asked of WP2:** filtering and counting are computing the Block API should own, as its product
     surface. Ask (DWLF-878): `/catalogue?family=&search=&type=` plus a per-family summary. When WP2 serves them, these tools

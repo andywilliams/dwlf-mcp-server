@@ -1,0 +1,4 @@
+{
+ "isError": true,
+ "output": "\"mvrv\" is a series, not an event type: read it with dwlf_get_series."
+}

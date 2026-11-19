@@ -1,0 +1,18 @@
+{
+ "key": "GET /public/v1/events?types=cycle.low.confirmed",
+ "status": 200,
+ "recordedAt": "2026-11-19T16:54:34.544Z",
+ "openapi": {
+  "version": "1.0.0-draft",
+  "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"
+ },
+ "body": {
+  "responseVersion": 1,
+  "asOf": "2026-11-19T16:54:31.953Z",
+  "knowableAt": "2026-11-19T16:54:31.953Z",
+  "summary": "0 events for BTC on DWLF's own data. Recent history only; a free account shows all of it.",
+  "items": [],
+  "definitions": {},
+  "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+ }
+}

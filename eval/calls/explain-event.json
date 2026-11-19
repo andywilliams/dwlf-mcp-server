@@ -1,0 +1,36 @@
+{
+ "tool": "dwlf_explain_event",
+ "calls": [
+  {
+   "id": "sth-sopr-lose",
+   "args": {
+    "eventType": "onchain.sth_sopr.lose"
+   }
+  },
+  {
+   "id": "sth-sopr-lose-from-nov-1",
+   "args": {
+    "eventType": "onchain.sth_sopr.lose",
+    "from": "2026-11-01"
+   }
+  },
+  {
+   "id": "locked-on-free",
+   "args": {
+    "eventType": "cycle.low.confirmed"
+   }
+  },
+  {
+   "id": "a-series-id",
+   "args": {
+    "eventType": "mvrv"
+   }
+  },
+  {
+   "id": "unknown-id",
+   "args": {
+    "eventType": "no.such.type"
+   }
+  }
+ ]
+}

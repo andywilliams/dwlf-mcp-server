@@ -1,0 +1,14 @@
+{
+ "isError": false,
+ "added": {
+  "definitions": {
+   "$subsetOf": "definitions",
+   "keys": [
+    "onchain.sth_sopr.lose"
+   ]
+  }
+ },
+ "selection": [
+  "onchain.sth_sopr.lose"
+ ]
+}

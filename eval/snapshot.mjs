@@ -46,7 +46,8 @@ export const sentenceFailures = (value, path = '') => {
  * T1: what the MCP adds to the upstream bodies (`pages`). With no upstream page, or an output that isn't an object,
  * that is the whole output. Otherwise:
  *   - `added`: top-level keys (`items` aside) the tool added or rewrote. A value that IS one whole upstream body (a
- *     tool nesting a response under its own key) is pinned as `{ $upstreamPage: n }`, not copied;
+ *     tool nesting a response under its own key) is pinned as `{ $upstreamPage: n }`, and a keyed map narrowed to
+ *     whole upstream entries as `{ $subsetOf, keys }`, not copied;
  *   - `selection`: only when the output's items aren't exactly the upstream items in order, the upstream id (else
  *     index) of each one it gives (null = not from upstream), so a selecting tool's choice is pinned;
  *   - `itemsAdded`: per output item, keys its matching upstream item (the one it contains whole) lacks or differs on.
@@ -56,9 +57,18 @@ export const mcpLayer = (output, pages) => {
   const bodies = pages.filter(isObject);
   if (!bodies.length || !isObject(output)) { return { output }; }
   const changed = (obj, base) => Object.fromEntries(Object.entries(obj).filter(([k, v]) => !(k in base) || !isDeepStrictEqual(v, base[k])));
-  const asUpstream = (v) => { const n = bodies.findIndex((b) => isDeepStrictEqual(b, v)); return n >= 0 ? { $upstreamPage: n } : v; };
+  const asUpstream = (k, v) => {
+    const n = bodies.findIndex((b) => isDeepStrictEqual(b, v));
+    if (n >= 0) { return { $upstreamPage: n }; }
+    // A keyed map narrowed to whole upstream entries (the catalogue's `definitions`): pinned by its keys, not copied.
+    const base = bodies[0][k];
+    if (isObject(v) && isObject(base) && Object.entries(v).every(([ek, ev]) => ek in base && isDeepStrictEqual(ev, base[ek]))) {
+      return { $subsetOf: k, keys: Object.keys(v) };
+    }
+    return v;
+  };
   const top = changed(Object.fromEntries(Object.entries(output).filter(([k]) => k !== 'items')), bodies[0]);
-  const layer = { added: Object.fromEntries(Object.entries(top).map(([k, v]) => [k, asUpstream(v)])) };
+  const layer = { added: Object.fromEntries(Object.entries(top).map(([k, v]) => [k, asUpstream(k, v)])) };
   if (!Array.isArray(output.items)) { return layer; }
   const upstream = bodies.flatMap((b) => (Array.isArray(b.items) ? b.items : []));
   const contains = (item, u) => isObject(item) && isObject(u) && Object.entries(u).every(([k, v]) => k in item && isDeepStrictEqual(item[k], v));

@@ -107,3 +107,10 @@ test('T3 fixture lint: no committed recording carries a price on a symbol other 
   assert.equal(vendorFailures({ symbol: 'BTC/USD', price: { close: 82974, withheld: false } }).length, 2, 'nested under a symbol parent, and the withheld flag');
   assert.equal(vendorFailures({ symbol: 'BTC/USD', items: [{ level: 60000 }] }).length, 1, 'a symbol applies to its children');
 });
+
+test('mcpLayer pins a keyed map narrowed to whole upstream entries by its keys, not its text', () => {
+  const page = { summary: 's', items: [{ id: 'x' }], definitions: { x: 'long text', y: 'other' } };
+  assert.deepEqual(mcpLayer({ summary: 's', items: [{ id: 'x' }], definitions: { x: 'long text' } }, [page]),
+    { added: { definitions: { $subsetOf: 'definitions', keys: ['x'] } } });
+  assert.deepEqual(mcpLayer({ summary: 's', items: [], definitions: { x: 'changed' } }, [page]).added.definitions, { x: 'changed' }, 'a rewritten entry is copied, so it shows in the diff');
+});

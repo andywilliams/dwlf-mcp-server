@@ -12,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { requiredFrom, requiredForPath, envelopeFailures, containmentFailures, dataFamily } from '../eval/envelope.mjs';
+import { requiredFrom, requiredForPath, envelopeFailures, containmentFailures, dataFamily, selectionFailures } from '../eval/envelope.mjs';
 import { startFixtureServer, fixtureKey, fixtureFile, routeFamily, schemaDrift, replayEnv } from '../eval/fixture-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -219,13 +219,13 @@ test('passthrough.json covers the launch set: each launch-set data tool is check
 test('check 4: every tool in eval/passthrough.json keeps its Block API body whole (on the block-api backend, DWLF-876)', async () => {
   const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
   const { BLOCK_API_TOOLS } = await import('../dist/profiles.js');
-  for (const { tool, args = {} } of registry.tools) {
+  for (const { tool, args = {}, selects = false } of registry.tools) {
     assert.ok(BLOCK_API_TOOLS.has(tool), `${tool} is not a block-api backend tool`);
     const { result, pages, paths, misses } = await replayTool(join(root, 'eval', 'fixtures'), tool, args, 'block-api');
     assert.deepEqual(misses, [], `${tool}: record its fixture first`);
     assert.ok(pages.length > 0, `${tool}: no upstream page`);
     assert.deepEqual(paths.filter((p) => routeFamily(p) !== 'block'), [], `${tool}: its upstream is not the Block API`);
-    assert.deepEqual(containmentFailures(result, pages), [], tool);
+    assert.deepEqual(selects ? selectionFailures(result, pages) : containmentFailures(result, pages), [], tool);
   }
 });
 
@@ -252,4 +252,14 @@ test('a failed OpenAPI fetch is reported, not saved and not cached: the next req
     assert.equal(openapiCalls, 2);
     assert.equal(readdirSync(dir).length, 1, 'checked and saved once the OpenAPI is readable');
   } finally { await fixtures.close(); await new Promise((r) => server.close(r)); }
+});
+
+test('selectionFailures (DWLF-876 D4): whole items and whole definition entries pass; a rewrite or a missing nested body fails', () => {
+  const page = { asOf: 'a', summary: 's', items: [{ id: 'x', v: 1 }, { id: 'y', v: 2 }], definitions: { x: 'dx', y: 'dy' } };
+  const events = { summary: 'e', items: [] };
+  assert.deepEqual(selectionFailures({ ...page, items: [page.items[1]], definitions: { y: 'dy' }, occurrences: events }, [page, events]), []);
+  assert.match(selectionFailures({ ...page, items: [{ id: 'y', v: 3 }], definitions: { y: 'dy' } }, [page]).join(), /items\[0\] \(y\) is not an upstream item/);
+  assert.match(selectionFailures({ ...page, items: [], definitions: { y: 'rewritten' } }, [page]).join(), /changed `definitions`/);
+  assert.match(selectionFailures({ ...page, summary: 'mine', items: [] }, [page]).join(), /changed `summary`/);
+  assert.match(selectionFailures({ ...page, items: [] }, [page, events]).join(), /page 1 does not appear whole/);
 });
