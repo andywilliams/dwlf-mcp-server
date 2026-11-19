@@ -94,7 +94,7 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
     - An unknown id, or a series id, is the tool's own refusal, pointing to the right tool.
   - The catalogue is cached 15 minutes per client, failures never kept, as the SPT catalogues are.
   - **When DWLF-878 lands, the tools take WP2's semantics:** its `search` matching and its per-family summary
-    replace the MCP's (all-words search over id, name and summary; `families: {eventTypes, series, locked}`). That
+    replace the MCP's (all-words search over id, name and definition; at most 40 items with `matched`; `families: {eventTypes, series, locked}`). That
     change ships in a release whose notes say so, and the snapshots show the diff.
   - The release gate's snapshot pins exactly this layer: the selection, the added counts, and the nested body by
     reference (`block-eval.md` §0 T1).

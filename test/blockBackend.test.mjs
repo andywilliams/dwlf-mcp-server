@@ -112,3 +112,25 @@ test('the catalogue is read once per 15 minutes, and a failed read is not kept',
     assert.match(none.content[0].text, /Families: cost-basis/);
   } finally { await mcp.close().catch(() => {}); await new Promise((r) => server.close(r)); }
 });
+
+test('describe caps an answer at 40 whole items and says how many matched', async () => {
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const items = Array.from({ length: 45 }, (_, i) => ({ id: `onchain.t${i}`, kind: 'eventType', family: 'mining', name: `T${i}` }));
+  const catalogue = { responseVersion: 1, summary: 'c', items, definitions: Object.fromEntries(items.map((i) => [i.id, 'price'])), pricingUrl: 'p' };
+  const server = createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(catalogue)); });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const mcp = new Client({ name: 't', version: '0' });
+  try {
+    await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+      env: { PATH: process.env.PATH || '', DWLF_BLOCK_BACKEND: 'block-api', BLOCK_API_URL: `http://127.0.0.1:${server.address().port}` }, stderr: 'ignore' }));
+    const out = JSON.parse((await mcp.callTool({ name: 'dwlf_describe_onchain_events', arguments: { search: 'price' } })).content[0].text);
+    assert.equal(out.items.length, 40);
+    assert.equal(out.matched, 45);
+    assert.equal(out.shown, 40);
+    assert.equal(Object.keys(out.definitions).length, 40, 'definitions follow the items shown');
+  } finally { await mcp.close().catch(() => {}); await new Promise((r) => server.close(r)); }
+});

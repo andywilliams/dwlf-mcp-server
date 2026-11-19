@@ -7,7 +7,8 @@
     "onchain.mining.hash_ribbon.capitulation.enter",
     "onchain.mining.hash_ribbon.capitulation.exit"
    ]
-  }
+  },
+  "matched": 3
  },
  "selection": [
   "onchain.mining.hash_ribbon.capitulation.enter",

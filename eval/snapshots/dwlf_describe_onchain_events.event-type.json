@@ -6,7 +6,8 @@
    "keys": [
     "onchain.sth_sopr.lose"
    ]
-  }
+  },
+  "matched": 1
  },
  "selection": [
   "onchain.sth_sopr.lose"

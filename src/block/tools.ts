@@ -93,6 +93,7 @@ const narrowCatalogue = (catalogue: Json, keep: (item: Json) => boolean): Json =
 const words = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
 const CATALOGUE_TTL_MS = 15 * 60 * 1000;
+const MAX_ITEMS = 40;
 
 function registerCatalogueTools(server: McpServer, client: BlockApiClient): void {
   // The catalogue is 355 KB and changes slowly: kept 15 minutes per client, as the SPT catalogues are. A failed read is
@@ -110,7 +111,9 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
       'COT) and every daily series, with its family, the plan that reads it, how often it has fired and when it last ' +
       'did (names and counts, never values). No arguments gives each family with its counts; `family`, `search` (words ' +
       'in the id, name or definition) or `eventType` (one exact id) gives those items whole, with their definitions. ' +
-      'The catalogue-wide `summary` covers every item; each item\'s own `summary` describes that item. For ' +
+      'At most 40 items come back; `matched` says how many matched (narrow with `family`, `eventType` or more words). ' +
+      'The catalogue-wide `summary` covers every item; an item\'s own `summary` gives its plan status, and its meaning is ' +
+      'under its id in `definitions`. For ' +
       'one event type\'s recent occurrences use dwlf_explain_event; for a series\' values, dwlf_get_series. ' + ENVELOPE,
     {
       family: z.string().optional().describe('One family, e.g. "cost-basis", "mining", "cycles", "indicators".'),
@@ -141,7 +144,11 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
           const known = [...new Set((Array.isArray(catalogue.items) ? catalogue.items : []).filter(isObject).map((i) => String(i.family)))].sort();
           return { content: [{ type: 'text' as const, text: `Nothing in the Block catalogue matches${family ? ` family "${family}"` : ''}${search ? ` "${search}"` : ''}${eventType ? ` id "${eventType}"` : ''}. Families: ${known.join(', ')}. Call with no arguments for each family's counts.` }], isError: true };
         }
-        return reply(narrowed);
+        const matched = (narrowed.items as Json[]).length;
+        if (matched <= MAX_ITEMS) { return reply({ ...narrowed, matched }); }
+        // Too many to hand an agent whole: the first MAX_ITEMS in catalogue order, and the count, so nothing is hidden.
+        const shown = new Set((narrowed.items as Json[]).slice(0, MAX_ITEMS).map((i) => String(i.id)));
+        return reply({ ...narrowCatalogue(catalogue, (item) => shown.has(String(item.id))), matched, shown: MAX_ITEMS });
       } catch (error) { return failure(error); }
     },
   );

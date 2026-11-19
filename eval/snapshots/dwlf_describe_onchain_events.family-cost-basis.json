@@ -19,7 +19,8 @@
     "onchain.lth_realised_price.cross.above",
     "onchain.lth_realised_price.cross.below"
    ]
-  }
+  },
+  "matched": 22
  },
  "selection": [
   "onchain.mvrv.deep_value.enter",
