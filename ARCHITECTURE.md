@@ -365,7 +365,8 @@ work-in-progress, and a diff that moves toward them is conformant.)*
 ## Handed to other packages — open, not decided here
 
 - **Handed to WP4 by the WP7 charter (16-Nov).** ✅ **Answered 19-Nov in `docs/design/block-repoint.md`** (D3 names and
-  registration, D4 unwrapping, D6 key variable, install migration and `server.json`, D8 charter lines). The questions, as handed:
+  registration, D4 unwrapping, D6 key variable, install migration and `server.json`, D8 charter lines), except whether
+  Block's envelope is what SPT standardises on, which stays SPT's question. The questions, as handed:
   - which charter lines it rewrites. Known: *Purpose*, *Not for*, *Depends on*, *Tool profiles* ("same key to the
     same backend", "never widens"), invariants 1, 3, 5, 6 and 8, the stdio standing decision, and the scoped
     invariant-2 exceptions of the two catalogue tools;

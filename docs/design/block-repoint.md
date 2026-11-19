@@ -32,6 +32,10 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
 - **Rejected:** a third profile name. The charter keeps `block` as the name, and a temporary profile would leak into
   install docs.
 
+- **After the cut,** `DWLF_BLOCK_BACKEND=spt` stays for **one minor release** as the rollback (the old 39 tools on SPT,
+  documented as temporary in `docs/BLOCK.md` and its release notes), then it's removed. Only the profile name is a
+  published contract; the backend switch never is.
+
 **D2 · Which tools, on each backend.**
 - On `block-api`, the profile offers the launch set above, minus the account tool, which needs a key (D6).
 - `dwlf_get_series` exists only on `block-api`.
@@ -55,6 +59,9 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
     `dwlf_explain_event` has two signatures: `type` + `since` on `full`, `eventType` + `from`/`to` on `block`.
   - The cut PR documents each launch-set tool's Block signature in `docs/BLOCK.md` and the registry listing,
     marked "Block profile". Docs about `full` keep theirs.
+  - **If SPT later standardises on the Block envelope** (that hand-off question is SPT's, not answered here),
+    `pricingUrl` stops being a tell. The distinguisher is then the profile itself, which an agent never mixes in a
+    session, plus the per-profile docs above.
   - Distinct names (`block_*`) would avoid this. They were rejected because every Block install doc, eval case and
     agent prompt written since 4-Nov already uses `dwlf_*`.
 
@@ -68,7 +75,7 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
     narrowed to whole items matching the agent's filter (`family`, `search`, `eventType`). With no filter it gives
     no items, only a count per family, computed from the catalogue and added as its own key.
   - **Interim, and asked of WP2:** filtering and counting are computing the Block API should own, as its product
-    surface. Ask: `/catalogue?family=&search=&type=` plus a per-family summary. When WP2 serves them, these tools
+    surface. Ask (DWLF-878): `/catalogue?family=&search=&type=` plus a per-family summary. When WP2 serves them, these tools
     pass that answer through and their local filter goes.
   - **`dwlf_explain_event`** gives the catalogue envelope narrowed to that one type, plus `occurrences`: the
     `/events?types=<type>` envelope, verbatim and whole.
@@ -129,11 +136,12 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
   - invariant 3 (`BlockApiClient` is the second authenticated client, for the `block-api` backend only);
   - invariant 6 (Block-API tools are a third wiring point, `registerBlockApiTools`).
   So PRs 2–4 land against a charter that already allows them.
-- Rewritten at the cut: *Purpose*, *Not for*, invariants 1, 5 and 8, and the stdio decision's Block clause.
+- Rewritten at the cut: *Purpose*, *Not for*, invariants 1, 5 and 8, the stdio decision's Block clause, and the
+  catalogue tools' scoped invariant-2 exceptions (their Block-API versions select whole catalogue items, D4).
   The *Handed to WP4* list is answered here, item by item:
   - names (D3);
   - install migration and `server.json` (D6);
-  - unwrapping (D4);
+  - unwrapping (D4). Whether Block's envelope is the shape SPT standardises on is SPT's question, not answered here;
   - the key variable and client (D3, D6);
   - shared tools are registered once per backend, not branched (D3).
 
@@ -144,7 +152,9 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
    `dwlf_get_events` and `dwlf_get_series` on public routes, with recordings, calls and snapshots, and
    `replayEnv`. The three move into `passthrough.json` `tools`.
 3. **The catalogue tools** (D4), with their recordings and snapshots.
-4. **The cut release** (separate tap, timed with Andy and Jenna):
+4. **The cut release** (separate tap, timed with Andy and Jenna). **It waits for the keys release**, so that a
+   paying Block user can set `DWLF_BLOCK_KEY` and keep their plan's view. Cutting first would drop every Block-plan
+   user to the keyless Free view, and only Andy could accept that:
    - the default becomes `block-api`;
    - the 35 tools leave the profile;
    - `docs/BLOCK.md` and `server.json` are updated;
