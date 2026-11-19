@@ -260,6 +260,10 @@ test('selectionFailures (DWLF-876 D4): whole items and whole definition entries 
   assert.deepEqual(selectionFailures({ ...page, items: [page.items[1]], definitions: { y: 'dy' }, occurrences: events }, [page, events]), []);
   assert.match(selectionFailures({ ...page, items: [{ id: 'y', v: 3 }], definitions: { y: 'dy' } }, [page]).join(), /items\[0\] \(y\) is not an upstream item/);
   assert.match(selectionFailures({ ...page, items: [], definitions: { y: 'rewritten' } }, [page]).join(), /changed `definitions`/);
+  assert.match(selectionFailures({ ...page, items: [page.items[1]], definitions: {} }, [page]).join(), /changed `definitions`/, 'a selected item\'s definition may not be dropped');
+  assert.match(selectionFailures({ ...page, items: [page.items[1]], definitions: { x: 'dx' } }, [page]).join(), /changed `definitions`/, 'only the selected items\' entries');
+  const withMap = { ...page, counts: { a: 1, b: 2 } };
+  assert.match(selectionFailures({ ...withMap, items: [], definitions: {}, counts: {} }, [withMap]).join(), /changed `counts`/, 'no other map may be narrowed');
   assert.match(selectionFailures({ ...page, summary: 'mine', items: [] }, [page]).join(), /changed `summary`/);
   assert.match(selectionFailures({ ...page, items: [] }, [page, events]).join(), /page 1 does not appear whole/);
 });

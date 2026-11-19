@@ -109,11 +109,12 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
     'What DWLF Block serves, from its catalogue: every event type (on-chain `onchain.*`, cycles, indicators, levels, ' +
       'COT) and every daily series, with its family, the plan that reads it, how often it has fired and when it last ' +
       'did (names and counts, never values). No arguments gives each family with its counts; `family`, `search` (words ' +
-      'in the id, name or summary) or `eventType` (one exact id) gives those items whole, with their definitions. For ' +
+      'in the id, name or definition) or `eventType` (one exact id) gives those items whole, with their definitions. ' +
+      'The catalogue-wide `summary` covers every item; each item\'s own `summary` describes that item. For ' +
       'one event type\'s recent occurrences use dwlf_explain_event; for a series\' values, dwlf_get_series. ' + ENVELOPE,
     {
       family: z.string().optional().describe('One family, e.g. "cost-basis", "mining", "cycles", "indicators".'),
-      search: z.string().optional().describe('Words to find in an id, name or summary, e.g. "hash ribbon".'),
+      search: z.string().optional().describe('Words to find in an id, name or definition, e.g. "hash ribbon".'),
       eventType: z.string().optional().describe('One exact id, e.g. "onchain.sth_sopr.lose".'),
     },
     async ({ family, search, eventType }) => {
@@ -129,10 +130,18 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
           }
           return reply({ ...narrowCatalogue(catalogue, () => false), families });
         }
+        // Search reads what describes the item (its id, name and own definition), never its `summary`, which on the
+        // Free view is plan wording ("needs the Free plan", "locked") shared by hundreds of items.
         const wanted = search ? words(search) : [];
-        return reply(narrowCatalogue(catalogue, (item) => (!family || item.family === family)
+        const definitions = isObject(catalogue.definitions) ? catalogue.definitions : {};
+        const narrowed = narrowCatalogue(catalogue, (item) => (!family || item.family === family)
           && (!eventType || item.id === eventType)
-          && (!wanted.length || wanted.every((w) => words(`${item.id} ${item.name ?? ''} ${item.summary ?? ''}`).includes(w)))));
+          && (!wanted.length || wanted.every((w) => words(`${item.id} ${item.name ?? ''} ${definitions[String(item.id)] ?? ''}`).includes(w))));
+        if (!(narrowed.items as Json[]).length) {
+          const known = [...new Set((Array.isArray(catalogue.items) ? catalogue.items : []).filter(isObject).map((i) => String(i.family)))].sort();
+          return { content: [{ type: 'text' as const, text: `Nothing in the Block catalogue matches${family ? ` family "${family}"` : ''}${search ? ` "${search}"` : ''}${eventType ? ` id "${eventType}"` : ''}. Families: ${known.join(', ')}. Call with no arguments for each family's counts.` }], isError: true };
+        }
+        return reply(narrowed);
       } catch (error) { return failure(error); }
     },
   );
@@ -141,7 +150,8 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
     'dwlf_explain_event',
     'One event type from DWLF Block\'s catalogue, by exact id: its definition, family, the plan that reads it, how ' +
       'often it has fired and when it last did, plus `occurrences`: its events over the view (without a key, the last ' +
-      '30 days; narrow with `from` / `to`), as the Block API gave them. If the occurrences could not be read, ' +
+      '30 days; narrow with `from` / `to`; with a key, always pass `from`, since a longer history comes back in one ' +
+      'answer), as the Block API gave them. If the occurrences could not be read, ' +
       '`occurrencesUnavailable` says why instead: never read that as "it has not fired". Use ' +
       'dwlf_describe_onchain_events to find an id. ' + ENVELOPE,
     {

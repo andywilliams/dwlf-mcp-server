@@ -155,7 +155,10 @@ export const selectionFailures = (result, pages) => {
     if (k === 'items') { continue; }
     if (!(k in result)) { failures.push(`dropped \`${k}\``); continue; }
     if (isDeepStrictEqual(result[k], v)) { continue; }
-    if (isMap(v) && isMap(result[k]) && Object.entries(result[k]).every(([ek, ev]) => ek in v && isDeepStrictEqual(ev, v[ek]))) { continue; }
+    // Only `definitions` may be narrowed, and only to the selected items' own entries (the charter's scoped rule).
+    const ids = new Set((Array.isArray(result.items) ? result.items : []).map((i) => String(i?.id)));
+    if (k === 'definitions' && isMap(v) && isMap(result[k]) && Object.entries(result[k]).every(([ek, ev]) => ids.has(ek) && ek in v && isDeepStrictEqual(ev, v[ek]))
+      && [...ids].every((id) => !(id in v) || id in result[k])) { continue; }
     failures.push(`changed \`${k}\` (neither as served nor whole entries of it)`);
   }
   const upstreamItems = Array.isArray(page0.items) ? page0.items : [];
