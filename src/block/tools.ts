@@ -59,8 +59,9 @@ export function registerBlockApiTools(server: McpServer, client: BlockApiClient)
     'dwlf_get_series',
     'One daily Bitcoin series from DWLF Block (DWLF\'s own data), by id: for example `price-close`, `realized-price`, ' +
       '`sth-realized-price` or `mvrv`. ' +
-      'Without a key the view covers the last 365 days; the item\'s `from` is its first point and `historyFrom` says ' +
-      'when the series itself starts. ' + ENVELOPE,
+      'Without a key the view covers the last 365 days. The item\'s `from` is its first point; `historyFrom` is set ' +
+      'only when the series\' own history, not the view or your `from`, is what limits it (no earlier day exists), ' +
+      'and is null otherwise. ' + ENVELOPE,
     {
       id: z.string().min(1).describe('The series id, e.g. "mvrv".'),
       from: z.string().regex(DAY).optional().describe('The first day to include, YYYY-MM-DD.'),
