@@ -239,6 +239,11 @@ A reviewer should be able to test a diff against each of these:
      `workflow_dispatch` with an `eval_override` reason: the same OIDC job, tagged, with the failing transcripts
      attached. The overridden cases are listed in the release notes, and the next release must pass them; it
      can't be overridden for the same case again.~~
+     📌 *Scoped 19-Nov (DWLF-876 D4):* exactly two tools, the Block-API `dwlf_describe_onchain_events` and
+     `dwlf_explain_event`, are held to a **selection** rule instead (`eval/envelope.mjs` `selectionFailures`,
+     `selects: true` in `eval/passthrough.json`). Their top-level fields stay as served, except `items` and
+     `definitions`, which are narrowed to whole upstream entries, and any nested body appears whole. The 355 KB
+     catalogue can't be handed over whole. A test refuses `selects` on any other tool; a third needs this item amended.
   7. **Block responses are never unwrapped before the agent sees them.** This is WP7's requirement: the envelope
      is the answer. Item 2 enforces it. How "unwrap once" applies to SPT's shapes stays with that decision.
   8. **Shared docstrings:** the list governs every Block-visible description. A shared docstring that trips it is

@@ -263,3 +263,10 @@ test('selectionFailures (DWLF-876 D4): whole items and whole definition entries 
   assert.match(selectionFailures({ ...page, summary: 'mine', items: [] }, [page]).join(), /changed `summary`/);
   assert.match(selectionFailures({ ...page, items: [] }, [page, events]).join(), /page 1 does not appear whole/);
 });
+
+test('the selection rule is scoped to the two catalogue tools: no other passthrough entry may set selects', () => {
+  const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
+  const selecting = registry.tools.filter((t) => t.selects).map((t) => t.tool).sort();
+  assert.deepEqual(selecting.filter((t) => !['dwlf_describe_onchain_events', 'dwlf_explain_event'].includes(t)), [],
+    'a third tool set selects: amend the charter\'s pass-through item first');
+});

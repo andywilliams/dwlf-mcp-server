@@ -88,6 +88,14 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
     pass that answer through and their local filter goes.
   - **`dwlf_explain_event`** gives the catalogue envelope narrowed to that one type, plus `occurrences`: the
     `/events?types=<type>` envelope, verbatim and whole.
+    - If that events read fails, the definition still answers, with `occurrencesUnavailable` (the Block API's error
+      text) in place of `occurrences`. The SPT version behaves the same way, and the agent is told never to read it as
+      "has not fired".
+    - An unknown id, or a series id, is the tool's own refusal, pointing to the right tool.
+  - The catalogue is cached 15 minutes per client, failures never kept, as the SPT catalogues are.
+  - **When DWLF-878 lands, the tools take WP2's semantics:** its `search` matching and its per-family summary
+    replace the MCP's (all-words search over id, name and summary; `families: {eventTypes, series, locked}`). That
+    change ships in a release whose notes say so, and the snapshots show the diff.
   - The release gate's snapshot pins exactly this layer: the selection, the added counts, and the nested body by
     reference (`block-eval.md` §0 T1).
   - **What the SPT versions had that the Block API doesn't serve, and so goes at the cut:**

@@ -92,7 +92,18 @@ const narrowCatalogue = (catalogue: Json, keep: (item: Json) => boolean): Json =
 
 const words = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
+const CATALOGUE_TTL_MS = 15 * 60 * 1000;
+
 function registerCatalogueTools(server: McpServer, client: BlockApiClient): void {
+  // The catalogue is 355 KB and changes slowly: kept 15 minutes per client, as the SPT catalogues are. A failed read is
+  // never kept, so the next call tries again.
+  let cached: { at: number; body: Json } | null = null;
+  const catalogueOf = async (): Promise<Json> => {
+    if (cached && Date.now() - cached.at < CATALOGUE_TTL_MS) { return cached.body; }
+    const body = await client.get<Json>('/catalogue');
+    cached = { at: Date.now(), body };
+    return body;
+  };
   server.tool(
     'dwlf_describe_onchain_events',
     'What DWLF Block serves, from its catalogue: every event type (on-chain `onchain.*`, cycles, indicators, levels, ' +
@@ -107,7 +118,7 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
     },
     async ({ family, search, eventType }) => {
       try {
-        const catalogue = await client.get<Json>('/catalogue');
+        const catalogue = await catalogueOf();
         if (!family && !search && !eventType) {
           const families: Record<string, { eventTypes: number; series: number; locked: number }> = {};
           for (const item of Array.isArray(catalogue.items) ? catalogue.items : []) {
@@ -130,8 +141,9 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
     'dwlf_explain_event',
     'One event type from DWLF Block\'s catalogue, by exact id: its definition, family, the plan that reads it, how ' +
       'often it has fired and when it last did, plus `occurrences`: its events over the view (without a key, the last ' +
-      '30 days; narrow with `from` / `to`), as the Block API gave them. Use dwlf_describe_onchain_events to find an ' +
-      'id. ' + ENVELOPE,
+      '30 days; narrow with `from` / `to`), as the Block API gave them. If the occurrences could not be read, ' +
+      '`occurrencesUnavailable` says why instead: never read that as "it has not fired". Use ' +
+      'dwlf_describe_onchain_events to find an id. ' + ENVELOPE,
     {
       eventType: z.string().min(1).describe('One exact event type id, e.g. "onchain.sth_sopr.lose".'),
       from: z.string().regex(DAY).optional().describe('The first day of occurrences to include, YYYY-MM-DD.'),
@@ -139,7 +151,7 @@ function registerCatalogueTools(server: McpServer, client: BlockApiClient): void
     },
     async ({ eventType, from, to }) => {
       try {
-        const catalogue = await client.get<Json>('/catalogue');
+        const catalogue = await catalogueOf();
         const narrowed = narrowCatalogue(catalogue, (item) => item.id === eventType);
         const [item] = narrowed.items as Json[];
         if (!item) {
