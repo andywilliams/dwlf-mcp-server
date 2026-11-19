@@ -62,11 +62,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   what a call can do. It is never a permission boundary, because every call carries the same key to the same
   backend checks. An unknown profile is a startup error, never a silent `full` *(inferred from: `src/profiles.ts`,
   `test/profiles.test.mjs`)*.
-  ⚠️ **Scheduled to change at the Block cut** (Block 3-layer design §1.4 and §2 step 4, approved 12-Nov; Andy's
-  Q10, "one server, product profiles"): the `block` profile will call the Block API (`api.block.dwlf.co.uk`) with
-  an identity-issued `dwlfk_` key, not SPT `/v2` with `DWLF_API_KEY`. **WP4 owns that change and its charter
-  edits.** This note only marks the lines here that it touches, so a reader isn't surprised. It authorises
-  nothing in advance: the WP4 PR is reviewed against this charter like any other, through its own `lgtm arch`.
+  ⚠️ **Two backends until the Block cut (DWLF-876, `docs/design/block-repoint.md`, 19-Nov):** `block` runs on SPT
+  `/v2` (the default today, 39 tools) or, with `DWLF_BLOCK_BACKEND=block-api`, on the Block API with the launch
+  set only. Each launch-set tool is registered once per backend under the same `dwlf_*` name, never branched
+  inside a shared handler, and `full` never sees the Block versions. An unknown backend is a startup error. The
+  cut release makes `block-api` the default and removes the 35 SPT-only tools; it rewrites *Purpose*, *Not for*,
+  invariants 1, 5 and 8 and the stdio decision's Block clause (design D8; 3 and 6 are scoped now). On `block-api` the profile is
+  still not a permission boundary: the Block API decides what a caller's plan reads.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
   `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
   state (`inEngine`) comes from the same API, and the engine's own types are a pseudo-pack, `engine` (the bundle's
@@ -111,6 +113,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **`serverless-portfolio-tracker` v2 REST API** — `https://api.dwlf.co.uk/v2` (override:
   `DWLF_API_URL`), contract = HTTP + `Authorization: ApiKey <DWLF_API_KEY>`, response shapes consumed
   as-is *(inferred from: `src/client.ts` `baseURL`/headers, 30 s timeout)*.
+- **The Block API** (`https://api.block.dwlf.co.uk`, override `BLOCK_API_URL`), **only when `--profile block` runs
+  on the `block-api` backend** (`DWLF_BLOCK_BACKEND`, off by default until the cut; DWLF-876,
+  `docs/design/block-repoint.md`). Keyless reads go to `/public/v1/*`. With `DWLF_BLOCK_KEY` (a personal `dwlfk_` key,
+  once keys ship) it reads `/v1/*` with `Bearer`. Responses are the Block envelope, passed through (D4).
 - **Academy CDN** — `https://academy.dwlf.co.uk/live`, unauthenticated, `manifest.json` shape owned by
   `dwlf-academy-content`; the only place that bypasses `DWLFClient` (direct `axios`, 15-min manifest
   cache) *(inferred from: `src/tools/academy.ts` `ACADEMY_BASE`, `MANIFEST_TTL_MS`;
@@ -151,6 +157,9 @@ A reviewer should be able to test a diff against each of these:
    request *(verified 2026-08-13)*. ⇒ **Importing axios is not the test; making a request is.** A
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
+   📌 **Scoped 19-Nov (DWLF-876, `docs/design/block-repoint.md` D3):** on the `block-api` backend of `--profile block`,
+   authenticated HTTP goes through `BlockApiClient` (`src/block/client.ts`) to the Block API, its only host. It is
+   the second and last authenticated client: one per backend, each the sole `Authorization` assignment for its host.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
    ⚠️ **`eval/` (with `scripts/wording-sync.mjs`) is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter, narrowed 18-Nov): no model API (18-Nov, item 11 of the eval decision: the eval's agent and judge are gone); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
@@ -171,6 +180,9 @@ A reviewer should be able to test a diff against each of these:
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
    catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
    *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
+   📌 **Scoped 19-Nov (DWLF-876, design D3):** a Block-API tool is registered by `registerBlockApiTools`
+   (`src/block/tools.ts`), which `registerAll` calls only on the `block-api` backend. It replaces the SPT tool of the
+   same name for that backend, never both, and `full` never registers it. That is the third wiring point.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
@@ -352,8 +364,9 @@ work-in-progress, and a diff that moves toward them is conformant.)*
 
 ## Handed to other packages — open, not decided here
 
-- **Handed to WP4 by the WP7 charter (16-Nov), not decided here.** The re-point PR answers these, through its own
-  `lgtm arch`:
+- **Handed to WP4 by the WP7 charter (16-Nov).** ✅ **Answered 19-Nov in `docs/design/block-repoint.md`** (D3 names and
+  registration, D4 unwrapping, D6 key variable, install migration and `server.json`, D8 charter lines), except whether
+  Block's envelope is what SPT standardises on, which stays SPT's question. The questions, as handed:
   - which charter lines it rewrites. Known: *Purpose*, *Not for*, *Depends on*, *Tool profiles* ("same key to the
     same backend", "never widens"), invariants 1, 3, 5, 6 and 8, the stdio standing decision, and the scoped
     invariant-2 exceptions of the two catalogue tools;
