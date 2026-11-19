@@ -3,11 +3,8 @@
 import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { DWLFClient } from './client.js';
-import { registerAll } from './register.js';
-import { profiledServer, resolveProfile, resolveBlockBackend, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS, type ProfileName, type BlockBackend } from './profiles.js';
-import { BlockApiClient } from './block/client.js';
-import { registerBlockApiTools } from './block/tools.js';
+import { registerForProfile } from './register.js';
+import { resolveProfile, resolveBlockBackend, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS, type ProfileName, type BlockBackend } from './profiles.js';
 
 // package.json sits one level above dist/ in both a clone and the published tarball.
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
@@ -26,14 +23,11 @@ try {
 const instructions = backend === 'block-api' ? BLOCK_API_INSTRUCTIONS : PROFILE_INSTRUCTIONS[profile];
 const server = new McpServer({ name: 'dwlf', version }, instructions ? { instructions } : undefined);
 
-if (backend === 'block-api') {
-  // The Block profile on the Block API (DWLF-876 D1–D3): only the launch-set tools, through BlockApiClient. SPT and
-  // DWLF_API_KEY are not used at all here.
-  if (process.env.DWLF_API_KEY) console.error('Note: DWLF_API_KEY is not used on the block-api backend (set DWLF_BLOCK_KEY for a Block API key).');
-  registerBlockApiTools(server, new BlockApiClient());
-} else {
-  registerAll(profiledServer(server, profile), new DWLFClient());
+// On the block-api backend (DWLF-876) SPT and DWLF_API_KEY are not used at all.
+if (backend === 'block-api' && process.env.DWLF_API_KEY) {
+  console.error('Note: DWLF_API_KEY is not used on the block-api backend (set DWLF_BLOCK_KEY for a Block API key).');
 }
+registerForProfile(server, profile, backend);
 
 // Start server with stdio transport
 const transport = new StdioServerTransport();

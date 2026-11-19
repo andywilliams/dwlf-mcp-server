@@ -180,8 +180,9 @@ A reviewer should be able to test a diff against each of these:
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
    catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
    *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
-   📌 **Scoped 19-Nov (DWLF-876, design D3):** on the `block-api` backend, `src/index.ts` registers
-   `registerBlockApiTools` (`src/block/tools.ts`) **instead of** `registerAll`, so a name has one implementation per
+   📌 **Scoped 19-Nov (DWLF-876, design D3):** `registerForProfile` (`src/register.ts`, the one entry for stdio and any
+   per-request host) registers, on the `block-api` backend, `registerBlockApiTools` (`src/block/tools.ts`) **instead
+   of** `registerAll`, so a name has one implementation per
    backend and `full` never sees the Block versions. Its list is `BLOCK_API_TOOLS` (`src/profiles.ts`), and the
    block-api wording test checks the two agree. That is the third wiring point.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version

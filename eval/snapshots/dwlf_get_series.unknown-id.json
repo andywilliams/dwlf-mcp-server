@@ -1,0 +1,4 @@
+{
+ "isError": true,
+ "output": "Block API 404: {\"error\":\"NOT_FOUND\",\"message\":\"No series no-such-series. GET /public/v1/catalogue lists them.\"}"
+}

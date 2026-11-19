@@ -12,6 +12,18 @@
    "args": {
     "id": "price-close"
    }
+  },
+  {
+   "id": "locked-on-free",
+   "args": {
+    "id": "addr-1k-count"
+   }
+  },
+  {
+   "id": "unknown-id",
+   "args": {
+    "id": "no-such-series"
+   }
   }
  ]
 }
