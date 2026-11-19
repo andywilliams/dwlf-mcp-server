@@ -61,7 +61,7 @@ test('mcpLayer pins only what the tool adds, rewrites or selects', () => {
   const page = { asOf: 'a', summary: 's', items: [{ id: 'x', v: 1 }, { id: 'y', v: 2 }] };
   assert.deepEqual(mcpLayer({ ...page }, [page]), { added: {} }, 'a pure pass-through has an empty layer');
   assert.deepEqual(mcpLayer({ asOf: 'a', summary: 'changed', hint: 'h', items: [{ id: 'y', v: 2, note: 'n' }] }, [page]),
-    { added: { summary: 'changed', hint: 'h' }, selection: [1], itemsAdded: [{ index: 0, added: { note: 'n' } }] });
+    { added: { summary: 'changed', hint: 'h' }, selection: ['y'], itemsAdded: [{ index: 0, added: { note: 'n' } }] });
   const noIds = { items: [{ t: 1 }, { t: 2 }, { t: 2 }] };
   assert.deepEqual(mcpLayer({ ...noIds }, [noIds]), { added: {} }, 'items with no id or repeated values still match');
   const definition = { kind: 'def', text: 'x' };
@@ -89,7 +89,8 @@ test('coverage: every re-pointed tool (passthrough.json `tools`) has a calls fil
 });
 
 test('the gate: every committed calls file replays to its snapshot, with no banned sentence and no unregistered Block call', async () => {
-  const { failures } = await runSnapshots();
+  const { failures, stale } = await runSnapshots();
+  if (stale.length) { console.log(`# stale recordings (re-record before a release candidate): ${stale.join(', ')}`); }
   assert.deepEqual(failures, []);
 });
 

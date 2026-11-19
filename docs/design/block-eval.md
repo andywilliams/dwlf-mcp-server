@@ -24,7 +24,8 @@ a PR check. Free, with no secrets and no model calls.**
   - **A snapshot pins what the MCP adds or chooses, not the upstream data** (one fresh server per call, so no tool
     cache carries between calls). It records:
     - every output key or value that isn't in the recording (hints, `filtersApplied`, error text, wrappers);
-    - for a tool that selects items (the catalogue tools), the ids it selected, in order.
+    - for a tool that selects items (the catalogue tools), the ids it selected, in order (the index where an item
+      has no id).
   - Upstream content is pinned by pass-through instead (check 4: page 1's fields unchanged, every item whole).
     So a re-record changes a pass-through tool's snapshot only when the MCP's own layer changed, and a selecting
     tool's when its selection did. That is the diff a reviewer reads.
@@ -255,7 +256,7 @@ git history keeps the text). What still holds:
   family (`/v1`, `/public/v1` → the Block API), and each Block body is checked against the Block API's own OpenAPI
   when recorded (check 4).
 - Replay needs no credential, and under replay no other host is reachable (`replayEnv`).
-- A recording older than 30 days is reported (`staleFixtures`). Re-record before a release candidate.
+- A recording older than 30 days is reported (`stale`, printed by `eval/snapshot.mjs` and by the gate test). Re-record before a release candidate.
 
 ## 5 · Dependencies
 

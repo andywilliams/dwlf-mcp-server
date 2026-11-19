@@ -46,8 +46,8 @@ export const sentenceFailures = (value, path = '') => {
  * that is the whole output. Otherwise:
  *   - `added`: top-level keys (`items` aside) the tool added or rewrote. A value that IS one whole upstream body (a
  *     tool nesting a response under its own key) is pinned as `{ $upstreamPage: n }`, not copied;
- *   - `selection`: only when the output's items aren't exactly the upstream items in order, the upstream index of
- *     each one it gives (-1 = not from upstream), so a selecting tool's choice is pinned;
+ *   - `selection`: only when the output's items aren't exactly the upstream items in order, the upstream id (else
+ *     index) of each one it gives (null = not from upstream), so a selecting tool's choice is pinned;
  *   - `itemsAdded`: per output item, keys its matching upstream item (the one it contains whole) lacks or differs on.
  * Items are matched by containment, not by `id`, so items with no id or a repeated id still match.
  */
@@ -67,7 +67,8 @@ export const mcpLayer = (output, pages) => {
     if (n >= 0) { used.add(n); }
     return n;
   });
-  if (!(match.length === upstream.length && match.every((n, i) => n === i))) { layer.selection = match; }
+  // Readable in a diff: the upstream id where there is one, else its index; null = not from upstream.
+  if (!(match.length === upstream.length && match.every((n, i) => n === i))) { layer.selection = match.map((n) => (n < 0 ? null : upstream[n]?.id ?? n)); }
   const extras = output.items.map((item, i) => ({ index: i, added: match[i] >= 0 ? changed(item, upstream[match[i]]) : item }))
     .filter((e) => (isObject(e.added) ? Object.keys(e.added).length : true));
   if (extras.length) { layer.itemsAdded = extras; }
@@ -103,6 +104,7 @@ const runCall = async ({ root, fixturesDir, mode, passthroughTools, tool, args }
     ];
     return { own, stale: [...fixtures.stale], layer: { isError: Boolean(r.isError), ...mcpLayer(output, fixtures.served.map((x) => x.body)) } };
   } finally {
+    // close() rejects when connect never completed; that must not hide the call's own error, so it is ignored here.
     await mcp.close().catch(() => {});
     await fixtures.close();
   }
