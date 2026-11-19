@@ -1,5 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DWLFClient } from './client.js';
+import { BlockApiClient } from './block/client.js';
+import { registerBlockApiTools } from './block/tools.js';
+import { profiledServer, type ProfileName, type BlockBackend } from './profiles.js';
 import { registerMarketDataTools } from './tools/market-data.js';
 import { registerRangeTools } from './tools/ranges.js';
 import { registerCycleSetupTools } from './tools/cycle-setups.js';
@@ -87,4 +90,20 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
   // Block: the on-chain event catalogue (DWLF-621/646): definitions live from /v2/events/explain; bundled copy as the offline fallback
   registerOnchainCatalogueTools(server, client);
   registerExplainEventTools(server, client);
+}
+
+/**
+ * The one place a server gets its tools, for the stdio entry point and any per-request host (DWLF-876 D3/D7): on the
+ * Block profile's `block-api` backend, the Block API tools and nothing else; otherwise every module through the
+ * profile's view. `clients` are factories, so a host passes one per request; without them the environment's clients
+ * are built here. The block-api backend is refused for any profile but `block` (`full` never sees the Block versions).
+ */
+export function registerForProfile(server: McpServer, profile: ProfileName, backend: BlockBackend,
+  clients: { dwlf?: () => DWLFClient; block?: () => BlockApiClient } = {}): void {
+  if (backend === 'block-api') {
+    if (profile !== 'block') throw new Error('The block-api backend applies to --profile block only.');
+    registerBlockApiTools(server, (clients.block ?? (() => new BlockApiClient()))());
+    return;
+  }
+  registerAll(profiledServer(server, profile), (clients.dwlf ?? (() => new DWLFClient()))());
 }

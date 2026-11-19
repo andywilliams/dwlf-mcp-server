@@ -1,0 +1,36 @@
+{
+ "tool": "dwlf_get_series",
+ "calls": [
+  {
+   "id": "mvrv",
+   "args": {
+    "id": "mvrv"
+   }
+  },
+  {
+   "id": "price-close",
+   "args": {
+    "id": "price-close"
+   }
+  },
+  {
+   "id": "locked-on-free",
+   "args": {
+    "id": "addr-1k-count"
+   }
+  },
+  {
+   "id": "unknown-id",
+   "args": {
+    "id": "no-such-series"
+   }
+  },
+  {
+   "id": "mvrv-from-nov-14",
+   "args": {
+    "id": "mvrv",
+    "from": "2026-11-14"
+   }
+  }
+ ]
+}

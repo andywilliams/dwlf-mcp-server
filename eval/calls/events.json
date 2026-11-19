@@ -1,0 +1,24 @@
+{
+ "tool": "dwlf_get_events",
+ "calls": [
+  {
+   "id": "last-30-days",
+   "args": {}
+  },
+  {
+   "id": "sth-sopr-lose",
+   "args": {
+    "types": [
+     "onchain.sth_sopr.lose"
+    ]
+   }
+  },
+  {
+   "id": "window-nov-1-10",
+   "args": {
+    "from": "2026-11-01",
+    "to": "2026-11-10"
+   }
+  }
+ ]
+}

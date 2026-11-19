@@ -36,7 +36,8 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
   documented as temporary in `docs/BLOCK.md` and its release notes), then it's removed. Only the profile name is a
   published contract; the backend switch never is.
 
-**D2 · Which tools, on each backend.**
+**D2 · Which tools, on each backend.** `BLOCK_API_TOOLS` (`src/profiles.ts`) is the `block-api` list and, at the cut,
+the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that one minor release, then goes.
 - On `block-api`, the profile offers the launch set above, minus the account tool, which needs a key (D6).
 - `dwlf_get_series` exists only on `block-api`.
 - The `spt` backend is unchanged (39 tools) until the cut.
@@ -49,7 +50,8 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
     `DWLFClient` already allows, which is the seam the hosted endpoint uses (D7).
 - `src/block/tools.ts` registers the Block-API versions of the launch-set tools under the **same `dwlf_*` names**,
   with their own descriptions written for the envelope.
-- The profile view registers exactly one implementation per name, chosen by the backend. `full` never sees the
+- Startup registers one set or the other, chosen by the backend: `registerAll` through the profile view (`spt`), or
+  `registerBlockApiTools` (`block-api`). So each name has exactly one implementation, and `full` never sees the
   Block versions.
 - *Why the same names:* an agent sees one profile in a session, so a name never means two shapes at once. The
   eval cases, `passthrough.json` and the install docs keep their names. **How an agent tells the shapes apart:**
@@ -66,7 +68,12 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
     agent prompt written since 4-Nov already uses `dwlf_*`.
 
 **D4 · Pass-through (invariant 2; WP7's "never unwrapped").**
-- **Conditions, events, series:** the response body, verbatim as JSON text. Events is one page: the Block API has
+- **Conditions, events, series:** the response body, verbatim as JSON text. A refusal is the Block API's error body
+  whole, as `Block API <status>: <body>`. The gate pins both: an unknown series (404), and a series locked on the
+  Free view (a 200 with a locked item).
+- *Events with a key:* the Free view clamps to 30 days, but a plan view may return a long history in one cursorless
+  answer. The tool tells the agent to pass `from`. Asked of WP2 (DWLF-878): a default window or a limit on
+  `/v1/events`. Events is one page: the Block API has
   no cursor, and no tool merges pages (WP4's open question stays open until custom events return). Parameters map
   one to one: `types` (comma-separated, at most 20), `from`/`to`, a series `id` and `from`.
 - **The catalogue tools** keep the scoped exception the charter already gives them, narrowed: `/catalogue` is

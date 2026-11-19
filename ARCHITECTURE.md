@@ -180,9 +180,11 @@ A reviewer should be able to test a diff against each of these:
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
    catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
    *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
-   📌 **Scoped 19-Nov (DWLF-876, design D3):** a Block-API tool is registered by `registerBlockApiTools`
-   (`src/block/tools.ts`), which `registerAll` calls only on the `block-api` backend. It replaces the SPT tool of the
-   same name for that backend, never both, and `full` never registers it. That is the third wiring point.
+   📌 **Scoped 19-Nov (DWLF-876, design D3):** `registerForProfile` (`src/register.ts`, the one entry for stdio and any
+   per-request host) registers, on the `block-api` backend, `registerBlockApiTools` (`src/block/tools.ts`) **instead
+   of** `registerAll`, so a name has one implementation per
+   backend and `full` never sees the Block versions. Its list is `BLOCK_API_TOOLS` (`src/profiles.ts`), and the
+   block-api wording test checks the two agree. That is the third wiring point.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
@@ -272,7 +274,9 @@ A reviewer should be able to test a diff against each of these:
       and wording are unchanged.
   12. **Recordings come from the Block API's public routes** (keyless, already-public data; checked 18-Nov to be
       DWLF's own data only, `BTCOC/USD` and own-node series; every fixture diff is read for vendor or personal values
-      before it enters this public repo, and a fixture lint in `npm test` fails any priced item not on `BTCOC/USD`), plus a Block test
+      before it enters this public repo; a fixture lint in `npm test` fails a priced item under any symbol but `BTCOC/USD`.
+      Block API series and conditions items carry no symbol: their provenance is the Block API's (it serves only DWLF's
+      own data) and the human read, not the lint), plus a Block test
       account's `dwlfk_` key for signed-in views once keys exist. SPT-backed versions are never recorded, so a tool
       has no snapshot until B4 re-points it. *Accepted debt:* until then, Block releases are gated by item 4 and the
       existing tests.

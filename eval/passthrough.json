@@ -1,6 +1,30 @@
 {
- "note": "Charter check 4 (DWLF-804): each Block data tool whose upstream is the Block API, with the arguments its pass-through test replays (test/evalEnvelope.test.mjs, against eval/fixtures/). `tools` is empty until WP4 re-points the Block profile at the Block API. `launchDataTools` is DWLF-852's launch set (its data tools; the account tool is not an envelope); at the cut WP4 makes BLOCK_TOOLS that set, and this field is deleted in that PR (the check then reads BLOCK_TOOLS, less the account tool). `cutPending` holds the launch-set data tools not yet re-pointed: it only shrinks, a tool leaving it for `tools` with its recording. From PR 4c (block-eval §0), the snapshot runner fails a call that reaches a Block API path from a tool not in `tools`. Until then nothing re-points a tool, so `tools` stays empty.",
- "launchDataTools": ["dwlf_describe_onchain_events", "dwlf_explain_event", "dwlf_get_conditions", "dwlf_get_events", "dwlf_get_series"],
- "tools": [],
- "cutPending": ["dwlf_describe_onchain_events", "dwlf_explain_event", "dwlf_get_conditions", "dwlf_get_events", "dwlf_get_series"]
+ "note": "Charter check 4 (DWLF-804) and the B14 coverage rule. `tools`: each Block-API-backed tool (the block-api backend, DWLF-876), with the arguments test/evalEnvelope.test.mjs replays against eval/fixtures/ for containment; each also has an eval/calls file and snapshots. `launchDataTools`: DWLF-852's launch-set data tools (the account tool is not an envelope). `cutPending`: launch-set data tools not yet on the Block API; it only shrinks, a tool leaving it for `tools` with its recording. The snapshot runner fails a call that reaches a Block API path from a tool not in `tools`. At the cut, BLOCK_API_TOOLS (src/profiles.ts) is the launch set and `launchDataTools` and `cutPending` are deleted.",
+ "launchDataTools": [
+  "dwlf_describe_onchain_events",
+  "dwlf_explain_event",
+  "dwlf_get_conditions",
+  "dwlf_get_events",
+  "dwlf_get_series"
+ ],
+ "tools": [
+  {
+   "tool": "dwlf_get_conditions",
+   "args": {}
+  },
+  {
+   "tool": "dwlf_get_events",
+   "args": {}
+  },
+  {
+   "tool": "dwlf_get_series",
+   "args": {
+    "id": "mvrv"
+   }
+  }
+ ],
+ "cutPending": [
+  "dwlf_describe_onchain_events",
+  "dwlf_explain_event"
+ ]
 }

@@ -92,6 +92,44 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     'unlocks it (`pricingUrl`); never guess a locked value.',
 };
 
+/**
+ * The Block profile's backend (DWLF-876, docs/design/block-repoint.md D1): `spt` (today's default, SPT /v2) or
+ * `block-api` (the Block API, the launch set only). Dark until the cut release flips the default. Not a published
+ * contract like a profile name: `spt` stays one minor release after the cut as the rollback, then goes.
+ */
+export type BlockBackend = 'spt' | 'block-api';
+
+/** The tools `--profile block` offers on the `block-api` backend (the launch set as it lands; D2). */
+export const BLOCK_API_TOOLS: ReadonlySet<string> = new Set(['dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series']);
+
+/** Server instructions for `--profile block` on the `block-api` backend. Worded within the shared banned-terms list. */
+export const BLOCK_API_INSTRUCTIONS =
+  'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for where Bitcoin is now, then ' +
+  'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Every answer is the ' +
+  'Block envelope: lead with its `summary`, give each item\'s `why` and `chartUrl`, and date each fact by its ' +
+  '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
+  'when it happened and which plan reads it (`requiredPlan`, `pricingUrl`); never guess a locked value. Describe ' +
+  'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
+
+/**
+ * The backend named by `--block-backend X` / `--block-backend=X`, else `DWLF_BLOCK_BACKEND`, else `spt`. Throws on an
+ * unknown value, and on a non-default backend for any profile but `block` (it would otherwise be silently ignored).
+ */
+export function resolveBlockBackend(argv: readonly string[], env: Record<string, string | undefined>, profile: ProfileName): BlockBackend {
+  let named: string | undefined;
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === '--block-backend') {
+      if (argv[i + 1] === undefined || argv[i + 1].startsWith('--')) throw new Error('--block-backend needs a value (spt or block-api).');
+      named = argv[i + 1];
+    } else if (argv[i].startsWith('--block-backend=')) named = argv[i].slice('--block-backend='.length);
+  }
+  const fromEnv = env.DWLF_BLOCK_BACKEND?.trim() ? env.DWLF_BLOCK_BACKEND : undefined;
+  const raw = (named ?? fromEnv ?? 'spt').trim().toLowerCase();
+  if (raw !== 'spt' && raw !== 'block-api') throw new Error(`Unknown Block backend "${raw}". Use one of: spt, block-api.`);
+  if (raw === 'block-api' && profile !== 'block') throw new Error('The block-api backend applies to --profile block only.');
+  return raw;
+}
+
 /** The profile named by `--profile X` / `--profile=X`, else `DWLF_TOOL_PROFILE`, else `full`. Throws on an unknown name. */
 export function resolveProfile(argv: readonly string[], env: Record<string, string | undefined>): ProfileName {
   let named: string | undefined;

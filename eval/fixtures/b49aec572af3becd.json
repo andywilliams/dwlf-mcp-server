@@ -1,0 +1,51 @@
+{
+ "key": "GET /public/v1/events?types=onchain.sth_sopr.lose",
+ "status": 200,
+ "recordedAt": "2026-11-19T16:19:38.043Z",
+ "openapi": {
+  "version": "1.0.0-draft",
+  "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"
+ },
+ "body": {
+  "responseVersion": 1,
+  "asOf": "2026-11-19T16:13:02.796Z",
+  "knowableAt": "2026-10-31T01:02:30.000Z",
+  "summary": "1 events for BTC on DWLF's own data. Recent history only; a free account shows all of it.",
+  "items": [
+   {
+    "symbol": "BTCOC/USD",
+    "eventType": "onchain.sth_sopr.lose",
+    "name": "7d STH-SOPR loses 1",
+    "timeframe": "1d",
+    "revisionClass": "oracle",
+    "id": "2026-10-30#onchain.sth_sopr.lose#0",
+    "family": "cost-basis",
+    "date": "2026-10-30",
+    "knowableAt": "2026-10-31T01:02:30.000Z",
+    "summary": "7d STH-SOPR loses 1 on 2026-10-30.",
+    "why": [
+     "Decided on the 1d close of 2026-10-30.",
+     "Knowable from 2026-10-31T01:02:30.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/onchain.sth_sopr.lose/?at=2026-10-30",
+    "locked": false,
+    "values": {
+     "onchain": {
+      "metric": "sth_sopr_7d",
+      "metricValue": 0.99859565,
+      "threshold": 1,
+      "closeHeight": 973895,
+      "methodVersion": 1,
+      "priceSource": "brk",
+      "estimated": false
+     },
+     "seeded": true
+    }
+   }
+  ],
+  "definitions": {
+   "onchain.sth_sopr.lose": "7-day short-term-holder SOPR (value spent ÷ value at creation, outputs younger than 150 days, over a week) crossed from at or above 1 to below 1: in aggregate, short-term holders' spent coins moved below their creation value."
+  },
+  "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+ }
+}

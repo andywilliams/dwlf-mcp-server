@@ -70,3 +70,29 @@ test('check 7: every Block tool description, parameter description and the Block
   const hits = Object.entries(texts).map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
   assert.deepEqual(hits, [], `reword these neutrally (shared text where the change is neutral, blockDescriptions.ts where it is not): ${JSON.stringify(hits)}`);
 });
+
+test('check 7 on the block-api backend (DWLF-876): its tool descriptions, parameter descriptions and instructions pass the list', async () => {
+  const { BLOCK_API_TOOLS } = await import('../dist/profiles.js');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const mcp = new Client({ name: 'wording-gate-block-api', version: '0' });
+  await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
+    env: { PATH: process.env.PATH || '', DWLF_BLOCK_BACKEND: 'block-api' }, stderr: 'ignore' }));
+  let listed;
+  let instructions;
+  try {
+    listed = (await mcp.listTools()).tools;
+    instructions = mcp.getInstructions();
+  } finally { await mcp.close(); }
+  assert.deepEqual(listed.map((t) => t.name).sort(), [...BLOCK_API_TOOLS].sort());
+  const texts = { '(block-api instructions)': instructions };
+  for (const tool of listed) {
+    texts[tool.name] = tool.description || '';
+    for (const [path, text] of schemaTexts(tool.inputSchema, '')) { texts[`${tool.name} (${path})`] = text; }
+  }
+  const hits = Object.entries(texts).map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
+  assert.deepEqual(hits, []);
+  // Invariant 5 on this backend too: no text sends an agent to a tool this backend does not offer.
+  const hidden = Object.entries(texts).flatMap(([name, text]) => (text.match(/\bdwlf_[a-z_]+/g) || [])
+    .filter((t) => !BLOCK_API_TOOLS.has(t)).map((t) => `${name} → ${t}`));
+  assert.deepEqual(hidden, [], 'a block-api text names a tool the backend does not offer');
+});
