@@ -1,0 +1,17 @@
+{
+ "isError": false,
+ "added": {
+  "definitions": {
+   "$subsetOf": "definitions",
+   "keys": [
+    "cycle.low.confirmed"
+   ]
+  },
+  "occurrences": {
+   "$upstreamPage": 1
+  }
+ },
+ "selection": [
+  "cycle.low.confirmed"
+ ]
+}

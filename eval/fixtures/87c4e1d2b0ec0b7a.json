@@ -1,14 +1,14 @@
 {
  "key": "GET /public/v1/series/addr-1k-count",
  "status": 200,
- "recordedAt": "2026-11-19T16:19:40.393Z",
+ "recordedAt": "2026-11-19T16:54:35.634Z",
  "openapi": {
   "version": "1.0.0-draft",
   "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"
  },
  "body": {
   "responseVersion": 1,
-  "asOf": "2026-11-19T16:13:04.696Z",
+  "asOf": "2026-11-19T16:54:25.620Z",
   "knowableAt": "2026-11-19T04:45:38.489Z",
   "summary": "1 series for BTC on DWLF's own data. 1 locked on the Free plan. History starts 2026-11-12; no earlier day is held.",
   "items": [

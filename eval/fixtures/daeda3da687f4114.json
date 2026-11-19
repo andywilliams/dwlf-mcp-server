@@ -1,14 +1,14 @@
 {
  "key": "GET /public/v1/conditions",
  "status": 200,
- "recordedAt": "2026-11-19T16:19:37.711Z",
+ "recordedAt": "2026-11-19T16:54:24.326Z",
  "openapi": {
   "version": "1.0.0-draft",
   "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"
  },
  "body": {
   "responseVersion": 1,
-  "asOf": "2026-11-19T16:13:01.854Z",
+  "asOf": "2026-11-19T16:54:23.108Z",
   "knowableAt": "2026-11-19T00:39:28.000Z",
   "summary": "12 readings for BTC on DWLF's own data. 5 locked on the Free plan. Recent history only; a free account shows all of it.",
   "items": [

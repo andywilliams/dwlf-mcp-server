@@ -1,0 +1,18 @@
+{
+ "isError": false,
+ "added": {
+  "definitions": {
+   "$subsetOf": "definitions",
+   "keys": [
+    "onchain.mining.hash_ribbon.capitulation.enter",
+    "onchain.mining.hash_ribbon.capitulation.exit"
+   ]
+  },
+  "matched": 3
+ },
+ "selection": [
+  "onchain.mining.hash_ribbon.capitulation.enter",
+  "onchain.mining.hash_ribbon.capitulation.exit",
+  "mining.hash-ribbon"
+ ]
+}

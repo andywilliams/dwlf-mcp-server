@@ -1,7 +1,7 @@
 {
  "key": "GET /public/v1/series/no-such-series",
  "status": 404,
- "recordedAt": "2026-11-19T16:19:40.658Z",
+ "recordedAt": "2026-11-19T16:54:35.833Z",
  "body": {
   "error": "NOT_FOUND",
   "message": "No series no-such-series. GET /public/v1/catalogue lists them."

@@ -220,6 +220,11 @@ A reviewer should be able to test a diff against each of these:
      keeps no copy of the field list. The Block API owns its envelope: at record
      time, a live response is checked against the `required` lists in the Block API's own published
      `/public/v1/openapi.json`, fetched then. A response that fails is reported as the Block API's and isn't saved.
+     📌 *Scoped 19-Nov (DWLF-876 D4):* exactly two tools, the Block-API `dwlf_describe_onchain_events` and
+     `dwlf_explain_event`, are held to a **selection** rule instead (`eval/envelope.mjs` `selectionFailures`,
+     `selects: true` in `eval/passthrough.json`). Their top-level fields stay as served, except `items` and
+     `definitions`, which are narrowed to whole upstream entries, and any nested body appears whole. The 355 KB
+     catalogue can't be handed over whole. A test refuses `selects` on any other tool; a third needs this item amended.
   3. `knowableAt` is checked by value (DWLF-853, live 16-Nov): an item's is when its reading became knowable (on
      conditions never the request time); the envelope's is the latest item's. Dates in answers are graded by each case's own facts
      and by the judge.

@@ -1,0 +1,27 @@
+{
+ "tool": "dwlf_describe_onchain_events",
+ "calls": [
+  {
+   "id": "families",
+   "args": {}
+  },
+  {
+   "id": "family-cost-basis",
+   "args": {
+    "family": "cost-basis"
+   }
+  },
+  {
+   "id": "search-hash-ribbon",
+   "args": {
+    "search": "hash ribbon"
+   }
+  },
+  {
+   "id": "event-type",
+   "args": {
+    "eventType": "onchain.sth_sopr.lose"
+   }
+  }
+ ]
+}

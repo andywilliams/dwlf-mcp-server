@@ -1,5 +1,5 @@
 {
- "note": "Charter check 4 (DWLF-804) and the B14 coverage rule. `tools`: each Block-API-backed tool (the block-api backend, DWLF-876), with the arguments test/evalEnvelope.test.mjs replays against eval/fixtures/ for containment; each also has an eval/calls file and snapshots. `launchDataTools`: DWLF-852's launch-set data tools (the account tool is not an envelope). `cutPending`: launch-set data tools not yet on the Block API; it only shrinks, a tool leaving it for `tools` with its recording. The snapshot runner fails a call that reaches a Block API path from a tool not in `tools`. At the cut, BLOCK_API_TOOLS (src/profiles.ts) is the launch set and `launchDataTools` and `cutPending` are deleted.",
+ "note": "Charter check 4 (DWLF-804) and the B14 coverage rule. `tools`: each Block-API-backed tool (the block-api backend, DWLF-876), with the arguments test/evalEnvelope.test.mjs replays against eval/fixtures/ for containment; each also has an eval/calls file and snapshots. `selects: true` marks the catalogue tools, held to the selection rule instead (eval/envelope.mjs `selectionFailures`, DWLF-876 D4). `launchDataTools`: DWLF-852's launch-set data tools (the account tool is not an envelope). `cutPending`: launch-set data tools not yet on the Block API; it only shrinks, a tool leaving it for `tools` with its recording. The snapshot runner fails a call that reaches a Block API path from a tool not in `tools`. At the cut, BLOCK_API_TOOLS (src/profiles.ts) is the launch set and `launchDataTools` and `cutPending` are deleted.",
  "launchDataTools": [
   "dwlf_describe_onchain_events",
   "dwlf_explain_event",
@@ -21,10 +21,21 @@
    "args": {
     "id": "mvrv"
    }
+  },
+  {
+   "tool": "dwlf_describe_onchain_events",
+   "args": {
+    "eventType": "onchain.sth_sopr.lose"
+   },
+   "selects": true
+  },
+  {
+   "tool": "dwlf_explain_event",
+   "args": {
+    "eventType": "onchain.sth_sopr.lose"
+   },
+   "selects": true
   }
  ],
- "cutPending": [
-  "dwlf_describe_onchain_events",
-  "dwlf_explain_event"
- ]
+ "cutPending": []
 }

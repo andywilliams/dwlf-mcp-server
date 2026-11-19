@@ -1,0 +1,4 @@
+{
+ "isError": true,
+ "output": "No event type \"no.such.type\" in the Block catalogue. Find one with dwlf_describe_onchain_events."
+}

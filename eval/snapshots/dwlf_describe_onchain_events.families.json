@@ -1,0 +1,82 @@
+{
+ "isError": false,
+ "added": {
+  "definitions": {
+   "$subsetOf": "definitions",
+   "keys": []
+  },
+  "families": {
+   "indicators": {
+    "eventTypes": 63,
+    "series": 0,
+    "locked": 0
+   },
+   "levels": {
+    "eventTypes": 45,
+    "series": 0,
+    "locked": 45
+   },
+   "cycles": {
+    "eventTypes": 32,
+    "series": 0,
+    "locked": 32
+   },
+   "cost-basis": {
+    "eventTypes": 14,
+    "series": 8,
+    "locked": 0
+   },
+   "whales": {
+    "eventTypes": 10,
+    "series": 14,
+    "locked": 24
+   },
+   "quantum": {
+    "eventTypes": 6,
+    "series": 43,
+    "locked": 49
+   },
+   "mining": {
+    "eventTypes": 28,
+    "series": 21,
+    "locked": 49
+   },
+   "fees": {
+    "eventTypes": 10,
+    "series": 10,
+    "locked": 20
+   },
+   "dca": {
+    "eventTypes": 2,
+    "series": 72,
+    "locked": 74
+   },
+   "regime": {
+    "eventTypes": 33,
+    "series": 22,
+    "locked": 55
+   },
+   "blockspace": {
+    "eventTypes": 33,
+    "series": 103,
+    "locked": 136
+   },
+   "cot": {
+    "eventTypes": 4,
+    "series": 0,
+    "locked": 4
+   },
+   "basics": {
+    "eventTypes": 0,
+    "series": 4,
+    "locked": 0
+   },
+   "onchain-other": {
+    "eventTypes": 0,
+    "series": 1,
+    "locked": 1
+   }
+  }
+ },
+ "selection": []
+}

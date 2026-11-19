@@ -100,12 +100,14 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
 export type BlockBackend = 'spt' | 'block-api';
 
 /** The tools `--profile block` offers on the `block-api` backend (the launch set as it lands; D2). */
-export const BLOCK_API_TOOLS: ReadonlySet<string> = new Set(['dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series']);
+export const BLOCK_API_TOOLS: ReadonlySet<string> = new Set(['dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series',
+  'dwlf_describe_onchain_events', 'dwlf_explain_event']);
 
 /** Server instructions for `--profile block` on the `block-api` backend. Worded within the shared banned-terms list. */
 export const BLOCK_API_INSTRUCTIONS =
   'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for where Bitcoin is now, then ' +
-  'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Every answer is the ' +
+  'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Find an event type or ' +
+  'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
   'Block envelope: lead with its `summary`, give each item\'s `why` and `chartUrl`, and date each fact by its ' +
   '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
   'when it happened and which plan reads it (`requiredPlan`, `pricingUrl`); never guess a locked value. Describe ' +
