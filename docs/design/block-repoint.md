@@ -51,6 +51,12 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
   eval cases, `passthrough.json` and the install docs keep their names. **How an agent tells the shapes apart:**
   every Block-API result is the envelope (`responseVersion`, `summary`, `items`, `definitions`, `pricingUrl`); no
   SPT shape has `pricingUrl`.
+  - *The cost, accepted:* outside a session (the README, registry listings, Academy), a name like
+    `dwlf_explain_event` has two signatures: `type` + `since` on `full`, `eventType` + `from`/`to` on `block`.
+  - The cut PR documents each launch-set tool's Block signature in `docs/BLOCK.md` and the registry listing,
+    marked "Block profile". Docs about `full` keep theirs.
+  - Distinct names (`block_*`) would avoid this. They were rejected because every Block install doc, eval case and
+    agent prompt written since 4-Nov already uses `dwlf_*`.
 
 **D4 · Pass-through (invariant 2; WP7's "never unwrapped").**
 - **Conditions, events, series:** the response body, verbatim as JSON text. Events is one page: the Block API has
@@ -61,6 +67,9 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
   - **`dwlf_describe_onchain_events`** gives the catalogue envelope with its top-level fields unchanged and `items`
     narrowed to whole items matching the agent's filter (`family`, `search`, `eventType`). With no filter it gives
     no items, only a count per family, computed from the catalogue and added as its own key.
+  - **Interim, and asked of WP2:** filtering and counting are computing the Block API should own, as its product
+    surface. Ask: `/catalogue?family=&search=&type=` plus a per-family summary. When WP2 serves them, these tools
+    pass that answer through and their local filter goes.
   - **`dwlf_explain_event`** gives the catalogue envelope narrowed to that one type, plus `occurrences`: the
     `/events?types=<type>` envelope, verbatim and whole.
   - The release gate's snapshot pins exactly this layer: the selection, the added counts, and the nested body by
@@ -91,26 +100,36 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
   Free view and keeps working. On the `block-api` backend `DWLF_API_KEY` is ignored, with one stderr line saying
   so. `server.json` declares no required variable for the Block profile.
 
-**D7 · The key-taking hosted endpoint: the contract now, stubbed until WP1's exchange is live.**
-- The hosted MCP (`docs/HOSTED-MCP.md`, stateless Streamable HTTP) builds one `BlockApiClient` per request from the
-  caller's `Authorization: Bearer dwlfk_…` and forwards the key to the Block API unchanged.
-- The **Block API** exchanges it with identity under its own runtime role (personal-tokens design §13). The MCP
-  never talks to identity, never stores a key, and logs at most a short sha256 prefix of it.
-- No key means the public routes. A malformed key is refused before any upstream call: it matches no
-  `PERSONAL_TOKEN_PATTERN` shape, and `@andywilliams/dwlf-authz` is the one parser.
-- **Stubbed:**
-  - nothing is deployed;
-  - the code seam is the per-request client;
-  - the hosted entry point answers a key-bearing request with the Block API's own "keys arrive with the keys
-    release" refusal until WP1 step 5 is live.
-- Open for WP2 before it deploys: its per-IP limit on `/v1` (1,200 per 5 min) is below what one hosted egress IP
-  sends for many accounts. Key it on `Authorization`, or exempt the hosted egress (`wp2-block-api.md`).
-- OAuth for the directories stays HOSTED-MCP's v1.1 scope, not this one.
+**D7 · The key-taking hosted endpoint: a decision for Andy, not made here; nothing hosted is built in this work.**
+- `docs/HOSTED-MCP.md` (DWLF-622) is the hosted design in force. It puts OAuth 2.1 in front, a managed upstream key
+  behind (§4.2), and **forbids token passthrough** (§2). A hosted endpoint that takes a person's `dwlfk_` key in
+  `Authorization` and forwards it would contradict it. So the choice is Andy's, made there (§4.1, §9), with two
+  options:
+  - **A · HOSTED-MCP as written.** OAuth sign-in. The hosted MCP mints a managed key for the account through the
+    Block API's keys route (`POST /v1/keys`, scoped to the client's grant) and calls the Block API with it. This is
+    what the directories (Claude's, ChatGPT's) need, and it needs identity's OAuth surface first.
+  - **B · Key-taking.** A person pastes their own `dwlfk_` key into a client that supports headers (Claude Code,
+    Cursor). The MCP forwards it to the Block API, which exchanges it with identity. It's simple and has parity
+    with stdio, but it isn't directory-eligible and it's the passthrough §2 forbids. It would need HOSTED-MCP
+    amended, by Andy.
+  - **Recommendation:** A for the hosted endpoint, the directory path, v1.1 as DWLF-622 plans. Until then, the
+    key-taking path is **stdio**: `DWLF_BLOCK_KEY` on the person's own machine (D6), which needs no hosted
+    endpoint and no passthrough.
+- **The stub this work leaves:** `BlockApiClient` takes its key per instance (D3), so either option builds one
+  client per request. No key-shape check lives here: the Block API refuses a malformed or unknown key with its own
+  401, and the tool passes that through. That keeps `@andywilliams/dwlf-authz`, a private package, out of this
+  public one.
+- For WP2, whichever option is chosen: its per-IP limit on `/v1` (1,200 per 5 min) is below what one hosted egress
+  IP sends for many accounts. Key it on `Authorization`, or exempt the hosted egress (`wp2-block-api.md`).
 
 **D8 · Charter lines.**
-- Rewritten now (by this note's PR): *Depends on* (the Block API, behind D1's opt-in) and *Tool profiles*
-  (`block` has two backends; the scheduled-change note becomes a pointer here).
-- Rewritten at the cut: *Purpose*, *Not for*, invariants 1, 3, 5, 6 and 8, and the stdio decision's Block clause.
+- Rewritten now (by this note's PR):
+  - *Depends on* (the Block API, behind D1's opt-in);
+  - *Tool profiles* (`block` has two backends);
+  - invariant 3 (`BlockApiClient` is the second authenticated client, for the `block-api` backend only);
+  - invariant 6 (Block-API tools are a third wiring point, `registerBlockApiTools`).
+  So PRs 2–4 land against a charter that already allows them.
+- Rewritten at the cut: *Purpose*, *Not for*, invariants 1, 5 and 8, and the stdio decision's Block clause.
   The *Handed to WP4* list is answered here, item by item:
   - names (D3);
   - install migration and `server.json` (D6);
@@ -125,8 +144,7 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
    `dwlf_get_events` and `dwlf_get_series` on public routes, with recordings, calls and snapshots, and
    `replayEnv`. The three move into `passthrough.json` `tools`.
 3. **The catalogue tools** (D4), with their recordings and snapshots.
-4. **The hosted seam** (D7): the per-request client and the key-shape refusal, tested, not deployed.
-5. **The cut release** (separate tap, timed with Andy and Jenna):
+4. **The cut release** (separate tap, timed with Andy and Jenna):
    - the default becomes `block-api`;
    - the 35 tools leave the profile;
    - `docs/BLOCK.md` and `server.json` are updated;

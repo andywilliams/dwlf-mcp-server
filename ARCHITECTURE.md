@@ -67,7 +67,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   set only. Each launch-set tool is registered once per backend under the same `dwlf_*` name, never branched
   inside a shared handler, and `full` never sees the Block versions. An unknown backend is a startup error. The
   cut release makes `block-api` the default and removes the 35 SPT-only tools; it rewrites *Purpose*, *Not for*,
-  invariants 1, 3, 5, 6 and 8 and the stdio decision's Block clause (design D8). On `block-api` the profile is
+  invariants 1, 5 and 8 and the stdio decision's Block clause (design D8; 3 and 6 are scoped now). On `block-api` the profile is
   still not a permission boundary: the Block API decides what a caller's plan reads.
 - **`dwlf_describe_onchain_events` answers from the LIVE API** (DWLF-646): one read of `GET /v2/events/explain`, whose
   `typeSummaries` carries a line per type (cached 15 min), and `GET /v2/events/{type}/explain` for one type in full. Engine
@@ -157,6 +157,9 @@ A reviewer should be able to test a diff against each of these:
    request *(verified 2026-08-13)*. ⇒ **Importing axios is not the test; making a request is.** A
    review that greps for the import will get a false positive here, and a check that greps for
    `axios.get`/`axios.post` outside `client.ts` will not.
+   📌 **Scoped 19-Nov (DWLF-876, `docs/design/block-repoint.md` D3):** on the `block-api` backend of `--profile block`,
+   authenticated HTTP goes through `BlockApiClient` (`src/block/client.ts`) to the Block API, its only host. It is
+   the second and last authenticated client: one per backend, each the sole `Authorization` assignment for its host.
    ⚠️ **The Academy CDN is a SECOND outbound path this invariant does not cover — so it needs its own check.** The reviewable check for it: *does this diff add an unauthenticated outbound call, and if so is the host `academy.dwlf.co.uk` and the failure handled locally?* Any third outbound host is a change to this repo's dependency surface and belongs in *Interfaces*, not in a tool file.
    ⚠️ **`eval/` (with `scripts/wording-sync.mjs`) is dev tooling outside `src/`, with outbound paths of its own** (DWLF-804; 12-Nov, widened 16-Nov by the WP7 charter, narrowed 18-Nov): no model API (18-Nov, item 11 of the eval decision: the eval's agent and judge are gone); in `--record` mode only, GETs to the DWLF API and to the Block API (`api.block.dwlf.co.uk`: public routes with no key, signed-in ones with a `block-staging` key the person recording provides; the key is never written) and a fetch of the Block API's `openapi.json`; and `gh` reads of block-site and dwlf-block-api at named commits (`wording:sync` only). None is in the npm package (`files` = `dist`) or on a tool's path, so the invariant still holds for everything a user runs. A diff that moves any of them into `src/` breaks it.
    ⚠️ **It is not an "exception" to the authenticated-HTTP rule.** The rule governs *authenticated* traffic; `academy.ts` makes *unauthenticated* calls to a public CDN, so it is out of scope rather than exempt. Stated explicitly because "the sole exception is…" invites a reader to believe one rule covers all outbound HTTP here. **It does not: two paths exist, and only one is governed.**
@@ -177,6 +180,9 @@ A reviewer should be able to test a diff against each of these:
    points; a Bitcoin-relevant tool left out of `BLOCK_TOOLS` is invisible to Block users. `test/profiles.test.mjs`
    catches a profile entry whose tool no longer exists, but not a missing one; that half is the reviewer's
    *(inferred from: `src/register.ts`, `src/profiles.ts`)*.
+   📌 **Scoped 19-Nov (DWLF-876, design D3):** a Block-API tool is registered by `registerBlockApiTools`
+   (`src/block/tools.ts`), which `registerAll` calls only on the `block-api` backend. It replaces the SPT tool of the
+   same name for that backend, never both, and `full` never registers it. That is the third wiring point.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
