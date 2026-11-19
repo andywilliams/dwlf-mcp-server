@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * The Block profile's release gate (block-eval §0, 18-Nov-2026: standard tests, no model calls). For each calls file
- * in eval/calls/ (`{ tool, calls: [{ id, args }] }`), a fresh built server (`--profile block`, one per call, so no
+ * in eval/calls/ (`{ tool, calls: [{ id, args }] }`), a fresh built server (`--profile block` on the `block-api`
+ * backend by default: the calls are the re-pointed tools'; one server per call, so no
  * tool cache carries between calls) runs each call against the
  * recordings in eval/fixtures/ and:
  *   T1 · its output's MCP layer (what the tool adds, rewrites or selects; `mcpLayer`) must equal the committed snapshot
@@ -84,12 +85,12 @@ const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const callFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((f) => readJson(join(dir, f))) : []);
 
 /** One call on a fresh server: its failures (`own`) and its MCP layer. */
-const runCall = async ({ root, fixturesDir, mode, passthroughTools, tool, args }) => {
+const runCall = async ({ root, fixturesDir, mode, passthroughTools, tool, args, backend }) => {
   const fixtures = await startFixtureServer({ dir: fixturesDir, mode });
   const mcp = new Client({ name: 'block-snapshots', version: '0' });
   try {
     await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-      env: replayEnv(fixtures.url), stderr: 'ignore' }));
+      env: { ...replayEnv(fixtures.url), DWLF_BLOCK_BACKEND: backend }, stderr: 'ignore' }));
     const r = await mcp.callTool({ name: tool, arguments: args });
     const text = (r.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
     let output;
@@ -126,7 +127,8 @@ const settleSnapshot = ({ file, layer, update, failed, root }) => {
  * recordings older than the fixture server's limit: reported, never failed (that would make the test time-dependent).
  */
 export const runSnapshots = async ({ root = join(here, '..'), fixturesDir = join(here, 'fixtures'), callsDir = join(here, 'calls'),
-  snapshotsDir = join(here, 'snapshots'), passthroughFile = join(here, 'passthrough.json'), update = false, mode = 'replay' } = {}) => {
+  snapshotsDir = join(here, 'snapshots'), passthroughFile = join(here, 'passthrough.json'), update = false, mode = 'replay',
+  backend = 'block-api' } = {}) => {
   const passthroughTools = new Set(readJson(passthroughFile).tools.map((t) => t.tool));
   mkdirSync(fixturesDir, { recursive: true });
   const calls = callFiles(callsDir).flatMap(({ tool, calls: list }) => list.map(({ id, args = {} }) => ({ tool, id, args })));
@@ -135,7 +137,7 @@ export const runSnapshots = async ({ root = join(here, '..'), fixturesDir = join
   const stale = new Set();
   for (const { tool, id, args } of calls) {
     const name = `${tool}.${id}`;
-    const run = await runCall({ root, fixturesDir, mode, passthroughTools, tool, args });
+    const run = await runCall({ root, fixturesDir, mode, passthroughTools, tool, args, backend });
     run.stale.forEach((k) => stale.add(k));
     const own = [...run.own, ...settleSnapshot({ file: join(snapshotsDir, `${name}.json`), layer: run.layer, update, failed: run.own.length > 0, root })];
     failures.push(...own.map((f) => `${name}: ${f}`));

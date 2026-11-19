@@ -1,0 +1,9 @@
+{
+ "tool": "dwlf_get_conditions",
+ "calls": [
+  {
+   "id": "default",
+   "args": {}
+  }
+ ]
+}

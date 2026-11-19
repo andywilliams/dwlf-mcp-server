@@ -176,13 +176,13 @@ test('recordings checked against an older OpenAPI than the newest are listed (a 
 });
 
 /** Replays `tool` through the built Block server against `dir`; returns the parsed result and the upstream bodies served. */
-const replayTool = async (dir, tool, args) => {
+const replayTool = async (dir, tool, args, backend = 'spt') => {
   const fixtures = await startFixtureServer({ dir });
   const mcp = new Client({ name: 'eval-passthrough', version: '0' });
   try {
     // connect inside the try: a server that fails to start must still close the fixture server, or the file hangs.
     await mcp.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, 'dist/index.js'), '--profile', 'block'],
-      env: replayEnv(fixtures.url), stderr: 'ignore' }));
+      env: { ...replayEnv(fixtures.url), DWLF_BLOCK_BACKEND: backend }, stderr: 'ignore' }));
     const r = await mcp.callTool({ name: tool, arguments: args });
     assert.notEqual(r.isError, true, r.content?.map((c) => c.text).join(' '));
     return { result: JSON.parse(r.content.map((c) => c.text).join('')), pages: fixtures.served.map((s) => s.body),
@@ -216,12 +216,12 @@ test('passthrough.json covers the launch set: each launch-set data tool is check
   assert.deepEqual(launch.filter((t) => !BLOCK_TOOLS.has(t) && t !== 'dwlf_get_series'), [], 'a launch-set tool is not a Block tool');
 });
 
-test('check 4: every tool in eval/passthrough.json keeps its Block API body whole (empty until WP4 re-points the profile)', async () => {
+test('check 4: every tool in eval/passthrough.json keeps its Block API body whole (on the block-api backend, DWLF-876)', async () => {
   const registry = JSON.parse(readFileSync(join(root, 'eval', 'passthrough.json'), 'utf8'));
-  const { BLOCK_TOOLS } = await import('../dist/profiles.js');
+  const { BLOCK_API_TOOLS } = await import('../dist/profiles.js');
   for (const { tool, args = {} } of registry.tools) {
-    assert.ok(BLOCK_TOOLS.has(tool), `${tool} is not a Block tool`);
-    const { result, pages, paths, misses } = await replayTool(join(root, 'eval', 'fixtures'), tool, args);
+    assert.ok(BLOCK_API_TOOLS.has(tool), `${tool} is not a block-api backend tool`);
+    const { result, pages, paths, misses } = await replayTool(join(root, 'eval', 'fixtures'), tool, args, 'block-api');
     assert.deepEqual(misses, [], `${tool}: record its fixture first`);
     assert.ok(pages.length > 0, `${tool}: no upstream page`);
     assert.deepEqual(paths.filter((p) => routeFamily(p) !== 'block'), [], `${tool}: its upstream is not the Block API`);

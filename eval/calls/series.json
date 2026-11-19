@@ -1,0 +1,17 @@
+{
+ "tool": "dwlf_get_series",
+ "calls": [
+  {
+   "id": "mvrv",
+   "args": {
+    "id": "mvrv"
+   }
+  },
+  {
+   "id": "price-close",
+   "args": {
+    "id": "price-close"
+   }
+  }
+ ]
+}

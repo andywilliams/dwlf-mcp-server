@@ -1,0 +1,269 @@
+{
+ "key": "GET /public/v1/conditions",
+ "status": 200,
+ "recordedAt": "2026-11-19T16:07:54.233Z",
+ "openapi": {
+  "version": "1.0.0-draft",
+  "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"
+ },
+ "body": {
+  "responseVersion": 1,
+  "asOf": "2026-11-19T16:07:53.152Z",
+  "knowableAt": "2026-11-19T00:39:28.000Z",
+  "summary": "12 readings for BTC on DWLF's own data. 5 locked on the Free plan. Recent history only; a free account shows all of it.",
+  "items": [
+   {
+    "section": "costBasis.realised_price",
+    "label": "Realised price (all coins)",
+    "id": "costBasis.realised_price",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2023-01-14T00:46:06.000Z",
+    "summary": "The close is above the realised price (all coins) since 2023-01-13.",
+    "why": [
+     "It crossed above on 2023-01-13.",
+     "Knowable from 2023-01-14T00:46:06.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/realized-price/",
+    "locked": false,
+    "values": {
+     "metric": "realized_price",
+     "side": "above",
+     "level": null,
+     "levelDate": null,
+     "distancePct": null,
+     "sidesDisagree": false,
+     "sinceEvent": "onchain.realised_price.cross.above",
+     "revisionClass": "oracle",
+     "since": "2023-01-13",
+     "sinceKnowableAt": "2023-01-14T00:46:06.000Z"
+    }
+   },
+   {
+    "section": "costBasis.sth_realised_price",
+    "label": "Short-term-holder realised price",
+    "id": "costBasis.sth_realised_price",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2026-11-06T00:18:47.000Z",
+    "summary": "The close is below the short-term-holder realised price since 2026-11-05.",
+    "why": [
+     "It crossed below on 2026-11-05.",
+     "Knowable from 2026-11-06T00:18:47.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/sth-realized-price/",
+    "locked": false,
+    "values": {
+     "metric": "sth_realized_price",
+     "side": "below",
+     "level": null,
+     "levelDate": null,
+     "distancePct": null,
+     "sidesDisagree": false,
+     "sinceEvent": "onchain.sth_realised_price.cross.below",
+     "revisionClass": "oracle",
+     "since": "2026-11-05",
+     "sinceKnowableAt": "2026-11-06T00:18:47.000Z"
+    }
+   },
+   {
+    "section": "costBasis.lth_realised_price",
+    "label": "Long-term-holder realised price",
+    "id": "costBasis.lth_realised_price",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2023-01-15T00:28:35.000Z",
+    "summary": "The close is above the long-term-holder realised price since 2023-01-14.",
+    "why": [
+     "It crossed above on 2023-01-14.",
+     "Knowable from 2023-01-15T00:28:35.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/lth-realized-price/",
+    "locked": false,
+    "values": {
+     "metric": "lth_realized_price",
+     "side": "above",
+     "level": null,
+     "levelDate": null,
+     "distancePct": null,
+     "sidesDisagree": false,
+     "sinceEvent": "onchain.lth_realised_price.cross.above",
+     "revisionClass": "oracle",
+     "since": "2023-01-14",
+     "sinceKnowableAt": "2023-01-15T00:28:35.000Z"
+    }
+   },
+   {
+    "section": "onchainBand.mvrv_deep_value",
+    "label": "MVRV below 1.0",
+    "id": "onchainBand.mvrv_deep_value",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2023-01-14T00:46:06.000Z",
+    "summary": "MVRV below 1.0: outside the band since 2023-01-13.",
+    "why": [
+     "Knowable from 2023-01-14T00:46:06.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/mvrv/",
+    "locked": false,
+    "values": {
+     "metric": "mvrv",
+     "state": "out",
+     "sinceEvent": "onchain.mvrv.deep_value.exit",
+     "revisionClass": "oracle",
+     "since": "2023-01-13",
+     "sinceKnowableAt": "2023-01-14T00:46:06.000Z"
+    }
+   },
+   {
+    "section": "onchainBand.mvrv_overheated",
+    "label": "MVRV above 3.5",
+    "id": "onchainBand.mvrv_overheated",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2021-03-22T00:54:38.000Z",
+    "summary": "MVRV above 3.5: outside the band since 2021-03-21.",
+    "why": [
+     "Knowable from 2021-03-22T00:54:38.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/mvrv/",
+    "locked": false,
+    "values": {
+     "metric": "mvrv",
+     "state": "out",
+     "sinceEvent": "onchain.mvrv.overheated.exit",
+     "revisionClass": "oracle",
+     "since": "2021-03-21",
+     "sinceKnowableAt": "2021-03-22T00:54:38.000Z"
+    }
+   },
+   {
+    "section": "onchainBand.supply_in_profit_capitulation",
+    "label": "Supply in profit below 50%",
+    "id": "onchainBand.supply_in_profit_capitulation",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Supply in profit below 50%: in the band since 2026-11-18.",
+    "why": [
+     "Knowable from 2026-11-19T00:39:28.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/supply-in-profit-pct/",
+    "locked": false,
+    "values": {
+     "metric": "supply_in_profit",
+     "state": "in",
+     "sinceEvent": "onchain.supply_in_profit.capitulation.enter",
+     "revisionClass": "oracle",
+     "since": "2026-11-18",
+     "sinceKnowableAt": "2026-11-19T00:39:28.000Z"
+    }
+   },
+   {
+    "section": "onchainBand.sth_sopr_below_one",
+    "label": "7-day STH-SOPR below 1",
+    "id": "onchainBand.sth_sopr_below_one",
+    "family": "cost-basis",
+    "date": null,
+    "knowableAt": "2026-10-31T01:02:30.000Z",
+    "summary": "7-day STH-SOPR below 1: in the band since 2026-10-30.",
+    "why": [
+     "Knowable from 2026-10-31T01:02:30.000Z."
+    ],
+    "chartUrl": "https://block.dwlf.co.uk/chart/sth-sopr-7d/",
+    "locked": false,
+    "values": {
+     "metric": "sth_sopr",
+     "state": "in",
+     "sinceEvent": "onchain.sth_sopr.lose",
+     "revisionClass": "oracle",
+     "since": "2026-10-30",
+     "sinceKnowableAt": "2026-10-31T01:02:30.000Z"
+    }
+   },
+   {
+    "section": "regime.daily",
+    "label": "Daily regime (trend, momentum, volatility)",
+    "id": "regime.daily",
+    "family": "cycles",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Cycles: stage, regime, cycle windows, cycle lows and highs, setups: locked. The Block plan shows it.",
+    "why": [],
+    "chartUrl": "https://block.dwlf.co.uk/chart/regime.daily/",
+    "locked": true,
+    "lockedFamily": "cycles",
+    "requiredPlan": "block",
+    "upgradeUrl": "https://block.dwlf.co.uk/pricing",
+    "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+   },
+   {
+    "section": "regime.weekly",
+    "label": "Weekly regime (trend, momentum, volatility)",
+    "id": "regime.weekly",
+    "family": "cycles",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Cycles: stage, regime, cycle windows, cycle lows and highs, setups: locked. The Block plan shows it.",
+    "why": [],
+    "chartUrl": "https://block.dwlf.co.uk/chart/regime.weekly/",
+    "locked": true,
+    "lockedFamily": "cycles",
+    "requiredPlan": "block",
+    "upgradeUrl": "https://block.dwlf.co.uk/pricing",
+    "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+   },
+   {
+    "section": "regime.stage",
+    "label": "Weinstein weekly stage",
+    "id": "regime.stage",
+    "family": "cycles",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Cycles: stage, regime, cycle windows, cycle lows and highs, setups: locked. The Block plan shows it.",
+    "why": [],
+    "chartUrl": "https://block.dwlf.co.uk/chart/regime.stage/",
+    "locked": true,
+    "lockedFamily": "cycles",
+    "requiredPlan": "block",
+    "upgradeUrl": "https://block.dwlf.co.uk/pricing",
+    "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+   },
+   {
+    "section": "cycleWindows.daily",
+    "label": "Daily cycle windows",
+    "id": "cycleWindows.daily",
+    "family": "cycles",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Cycles: stage, regime, cycle windows, cycle lows and highs, setups: locked. The Block plan shows it.",
+    "why": [],
+    "chartUrl": "https://block.dwlf.co.uk/chart/cycleWindows.daily/",
+    "locked": true,
+    "lockedFamily": "cycles",
+    "requiredPlan": "block",
+    "upgradeUrl": "https://block.dwlf.co.uk/pricing",
+    "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+   },
+   {
+    "section": "cycleWindows.weekly",
+    "label": "Weekly cycle windows",
+    "id": "cycleWindows.weekly",
+    "family": "cycles",
+    "date": null,
+    "knowableAt": "2026-11-19T00:39:28.000Z",
+    "summary": "Cycles: stage, regime, cycle windows, cycle lows and highs, setups: locked. The Block plan shows it.",
+    "why": [],
+    "chartUrl": "https://block.dwlf.co.uk/chart/cycleWindows.weekly/",
+    "locked": true,
+    "lockedFamily": "cycles",
+    "requiredPlan": "block",
+    "upgradeUrl": "https://block.dwlf.co.uk/pricing",
+    "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+   }
+  ],
+  "definitions": {},
+  "unavailable": [],
+  "pricingUrl": "https://api.block.dwlf.co.uk/public/v1/pricing"
+ }
+}

@@ -49,7 +49,8 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
     `DWLFClient` already allows, which is the seam the hosted endpoint uses (D7).
 - `src/block/tools.ts` registers the Block-API versions of the launch-set tools under the **same `dwlf_*` names**,
   with their own descriptions written for the envelope.
-- The profile view registers exactly one implementation per name, chosen by the backend. `full` never sees the
+- Startup registers one set or the other, chosen by the backend: `registerAll` through the profile view (`spt`), or
+  `registerBlockApiTools` (`block-api`). So each name has exactly one implementation, and `full` never sees the
   Block versions.
 - *Why the same names:* an agent sees one profile in a session, so a name never means two shapes at once. The
   eval cases, `passthrough.json` and the install docs keep their names. **How an agent tells the shapes apart:**

@@ -52,7 +52,7 @@ const readBody = (req) => new Promise((resolve, reject) => {
  * passing the eval on live data. axios honours these variables; NODE_USE_ENV_PROXY makes Node's fetch honour them too.
  */
 export const replayEnv = (fixtureUrl) => ({
-  PATH: process.env.PATH || '', DWLF_API_URL: fixtureUrl, DWLF_API_KEY: 'eval-fixture',
+  PATH: process.env.PATH || '', DWLF_API_URL: fixtureUrl, DWLF_API_KEY: 'eval-fixture', BLOCK_API_URL: fixtureUrl,
   HTTP_PROXY: 'http://127.0.0.1:9', HTTPS_PROXY: 'http://127.0.0.1:9', http_proxy: 'http://127.0.0.1:9', https_proxy: 'http://127.0.0.1:9',
   NO_PROXY: '127.0.0.1', no_proxy: '127.0.0.1', NODE_USE_ENV_PROXY: '1',
 });

@@ -25,7 +25,7 @@ const synthetic = (body) => {
   if (body) { writeFileSync(fixtureFile(fixturesDir, key), JSON.stringify({ key, status: 200, recordedAt: new Date().toISOString(), body })); }
   writeFileSync(join(callsDir, 'divergences.json'), JSON.stringify({ tool: 'dwlf_get_divergences', calls: [{ id: 'default', args: {} }] }));
   writeFileSync(join(dir, 'passthrough.json'), JSON.stringify({ tools: [] }));
-  return { root, fixturesDir, callsDir, snapshotsDir: join(dir, 'snapshots'), passthroughFile: join(dir, 'passthrough.json') };
+  return { root, fixturesDir, callsDir, snapshotsDir: join(dir, 'snapshots'), passthroughFile: join(dir, 'passthrough.json'), backend: 'spt' };
 };
 const BODY = { responseVersion: 2, asOf: '2026-11-16T00:00:00Z', summary: 'One divergence on BTCOC/USD.', definitions: { regular: 'Price and RSI disagree at two lows.' },
   items: [{ id: 'd1', eventType: 'rsi.divergence.regular.bullish', direction: 'bearish', summary: 'A regular divergence at two daily lows.', knowableAt: '2026-11-10T00:00:00Z' }] };
