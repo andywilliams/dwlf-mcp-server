@@ -24,6 +24,13 @@
    "args": {
     "id": "no-such-series"
    }
+  },
+  {
+   "id": "mvrv-from-nov-14",
+   "args": {
+    "id": "mvrv",
+    "from": "2026-11-14"
+   }
   }
  ]
 }

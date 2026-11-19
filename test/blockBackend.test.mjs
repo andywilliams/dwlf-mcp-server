@@ -46,3 +46,14 @@ test('BlockApiClient: the Block API\'s error body is kept whole in the error the
       && e.message.includes('PLAN_REQUIRED') && e.message.includes('pricingUrl'));
   } finally { await api.close(); }
 });
+
+test('BlockApiClient: an unreachable API is an error with no status, not a hang or a crash', async () => {
+  await assert.rejects(new BlockApiClient({ baseURL: 'http://127.0.0.1:9', apiKey: undefined, timeoutMs: 2000 }).get('/conditions'),
+    (e) => e instanceof BlockApiError && e.status === null && /unreachable/.test(e.message));
+});
+
+test('registerForProfile refuses the block-api backend on any profile but block', async () => {
+  const { registerForProfile } = await import('../dist/register.js');
+  const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+  assert.throws(() => registerForProfile(new McpServer({ name: 't', version: '0' }), 'full', 'block-api'), /--profile block only/);
+});

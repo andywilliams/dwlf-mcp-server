@@ -42,7 +42,7 @@ export function registerBlockApiTools(server: McpServer, client: BlockApiClient)
     'dwlf_get_events',
     'Events on Bitcoin from DWLF Block (DWLF\'s own data, BTCOC/USD, daily): on-chain events (`onchain.*`), cycle ' +
       'pivots and indicator events, one item per event. Without a key the view covers the last 30 days. Narrow it ' +
-      'with `types` (exact event type ids; dwlf_describe_onchain_events lists them) and `from` / `to`; with a key, ' +
+      'with `types` (exact event type ids, e.g. `onchain.sth_sopr.lose`) and `from` / `to`; with a key, ' +
       'always pass `from`, since a longer history comes back in one answer. ' + ENVELOPE,
     {
       types: z.array(z.string()).max(20).optional()
@@ -58,7 +58,7 @@ export function registerBlockApiTools(server: McpServer, client: BlockApiClient)
   server.tool(
     'dwlf_get_series',
     'One daily Bitcoin series from DWLF Block (DWLF\'s own data), by id: for example `price-close`, `realized-price`, ' +
-      '`sth-realized-price` or `mvrv` (dwlf_describe_onchain_events lists every series). ' +
+      '`sth-realized-price` or `mvrv`. ' +
       'Without a key the view covers the last 365 days; the item\'s `from` is its first point and `historyFrom` says ' +
       'when the series itself starts. ' + ENVELOPE,
     {

@@ -1,7 +1,7 @@
 {
  "key": "GET /public/v1/series/mvrv",
  "status": 200,
- "recordedAt": "2026-11-19T16:13:02.227Z",
+ "recordedAt": "2026-11-19T16:19:40.072Z",
  "openapi": {
   "version": "1.0.0-draft",
   "sha256": "8445a70202a71ceaa718efba8b0488fae06af38a057d50550759450c231e9295"

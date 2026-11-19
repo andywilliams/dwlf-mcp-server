@@ -91,4 +91,8 @@ test('check 7 on the block-api backend (DWLF-876): its tool descriptions, parame
   }
   const hits = Object.entries(texts).map(([name, text]) => [name, bannedWordIn(text)]).filter(([, hit]) => hit !== null);
   assert.deepEqual(hits, []);
+  // Invariant 5 on this backend too: no text sends an agent to a tool this backend does not offer.
+  const hidden = Object.entries(texts).flatMap(([name, text]) => (text.match(/\bdwlf_[a-z_]+/g) || [])
+    .filter((t) => !BLOCK_API_TOOLS.has(t)).map((t) => `${name} → ${t}`));
+  assert.deepEqual(hidden, [], 'a block-api text names a tool the backend does not offer');
 });

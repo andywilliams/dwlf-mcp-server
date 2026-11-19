@@ -274,7 +274,9 @@ A reviewer should be able to test a diff against each of these:
       and wording are unchanged.
   12. **Recordings come from the Block API's public routes** (keyless, already-public data; checked 18-Nov to be
       DWLF's own data only, `BTCOC/USD` and own-node series; every fixture diff is read for vendor or personal values
-      before it enters this public repo, and a fixture lint in `npm test` fails any priced item not on `BTCOC/USD`), plus a Block test
+      before it enters this public repo; a fixture lint in `npm test` fails a priced item under any symbol but `BTCOC/USD`.
+      Block API series and conditions items carry no symbol: their provenance is the Block API's (it serves only DWLF's
+      own data) and the human read, not the lint), plus a Block test
       account's `dwlfk_` key for signed-in views once keys exist. SPT-backed versions are never recorded, so a tool
       has no snapshot until B4 re-points it. *Accepted debt:* until then, Block releases are gated by item 4 and the
       existing tests.

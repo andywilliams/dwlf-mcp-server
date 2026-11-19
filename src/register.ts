@@ -94,12 +94,14 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
 
 /**
  * The one place a server gets its tools, for the stdio entry point and any per-request host (DWLF-876 D3/D7): on the
- * Block profile's `block-api` backend, the Block API tools through `blockClient` and nothing else; otherwise every
- * module through the profile's view. Each client is built by the caller, so a host passes one per request.
+ * Block profile's `block-api` backend, the Block API tools and nothing else; otherwise every module through the
+ * profile's view. `clients` are factories, so a host passes one per request; without them the environment's clients
+ * are built here. The block-api backend is refused for any profile but `block` (`full` never sees the Block versions).
  */
 export function registerForProfile(server: McpServer, profile: ProfileName, backend: BlockBackend,
   clients: { dwlf?: () => DWLFClient; block?: () => BlockApiClient } = {}): void {
   if (backend === 'block-api') {
+    if (profile !== 'block') throw new Error('The block-api backend applies to --profile block only.');
     registerBlockApiTools(server, (clients.block ?? (() => new BlockApiClient()))());
     return;
   }
