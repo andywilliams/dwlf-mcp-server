@@ -2,9 +2,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
+import { THESIS_GUIDE } from './thesisGuide.js';
 
 /**
- * Thesis alerts, "Waiting for" (DWLF-855): per symbol, the market events a user is waiting for and why, checked by
+ * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
  * DWLF once a night after the close. SPT `/v2/theses` owns every rule (validation, arming, the vocabulary, price
  * redaction); these tools translate. Each answer is the backend's JSON unchanged plus an additive `agentHints`
  * block (invariant 2): a one-line `summary`, the `definitions` of the statuses and kinds it contains, and `why`
@@ -156,8 +157,18 @@ const savedSummary = (data: Json, verb: string): string => {
 
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
   server.tool(
+    'dwlf_thesis_guide',
+    'Start here for theses (what a user is waiting for on a symbol, checked by DWLF every night after the close). Returns what theses are, what they save the user (decide once; told when it happens; honest knowable-at timing; how close each is), their honest limits (end of day; information, not advice), the rules for building one that DWLF can check exactly, the workflow across the thesis tools, and three worked examples with the exact dwlf_create_thesis payloads. No API call.',
+    {},
+    async () => ok({ guide: THESIS_GUIDE }, {
+      summary: 'The theses guide: what, benefits, limits, rules, workflow and three worked examples.',
+      why: 'Read before building a thesis or explaining the feature to the user. The condition types and fields themselves come from dwlf_list_thesis_condition_types.',
+    })
+  );
+
+  server.tool(
     'dwlf_list_thesis_condition_types',
-    `The vocabulary of thesis alerts ("Waiting for"): each condition type with its parameters and a definition, the rules (ordered steps, invalidation, arming, nightly checking) and the limits. Read this before dwlf_create_thesis. ${TYPE_HINT}`,
+    `The vocabulary of theses: each condition type with its parameters, a definition, its fields as data (name, kind, required, values, help) and whether it may be an invalidation; the rules (ordered steps, invalidation, arming, nightly checking) and the limits. Only these types exist: DWLF checks exactly what their fields say. Read this before dwlf_create_thesis (dwlf_thesis_guide has worked examples). ${TYPE_HINT}`,
     {},
     async () => {
       try {
@@ -169,7 +180,8 @@ export function registerThesisTools(server: McpServer, client: DWLFClient) {
 
   server.tool(
     'dwlf_create_thesis',
-    `Save what the user is waiting for on a symbol, and why ("Waiting for", DWLF-855): ordered steps of conditions, optional invalidation conditions, and the user's own context. DWLF checks it once a night after the close and sends one Telegram digest per run when something happens; nothing known before a condition was saved counts.
+    `Save what the user is waiting for on a symbol, and why: ordered steps of conditions, optional invalidation conditions, and the user's own context and next step. DWLF checks it once a night after the close and tells the user when a step is met or it is challenged (a Telegram digest if set up, an in-app notification, and dwlf_list_thesis_fires); nothing known before a condition was saved counts.
+Build it tight and detectable: only the listed condition types, each label saying exactly what its fields check. For "the next pivot after one I already know of" use pivot_confirmed with \`after\`. Before the confirming low exists, an invalidation cannot be "a close below the new low": use engine_event cycle.low.break (the latest confirmed low breaks) or a close_vs_level against a level the user already knows. Worked examples: dwlf_thesis_guide.
 Use dryRun: true first: it restates every condition in plain words (\`checks\`) and checks each can occur, writing nothing. Show the restatement to the user before saving.
 Refusals: 422 CANNOT_OCCUR (a condition can never happen for its symbol), 422 ALREADY_MET (a step condition is already true now; set allowAlreadyMet to save anyway). The refusal's checks are returned.
 clientKey makes the call an upsert (re-sending an identical thesis writes nothing; a changed one writes a new revision). ${TYPE_HINT}`,

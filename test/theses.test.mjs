@@ -153,7 +153,7 @@ test('registered in the full server, and not in the Block profile', () => {
   const names = [];
   registerAll({ tool: (name) => names.push(name), resource: () => {} }, {});
   const theses = names.filter((n) => /thes/.test(n));
-  assert.equal(theses.length, 11);
+  assert.equal(theses.length, 12);
   assert.deepEqual(theses.filter((n) => BLOCK_TOOLS.has(n)), []);
 });
 
@@ -176,4 +176,35 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
     { type: 'volume_spike', multiple: 2 },
   ]);
   assert.equal(parsed.steps[0].match, 'any');
+});
+
+test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow and three worked examples that are valid create payloads; no advice words (DWLF-891)', async () => {
+  const { tools, call } = setup();
+  const { body } = await call('dwlf_thesis_guide');
+  const g = body.guide;
+  assert.ok(g.what && g.benefits.length >= 5 && g.limits.length >= 3 && g.rules.length >= 5 && g.workflow.length >= 4);
+  assert.match(g.limits.join(' '), /End of day/);
+  assert.match(g.limits.join(' '), /Information, not advice/);
+  assert.match(g.rules.join(' '), /cycle\.low\.break/);
+  assert.equal(g.examples.length, 3);
+  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'trendline_break', 'engine_event', 'manual'];
+  for (const { create } of g.examples) {
+    assert.ok(create.symbol && create.title && create.steps.length >= 1);
+    for (const c of [...create.steps.flatMap((st) => st.conditions), ...create.invalidation]) {
+      assert.ok(TYPES.includes(c.type), c.type);
+      assert.ok(c.label, 'every example condition has a label saying what is checked');
+    }
+    assert.ok(create.invalidation.every((c) => c.type !== 'manual'));
+  }
+  // The guide may name the words it disclaims ("not advice"); everything else stays free of advice words.
+  const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
+  const text = JSON.stringify({ ...g, examples: g.examples.map(({ name, notes }) => ({ name, notes })) });
+  assert.doesNotMatch(text, ADVICE);
+  assert.match(tools.get('dwlf_create_thesis').desc, /dwlf_thesis_guide/);
+});
+
+test('the recorded thesis eval answer still passes its checker (eval/theses, DWLF-891)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync('node', ['eval/theses/check.mjs', 'eval/theses/answer-2026-11-20.json'], { encoding: 'utf8' });
+  assert.match(out, /^PASS/);
 });

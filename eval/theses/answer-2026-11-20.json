@@ -1,0 +1,49 @@
+{
+  "payload": {
+    "symbol": "NVDA",
+    "title": "NVDA: the next confirmed daily cycle low, then a higher daily low or a bullish daily trend-line break",
+    "context": "The 12 Nov daily cycle low failed on 18 Nov. I want the next daily low confirmed first, then a sign the decline is over. If the weekly cycle low breaks, the idea is in question.",
+    "nextStep": "When step 2 fires, look at the chart and the weekly picture myself, then decide.",
+    "clientKey": "nvda-daily-low-after-2026-11-12",
+    "steps": [
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "pivot_confirmed",
+            "timeframe": "daily",
+            "side": "low",
+            "after": "2026-11-12",
+            "label": "Next confirmed daily cycle low after 12 Nov (any price)"
+          }
+        ]
+      },
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "engine_event",
+            "timeframe": "daily",
+            "eventType": "cycle.low.higher_low",
+            "label": "A higher daily cycle low"
+          },
+          {
+            "type": "trendline_break",
+            "timeframe": "daily",
+            "direction": "bullish",
+            "label": "Daily bullish trend-line break"
+          }
+        ]
+      }
+    ],
+    "invalidation": [
+      {
+        "type": "engine_event",
+        "timeframe": "weekly",
+        "eventType": "cycle.low.break",
+        "label": "The latest confirmed weekly cycle low breaks"
+      }
+    ]
+  },
+  "explanation": "Here's what I'll set up for NVDA. It's a 'thesis': a saved note of what you're waiting for, which DWLF checks for you every night after the close.\n\nWhat I'll save:\n- Step 1: the next confirmed daily cycle low after 12 Nov, at any price.\n- Step 2 (only checked once step 1 is met): a higher daily cycle low OR a bullish daily trend-line break, whichever comes first.\n- Challenge: if the latest confirmed weekly cycle low breaks, the thesis is flagged 'challenged' so you can review it.\n- Your context (the 12 Nov low failed on 18 Nov) and your next step (when step 2 fires, check the chart and weekly picture and decide) are stored with it.\n\nFirst I'll do a dry run, which saves nothing. DWLF restates each condition in plain words and checks each one can actually happen. I'll show you that restatement, and I'll only do the real save once you say it matches what you mean. If a condition is already true today, DWLF refuses it, and I'll ask you whether to save it anyway.\n\nWhat DWLF does for you:\n- You decide once instead of checking charts every day. DWLF checks every night after the close.\n- It tells you when a step is met or the thesis is challenged: an in-app notification, a Telegram digest if you've set that up, and I can read the same events.\n- The timing is honest. Every event records when DWLF could first know it (a cycle low is only confirmed some days after the actual low bar). Nothing that happened before you saved counts, so the 12 Nov low and the 18 Nov failure can't trigger it.\n- It checks exactly what the conditions say, using DWLF's own cycle and trend-line detection, not someone's reading of the chart.\n- You can ask how close it is at any time, e.g. whether a daily low is forming and how far along it is.\n- It's a journal. Edits are kept as revisions, and when it's challenged you answer keep, revise or close, so you can see how the idea played out. You'll find it under Log -> Theses on the site.\n\nWhat it doesn't do:\n- It's end-of-day only. Nothing is checked intraday, so you hear after the close, not the moment something happens.\n- It's information, not advice. It reports which conditions the market met. It won't tell you to buy, sell or size a position, and it doesn't forecast.\n- It doesn't place or manage trades.\n- It only checks the condition types DWLF can detect. Anything else (news, your own judgement) would have to be a manual condition you tick yourself.\n- When the weekly low breaks, DWLF doesn't decide anything. It flags the thesis and waits for your call.\n- Step 1 has no price level, so any confirmed daily low counts, even one below 12 Nov. If you want it to hold above a specific price, give me the level and I'll add it.\n- Depending on your plan, exact prices and distances to a level may be hidden. The % change since you saved is always shown.\n\nShall I run the dry run now?"
+}
