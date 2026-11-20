@@ -141,13 +141,14 @@ const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the change
 /** How to tell a story to the user: what happened and what the thesis needs, never what price will do. */
 const STORY_RULE = 'Tell it as what happened and what the thesis needs next, in the beats\' own facts. Never as an expectation or a forecast: a needs-next beat says what would meet a step, not that it will happen.';
 
-/** One line: how many beats, the last thing that happened, what it needs next, and whether the plan was reconstructed. */
+/** One line: how many beats, the last thing that happened, what it needs next, and the plan's note (reconstructed, or none). */
 const storyLine = (data: Json): string => {
-  const s = (data.summary || {}) as { beats?: number; last?: { date?: string; sentence?: string } | null; needsNext?: string | null };
+  const s = (data.summary && typeof data.summary === 'object' ? data.summary : {}) as { beats?: number; last?: { sentence?: string } | null; needsNext?: string | null };
+  const count = Number.isFinite(s.beats) ? s.beats : Array.isArray(data.beats) ? data.beats.length : null;
   const last = s.last?.sentence ? ` Last: ${s.last.sentence}` : '';
   const next = s.needsNext ? ` Next: ${s.needsNext}` : '';
   const note = data.planNote ? ` Plan: ${String(data.planNote)}` : '';
-  return `${data.symbol} story, ${s.beats ?? 0} beats.${last}${next}${note}`;
+  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}`;
 };
 
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
@@ -267,7 +268,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_get_thesis_story',
-    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site; add ?story=<beat id> for one beat). ${STORY_RULE} Engine prices are withheld for keys not entitled to raw prices.`,
+    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). ${STORY_RULE} Engine prices are withheld for keys not entitled to raw prices.`,
     {
       thesisId: z.string().describe('Thesis ID'),
       revision: z.number().int().positive().optional().describe('Whose plan as drawn to return (1..currentRevision). Default: the current revision.'),
@@ -275,7 +276,8 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
     async ({ thesisId, revision }) => {
       try {
         const data = await client.get(`/theses/${encodeURIComponent(thesisId)}/story`, defined({ revision })) as Json;
-        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, ((data.beats || []) as Json[]).map((b) => b.kind)) }, how: STORY_RULE, why: WHY });
+        const beats = (Array.isArray(data.beats) ? data.beats : []) as Json[];
+        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)) }, how: STORY_RULE, why: WHY });
       } catch (error) { return fail(error); }
     }
   );

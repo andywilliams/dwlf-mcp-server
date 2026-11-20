@@ -3,7 +3,6 @@
 import { readFileSync } from 'node:fs';
 
 const answer = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-const fixture = readFileSync(new URL('./goog-story.json', import.meta.url), 'utf8');
 const x = String(answer.narration || '');
 const t = x.toLowerCase();
 const failures = [];
@@ -19,14 +18,19 @@ check(/higher daily (cycle )?low/.test(t) && /trend[- ]?line/.test(t), 'step 2 n
 check(/(challeng|invalidat)/.test(t) && /daily close below/.test(t), 'names what would challenge it (a daily close below the latest confirmed daily low)');
 check(/(waiting|no step|none of the steps|not (been )?met)/.test(t), 'says where it stands: waiting, no step met');
 
-// Every price it quotes is one the story holds: nothing invented.
-const prices = [...x.matchAll(/\b\d{2,}\.\d+\b/g)].map((m) => m[0]);
-check(prices.every((p) => fixture.includes(p)), `no invented prices (${prices.filter((p) => !fixture.includes(p)).join(', ') || 'none'})`);
+// The story is the one a key without raw-price rights gets: it holds no prices, so the narration quotes none (a
+// decimal, or a whole number of three or more digits that is not a year, is taken as a price).
+const prices = [...x.matchAll(/\b\d+\.\d+\b|\b(?!20\d\d\b)\d{3,}\b/g)].map((m) => m[0]);
+check(!prices.length, `no invented prices (${prices.join(', ') || 'none'})`);
 
 // No forecast or call to act, read clause by clause; a denial ("not a forecast") is the honest limit and passes.
 const clauses = t.replace(/\b(no doubt|no question|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
 const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-const negatedBefore = (c, re) => { const m = c.match(re); return Boolean(m) && NEG.test(c.slice(Math.max(0, m.index - 60), m.index)); };
+// A negation denies a match only within its own part of the clause: "not advice, and it will rise" asserts the rise.
+const negatedBefore = (c, re) => {
+  const m = c.match(re);
+  return Boolean(m) && NEG.test(c.slice(0, m.index).split(/,|;|\band\b|\bso\b/).pop());
+};
 const asserted = (re) => clauses.some((c) => re.test(c) && !negatedBefore(c, re));
 const FORECAST = /\b(will (rise|fall|drop|go up|go down|bounce|recover|reverse|hold|break|form|confirm|come)|is (likely|about) to|likely|probably|expect(ed|s)?|should (rise|fall|hold|bounce|buy|sell)|price target|guarantee[sd]?|good (buy|entry)|time to (buy|sell)|you should (buy|sell|enter|exit))\b/;
 check(!asserted(FORECAST), 'no forecast or call to act (what a step needs is not what will happen)');

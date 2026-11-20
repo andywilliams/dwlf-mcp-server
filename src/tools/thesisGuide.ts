@@ -134,6 +134,7 @@ export const THESIS_GUIDE = {
   statuses: STATUS_DEFINITIONS,
   conditionStates: CONDITION_STATE_DEFINITIONS,
   fireKinds: FIRE_KIND_DEFINITIONS,
+  beatKinds: BEAT_KIND_DEFINITIONS,
   whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story (dwlf_get_thesis_story\'s deepLink opens it); the notifications bell; and the Telegram digest. Users can also build and revise theses there themselves (New thesis; Revise conditions), with the same types and checks.',
   examples: [
     { name: 'Wait for the next confirmed daily low, then a higher low or a trend-line break, challenged if the weekly low breaks', create: goog,

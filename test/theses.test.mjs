@@ -304,10 +304,21 @@ test('the recorded story narration still passes its checker; the faults the runs
   assert.match(run('eval/thesis-story/answer-2026-11-20.json'), /^PASS/);
   const dir = mkdtempSync(`${tmpdir()}/story-eval-`);
   const bad = (narration) => { const f = `${dir}/a.json`; writeFileSync(f, JSON.stringify({ narration })); return run(f); };
-  const base = 'Your GOOG thesis is waiting: no step met. The 5 Nov daily low (276.2, known 11 Nov) failed on 19 Nov. GOOG is inside its weekly window (estimates, unverified). Step 1 needs the next confirmed daily low; step 2 a higher daily low or a bullish trend-line break. A daily close below the latest confirmed daily low would challenge it.';
+  const base = 'Your GOOG thesis is waiting: no step met. The 5 Nov daily low (known 11 Nov) failed on 19 Nov. GOOG is inside its weekly window (estimates, unverified). Step 1 needs the next confirmed daily low; step 2 a higher daily low or a bullish trend-line break. A daily close below the latest confirmed daily low would challenge it.';
   assert.match(bad(base), /^PASS/);
   assert.match(bad(`${base} The 19 Nov break fits that description.`), /challenged by a break/, 'run 1');
-  assert.match(bad(`${base} The 19 Nov close below 276.2 is also the condition your thesis lists as a challenge.`), /19 Nov break to the challenge/, 'run 3');
-  assert.match(bad(`${base} The last close was 271.019.`), /invented prices \(271\.019\)/);
+  assert.match(bad(`${base} The 19 Nov close below it is also the condition your thesis lists as a challenge.`), /19 Nov break to the challenge/, 'run 3');
+  assert.match(bad(`${base} The last close was 271.02.`), /invented prices \(271\.02\)/, 'the story holds no prices');
   assert.match(bad(`${base} A new daily low will form soon.`), /no forecast/);
+  assert.match(bad(`${base} This is not advice, and a new daily low will form soon.`), /no forecast/, 'a disclaimer does not deny the forecast after it');
+  assert.match(bad(`${base} It is not a forecast; it does not say a low will form.`), /^PASS/, 'a real denial passes');
+});
+
+test('dwlf_get_thesis_story: a body without a summary or with no beats array still reaches the agent, never a false count', async () => {
+  const { call } = setup(() => ({ symbol: 'GOOG', beats: [{ kind: 'now' }, { kind: 'needs' }] }));
+  assert.equal((await call('dwlf_get_thesis_story', { thesisId: 't1' })).body.agentHints.summary, 'GOOG story, 2 beats.');
+  const odd = setup(() => ({ beats: 'x' }));
+  const { res, body } = await odd.call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.equal(res.isError, undefined);
+  assert.equal(body.agentHints.summary, 'Thesis story, an unknown number of beats.');
 });

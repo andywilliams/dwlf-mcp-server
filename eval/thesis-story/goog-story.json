@@ -10,7 +10,7 @@
   "beats": 8,
   "last": {
    "date": "2026-11-19",
-   "sentence": "The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov."
+   "sentence": "The 5 Nov daily cycle low failed: a daily close below it on 19 Nov."
   },
   "needsNext": "Step 1 needs this: Next confirmed daily cycle low (any price)."
  },
@@ -20,7 +20,7 @@
    "kind": "event",
    "date": "2026-10-21",
    "knowableAt": "2026-10-21T23:59:59.999Z",
-   "sentence": "The 1 Oct daily cycle low failed: a daily close below 332.65 on 21 Oct.",
+   "sentence": "The 1 Oct daily cycle low failed: a daily close below it on 21 Oct.",
    "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
    "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
    "conditionIds": [
@@ -32,7 +32,7 @@
    ],
    "highlight": {
     "date": "2026-10-01",
-    "price": 332.65,
+    "price": null,
     "breakDate": "2026-10-21",
     "callout": "daily cycle low",
     "side": "low"
@@ -65,7 +65,7 @@
    "kind": "event",
    "date": "2026-11-05",
    "knowableAt": "2026-11-11T23:59:59.999Z",
-   "sentence": "A daily cycle low was confirmed: 5 Nov, at 276.2.",
+   "sentence": "A daily cycle low was confirmed: 5 Nov.",
    "checkedAs": "Next confirmed daily cycle low (any price)",
    "means": "This one is dated 5 Nov, known 11 Nov. Step 1 counts a confirmed daily cycle low dated after 5 Nov. It was set 19 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for step 1.",
    "conditionIds": [
@@ -76,7 +76,7 @@
    ],
    "highlight": {
     "date": "2026-11-05",
-    "price": 276.2,
+    "price": null,
     "breakDate": null,
     "callout": "daily cycle low",
     "side": "low"
@@ -111,7 +111,7 @@
    "kind": "event",
    "date": "2026-11-19",
    "knowableAt": "2026-11-19T23:59:59.999Z",
-   "sentence": "The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov.",
+   "sentence": "The 5 Nov daily cycle low failed: a daily close below it on 19 Nov.",
    "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
    "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
    "conditionIds": [
@@ -123,7 +123,7 @@
    ],
    "highlight": {
     "date": "2026-11-05",
-    "price": 276.2,
+    "price": null,
     "breakDate": "2026-11-19",
     "callout": "daily cycle low",
     "side": "low"
@@ -139,7 +139,7 @@
    "date": "2026-11-19",
    "knowableAt": null,
    "sentence": "GOOG is inside its weekly cycle low window (opened 26 Oct, closes about 4 Jan).",
-   "lastClose": 271.02,
+   "lastClose": null,
    "stepLines": [
     "○ Step 1 · Next confirmed daily cycle low (any price)",
     "○ Step 2 · A higher daily cycle low or Daily bullish trend-line break"
@@ -228,7 +228,7 @@
   ],
   "side": "low",
   "lastDate": "2026-11-19",
-  "lastClose": 271.02
+  "lastClose": null
  },
  "plan": null,
  "planNote": "No plan was captured for this revision.",
