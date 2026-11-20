@@ -293,6 +293,7 @@ A thesis is what a user is waiting for on one symbol, in their own words: ordere
 5. dwlf_list_theses { includeProgress: true } → how close each is; `closest` to sort by
 6. dwlf_list_thesis_fires { cursor }         → what happened since you last looked (keep the cursor)
 7. dwlf_review_thesis { answer }             → the user's answer to a challenged thesis: keep / revise / close
+8. dwlf_revise_thesis { ..., dryRun: true } → a change, checked first: only the changed conditions are judged
 ```
 
 ### Worked example: the next confirmed daily low, then a higher low or a trend-line break

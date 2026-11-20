@@ -99,6 +99,20 @@ test('includeProgress: ties go to the second rank element; a malformed closest i
   assert.match(body.agentHints.summary, /Closest to trigger: NEAR \(2% to a level\), FAR \(9% to a level\)\.$/);
 });
 
+test('★ a revision dry run (revise, or review revise) goes to ?dryRun=true, flag out of the body, and says nothing was saved (DWLF-885)', async () => {
+  const backend = { dryRun: true, judged: 'revision', wouldSave: true, changed: ['c2'], checks: [{ id: 'c2', restatement: 'r', canOccur: true }] };
+  const { calls, call } = setup(() => backend);
+  const revise = await call('dwlf_revise_thesis', { thesisId: 't1', expectedRevision: 2, invalidation: [], dryRun: true });
+  const review = await call('dwlf_review_thesis', { thesisId: 't1', answer: 'revise', expectedRevision: 2, dryRun: true });
+  assert.deepEqual(calls.map((c) => `${c.method} ${c.path}`), ['patch /theses/t1?dryRun=true', 'post /theses/t1/review?dryRun=true']);
+  assert.equal(calls.some((c) => 'dryRun' in c.a), false);
+  for (const { body } of [revise, review]) {
+    const { agentHints, ...rest } = body;
+    assert.deepEqual(rest, backend);
+    assert.match(agentHints.summary, /nothing was saved.*changed conditions/);
+  }
+});
+
 test('get / revise / review / mark / archive / delete reach their routes, ids encoded', async () => {
   const { calls, call } = setup(() => ({ thesis: thesis() }));
   await call('dwlf_get_thesis', { thesisId: 'a/b' });

@@ -94,7 +94,7 @@ export const THESIS_GUIDE = {
     'Arming: a condition counts only what DWLF learns after it is saved (or changed in a revision). Use `after` (a date) for "the next pivot after the one I already know of".',
     'Invalidation before the confirming low exists: do not use "a close below the new low" (that low is not known yet). Use engine_event cycle.low.break, which fires when the latest confirmed low breaks, or a close_vs_level against a level the user already knows.',
     'Each condition may name its own symbol (watch QQQ for a CNX1 thesis); it defaults to the thesis symbol.',
-    'Run dwlf_create_thesis with dryRun: true first and show the user the restatement of every condition (`checks`); save only what the user confirms. A condition that can never occur for its symbol is refused; one that is already true is refused unless the user chooses to save it anyway (allowAlreadyMet).',
+    'Run dwlf_create_thesis (or dwlf_revise_thesis, for a change) with dryRun: true first and show the user the restatement of every condition (`checks`); save only what the user confirms. A condition that can never occur for its symbol is refused; one that is already true is refused unless the user chooses to save it anyway (allowAlreadyMet).',
     'Record the user\'s own review answer (keep, revise or close); do not choose it for them.',
   ],
   workflow: [
@@ -102,7 +102,7 @@ export const THESIS_GUIDE = {
     '2. dwlf_create_thesis with dryRun: true: read back the restatements and checks to the user.',
     '3. dwlf_create_thesis (no dryRun) once the user agrees; keep the clientKey if you set one (a retry with it is the same thesis).',
     '4. Later: dwlf_list_theses (includeProgress for how close), dwlf_list_thesis_fires with your saved cursor for what happened, dwlf_ack_thesis_fires for what the user has seen.',
-    '5. A challenged thesis: ask the user, then dwlf_review_thesis (keep / revise / close). To change conditions: dwlf_revise_thesis with expectedRevision.',
+    '5. A challenged thesis: ask the user, then dwlf_review_thesis (keep / revise / close). To change conditions: dwlf_revise_thesis with expectedRevision, dryRun: true first (only the changed conditions are judged), then without it once the user agrees.',
   ],
   glossary: {
     after: 'pivot_confirmed only: the pivot itself must be dated strictly after this date. Use the date of the pivot you already know of (its pivot bar: 5 Nov in the GOOG example), not the day it failed (19 Nov). It is a filter on the pivot\'s date, separate from arming.',
@@ -119,7 +119,7 @@ export const THESIS_GUIDE = {
   statuses: STATUS_DEFINITIONS,
   conditionStates: CONDITION_STATE_DEFINITIONS,
   fireKinds: FIRE_KIND_DEFINITIONS,
-  whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story; the notifications bell; and the Telegram digest.',
+  whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story; the notifications bell; and the Telegram digest. Users can also build and revise theses there themselves (New thesis; Revise conditions), with the same types and checks.',
   examples: [
     { name: 'Wait for the next confirmed daily low, then a higher low or a trend-line break, challenged if the weekly low breaks', create: goog,
       notes: 'Step 1 has no level ("any price"), so any first confirmed daily low after 5 Nov meets it. The invalidation uses cycle.low.break because the low that would confirm step 1 does not exist yet.' },
