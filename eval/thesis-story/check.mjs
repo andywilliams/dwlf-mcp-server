@@ -34,7 +34,7 @@ const asserted = (re) => clauses.some((c) => matchesOf(c, re).some((m) => !denie
 const FORECAST = /\b(will (rise|fall|drop|go up|go down|bounce|recover|reverse|hold|break|form|confirm|come)|is (likely|about) to|likely|probably|expect(ed|s)?|should (rise|fall|hold|bounce|buy|sell)|price target|guarantee[sd]?|good (buy|entry)|time to (buy|sell)|you should (buy|sell|enter|exit))\b/;
 check(!asserted(FORECAST), 'no forecast or call to act (what a step needs is not what will happen)');
 // The 19 Nov break came before the challenge was set (20 Nov): it is context, not the challenge.
-const CLAIMS_CHALLENGED = /\b(fits (that|the|this)|is (now )?challenged(?! (by|if|when|only))|was challenged|has been challenged|triggered|hit the (invalidation|challenge)|met the (invalidation|challenge)|counts as the challenge)\b/;
+const CLAIMS_CHALLENGED = /\b(fits (that|the|this)|is (now )?challenged(?! (by an? |if |when |only ))|was challenged|(break|close|event|it|that|this) (challenged|challenges) (the thesis|it)|has been challenged|triggered|hit the (invalidation|challenge)|met the (invalidation|challenge)|counts as the challenge)\b/;
 check(clauses.filter((c) => /challeng/.test(c) && /19 nov/.test(c)).every((c) => /(do(es)?n'?t|not|never) count/.test(c)),
   'ties the 19 Nov break to the challenge only to say it does not count (it was known before the challenge was set)');
 check(!asserted(CLAIMS_CHALLENGED), 'does not call the thesis challenged by a break that came before the challenge was set');
