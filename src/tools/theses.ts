@@ -214,14 +214,22 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
           status, symbol: symbol ? normalizeSymbol(symbol) : undefined, group, include: includeProgress ? 'progress' : undefined,
         }) as Json;
         const theses = (data.theses || []) as Thesis[];
-        // With progress: name the closest few, in SPT's own short words and order (closest.rank ascending).
+        // With progress: name the closest few, in SPT's own short words and order (closest.rank, compared element by element,
+        // ascending). A thesis whose closest has no short or no numeric rank is left out of the line, never an error.
+        const rankOf = (t: Json): number[] | null => {
+          const c = (t.progress as Json | undefined)?.closest as Json | undefined;
+          const rank = c?.rank;
+          return c?.short && Array.isArray(rank) && rank.length > 0 && rank.every((v) => Number.isFinite(v)) ? rank as number[] : null;
+        };
+        const byRank = (a: number[], b: number[]) => {
+          for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+            const d = (a[i] ?? 0) - (b[i] ?? 0);
+            if (d !== 0) { return d; }
+          }
+          return 0;
+        };
         const ranked = includeProgress
-          ? (theses as Json[]).filter((t) => (t.progress as Json | undefined)?.closest && ((t.progress as Json).closest as Json).short)
-            .sort((a, b) => {
-              const ra = ((a.progress as Json).closest as Json).rank as number[];
-              const rb = ((b.progress as Json).closest as Json).rank as number[];
-              return ra[0] - rb[0] || ra[1] - rb[1];
-            })
+          ? (theses as Json[]).filter((t) => rankOf(t)).sort((a, b) => byRank(rankOf(a) as number[], rankOf(b) as number[]))
           : [];
         const closestLine = ranked.length
           ? ` Closest to trigger: ${ranked.slice(0, 3).map((t) => `${t.symbol} (${((t.progress as Json).closest as Json).short})`).join(', ')}.`

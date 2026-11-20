@@ -86,6 +86,19 @@ test('★ includeProgress asks SPT for progress and names the closest few in SPT
   assert.equal(body.theses[1].progress.closest.short, '16.06% to a level', 'SPT\'s body passes through whole');
 });
 
+test('includeProgress: ties go to the second rank element; a malformed closest is left out of the line, never an error', async () => {
+  const p = (rank, short = 'x') => ({ current: [], invalidation: [], closest: { kind: 'x', rank, short } });
+  const { call } = setup(() => ({ theses: [
+    thesis({ thesisId: 'a', symbol: 'FAR', status: 'waiting', progress: p([0, 9], '9% to a level') }),
+    thesis({ thesisId: 'b', symbol: 'NEAR', status: 'waiting', progress: p([0, 2], '2% to a level') }),
+    thesis({ thesisId: 'c', symbol: 'BAD', status: 'waiting', progress: p(null, 'odd') }),
+    thesis({ thesisId: 'd', symbol: 'NAN', status: 'waiting', progress: p(['x', 1], 'odd') }),
+  ], count: 4 }));
+  const { res, body } = await call('dwlf_list_theses', { includeProgress: true });
+  assert.equal(res.isError, undefined);
+  assert.match(body.agentHints.summary, /Closest to trigger: NEAR \(2% to a level\), FAR \(9% to a level\)\.$/);
+});
+
 test('get / revise / review / mark / archive / delete reach their routes, ids encoded', async () => {
   const { calls, call } = setup(() => ({ thesis: thesis() }));
   await call('dwlf_get_thesis', { thesisId: 'a/b' });
