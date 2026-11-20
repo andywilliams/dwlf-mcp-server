@@ -228,3 +228,18 @@ test('the eval checker fails a wrong answer: a close below a low that does not e
     assert.ok(out.includes(what), `${what} reported: ${out}`);
   }
 });
+
+test('the eval checker reads denials and forecasts by clause: a negated list passes, "no doubt it will rise" fails (eval/theses)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const good = JSON.parse(readFileSync('eval/theses/answer-2026-11-20.json', 'utf8'));
+  const dir = mkdtempSync(`${tmpdir()}/thesis-eval-`);
+  const run = (extra) => {
+    const file = `${dir}/a.json`;
+    writeFileSync(file, JSON.stringify({ ...good, explanation: `${good.explanation}\n${extra}` }));
+    try { return execFileSync('node', ['eval/theses/check.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; }
+  };
+  assert.match(run('It doesn\'t give forecasts, guarantees or a price target.'), /^PASS/);
+  assert.match(run('There is no doubt the price will rise.'), /no forecast/);
+});

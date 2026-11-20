@@ -27,11 +27,12 @@ check(inv.some((c) => c.type === 'engine_event' && c.eventType === 'cycle.low.br
 check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 
 const t = x.toLowerCase();
-// Clause by clause: a clause whose negation comes BEFORE the words ("it won't tell you to buy", "no price target", "not
-// intraday") states a limit; the same words with no negation before them assert it ("not advice, but it will rise" asserts).
-const clauses = t.split(/(?<=[.!?:;,])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
+// Clause by clause (split at sentence ends, semicolons and contrast words, never at commas, so a negated list stays one
+// clause): the words count as denied when a negation stands within a few words before them ("it doesn't give forecasts,
+// guarantees or a price target"), and as asserted otherwise ("not advice, but it will rise"; "there is no doubt it will rise").
+const clauses = t.replace(/\b(no doubt|no question|not only|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
 const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-const negatedBefore = (c, re) => { const m = c.match(re); return Boolean(m) && NEG.test(c.slice(0, m.index)); };
+const negatedBefore = (c, re) => { const m = c.match(re); return Boolean(m) && NEG.test(c.slice(Math.max(0, m.index - 60), m.index)); };
 const denied = (re) => clauses.some((c) => negatedBefore(c, re));
 const asserted = (re) => clauses.some((c) => re.test(c) && !negatedBefore(c, re));
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');
