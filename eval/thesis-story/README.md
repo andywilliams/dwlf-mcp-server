@@ -1,6 +1,6 @@
 # Eval: a fresh agent tells a thesis story (DWLF-887)
 
-**Given:** only `dwlf_get_thesis_story` as an MCP client lists it and its answer for a GOOG thesis (`goog-story.json`: a real story built by SPT's `src/theses/story.js` from DWLF's own data on 20 Nov 2026, as a key without raw-price rights gets it, so it holds no prices; nothing else about DWLF).
+**Given:** only `dwlf_get_thesis_story` as an MCP client lists it and its answer for a GOOG thesis (`goog-story.json`: a real story built by SPT's `src/theses/story.js` from DWLF's own data on 20 Nov 2026, as a key without raw-price rights gets it, so it holds no prices, with its real revisions; nothing else about DWLF).
 
 **User says:** "What's going on with my GOOG thesis? Talk me through it."
 
@@ -13,8 +13,9 @@
 
 **Run it:** `npm run build && node eval/thesis-story/bundle.mjs > /tmp/story-bundle.md`, give a fresh agent that file and the user's words, save its JSON answer, then `node eval/thesis-story/check.mjs <answer.json>`. `npm test` re-checks the recorded answer, so the checker can't silently drift.
 
-**Recorded:** `answer-2026-11-20.json`, run 5 by a fresh general-purpose agent given only the bundle: **PASS**. The runs before it found two faults in SPT's story, both fixed there (DWLF-887, SPT #833):
+**Recorded:** `answer-2026-11-20.json`, run 6 by a fresh general-purpose agent given only the bundle: **PASS**. The runs before it found two faults in SPT's story, both fixed there (DWLF-887, SPT #833):
 - run 1 (fail): the agent said the 19 Nov break "fits" the challenge. The beat named only the first condition an event spoke to (step 1), not the challenge it was also the kind of, nor that the challenge was set after it. It also quoted an unrounded close. Fixed: a beat names every condition, each with when it was set; prices are rounded as the words quote them.
 - runs 2 and 3 (pass, then fail on the tightened checker): still read the break as the challenge's event. Fixed: a beat says plainly when an event was known before a condition was set, so it does not count for it (step n / the challenge).
 - run 4: told it straight, but quoted the story's prices; the fixture is now the story a key without raw-price rights gets (no prices: an MIT repo must not carry vendor prices, and it tests that nothing is invented).
-- run 5: tells it straight, says the 19 Nov break does not count for the challenge, quotes no price.
+- run 5: told it straight, quoted no price; but the fixture had been built from a list view without the thesis's revisions (revision 1, while its conditions were set 19 and 20 Nov). Rebuilt with GOOG's real revisions 1–4.
+- run 6: tells it straight: the revisions, when each condition was set, that the 19 Nov break does not count for the challenge, no price.

@@ -1,16 +1,16 @@
 {
  "thesisId": "goog-example",
  "symbol": "GOOG",
- "revision": 1,
- "currentRevision": 1,
+ "revision": 4,
+ "currentRevision": 4,
  "status": "waiting",
  "storyBuilderVersion": 1,
  "evaluatedThrough": "2026-11-19",
  "summary": {
-  "beats": 8,
+  "beats": 11,
   "last": {
-   "date": "2026-11-19",
-   "sentence": "The 5 Nov daily cycle low failed: a daily close below it on 19 Nov."
+   "date": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 4."
   },
   "needsNext": "Step 1 needs this: Next confirmed daily cycle low (any price)."
  },
@@ -132,6 +132,66 @@
     "from": "2026-10-26",
     "to": "2026-11-29"
    }
+  },
+  {
+   "id": "revision-2",
+   "kind": "revision",
+   "date": "2026-11-19",
+   "knowableAt": "2026-11-19",
+   "sentence": "Revised 19 Nov: revision 2.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-19",
+    "price": null,
+    "callout": "revision 2"
+   },
+   "frame": {
+    "from": "2026-11-05",
+    "to": "2026-12-03"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "revision-3",
+   "kind": "revision",
+   "date": "2026-11-20",
+   "knowableAt": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 3.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-20",
+    "price": null,
+    "callout": "revision 3"
+   },
+   "frame": {
+    "from": "2026-11-06",
+    "to": "2026-12-04"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "revision-4",
+   "kind": "revision",
+   "date": "2026-11-20",
+   "knowableAt": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 4.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-20",
+    "price": null,
+    "callout": "revision 4"
+   },
+   "frame": {
+    "from": "2026-11-06",
+    "to": "2026-12-04"
+   },
+   "conditionIds": [],
+   "sources": []
   },
   {
    "id": "now",

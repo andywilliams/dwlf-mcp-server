@@ -26,16 +26,15 @@ check(!prices.length, `no invented prices (${prices.join(', ') || 'none'})`);
 // No forecast or call to act, read clause by clause; a denial ("not a forecast") is the honest limit and passes.
 const clauses = t.replace(/\b(no doubt|no question|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
 const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-// A negation denies a match only within its own part of the clause: "not advice, and it will rise" asserts the rise.
-const negatedBefore = (c, re) => {
-  const m = c.match(re);
-  return Boolean(m) && NEG.test(c.slice(0, m.index).split(/,|;|\band\b|\bso\b/).pop());
-};
-const asserted = (re) => clauses.some((c) => re.test(c) && !negatedBefore(c, re));
+// A negation denies a match only within its own part of the clause ("not advice, and it will rise" asserts the rise),
+// and each match is judged on its own ("it does not say a low will form, and GOOG will rise" asserts the second).
+const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/,|;|\band\b|\bso\b/).pop());
+const matchesOf = (c, re) => [...c.matchAll(new RegExp(re.source, 'g'))];
+const asserted = (re) => clauses.some((c) => matchesOf(c, re).some((m) => !deniedAt(c, m.index)));
 const FORECAST = /\b(will (rise|fall|drop|go up|go down|bounce|recover|reverse|hold|break|form|confirm|come)|is (likely|about) to|likely|probably|expect(ed|s)?|should (rise|fall|hold|bounce|buy|sell)|price target|guarantee[sd]?|good (buy|entry)|time to (buy|sell)|you should (buy|sell|enter|exit))\b/;
 check(!asserted(FORECAST), 'no forecast or call to act (what a step needs is not what will happen)');
 // The 19 Nov break came before the challenge was set (20 Nov): it is context, not the challenge.
-const CLAIMS_CHALLENGED = /\b(fits (that|the|this)|is (now )?challenged|was challenged|has been challenged|triggered|hit the (invalidation|challenge)|met the (invalidation|challenge)|counts as the challenge)\b/;
+const CLAIMS_CHALLENGED = /\b(fits (that|the|this)|is (now )?challenged(?! (by|if|when|only))|was challenged|has been challenged|triggered|hit the (invalidation|challenge)|met the (invalidation|challenge)|counts as the challenge)\b/;
 check(clauses.filter((c) => /challeng/.test(c) && /19 nov/.test(c)).every((c) => /(do(es)?n'?t|not|never) count/.test(c)),
   'ties the 19 Nov break to the challenge only to say it does not count (it was known before the challenge was set)');
 check(!asserted(CLAIMS_CHALLENGED), 'does not call the thesis challenged by a break that came before the challenge was set');

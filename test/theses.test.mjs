@@ -312,6 +312,9 @@ test('the recorded story narration still passes its checker; the faults the runs
   assert.match(bad(`${base} A new daily low will form soon.`), /no forecast/);
   assert.match(bad(`${base} This is not advice, and a new daily low will form soon.`), /no forecast/, 'a disclaimer does not deny the forecast after it');
   assert.match(bad(`${base} It is not a forecast; it does not say a low will form.`), /^PASS/, 'a real denial passes');
+  assert.match(bad(`${base} It does not say a low will form, and GOOG will rise.`), /no forecast/, 'each match judged on its own');
+  assert.match(bad(`${base} The thesis is challenged by a daily close below the latest confirmed daily low.`), /^PASS/, 'the definition is not a claim');
+  assert.match(bad(`${base} The thesis is now challenged.`), /challenged by a break/);
 });
 
 test('dwlf_get_thesis_story: a body without a summary or with no beats array still reaches the agent, never a false count', async () => {
