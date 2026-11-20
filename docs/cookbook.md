@@ -294,7 +294,14 @@ A thesis is what a user is waiting for on one symbol, in their own words: ordere
 6. dwlf_list_thesis_fires { cursor }         → what happened since you last looked (keep the cursor)
 7. dwlf_review_thesis { answer }             → the user's answer to a challenged thesis: keep / revise / close
 8. dwlf_revise_thesis { ..., dryRun: true } → a change, checked first: only the changed conditions are judged
+9. dwlf_get_thesis_story { thesisId }        → the thesis told in beats: what happened, where it stands, what it needs
 ```
+
+### Telling a thesis's story
+
+`dwlf_get_thesis_story` returns the beats (chosen by rule: saved, revisions, the windows, the engine events the conditions name, the fires; then now; then what each unmet step needs), each with a plain `sentence`, `knowableAt`, `checkedAs` and `means`, plus the plan as drawn when the revision was saved and a `deepLink` to the same story on the site. `dwlf_list_theses { includeStory: true }` gives one line per thesis (`storySummary`).
+
+Tell it from the beats' own facts: what happened, and what the thesis needs next. A needs-next beat says what would meet a step, never that it will happen; don't add prices the story doesn't hold. For a GOOG thesis on 20 Nov (its challenge: a daily close below the latest confirmed daily low, set 20 Nov): *"It is waiting: no step met yet. The 5 Nov daily cycle low (276.2, known 11 Nov) failed on 19 Nov with a daily close below it; that came before the challenge was set, so it does not count against the thesis. GOOG is inside its weekly cycle low window (opened 26 Oct, closes about 4 Jan; the dates are engine estimates, unverified). Step 1 needs the next confirmed daily cycle low; then step 2 needs a higher daily low or a bullish daily trend-line break. A daily close below the latest confirmed daily low from here would challenge it."* (eval: `eval/thesis-story`)
 
 ### Worked example: the next confirmed daily low, then a higher low or a trend-line break
 

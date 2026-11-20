@@ -1,0 +1,252 @@
+{
+ "thesisId": "goog-example",
+ "symbol": "GOOG",
+ "revision": 1,
+ "currentRevision": 1,
+ "status": "waiting",
+ "storyBuilderVersion": 1,
+ "evaluatedThrough": "2026-11-19",
+ "summary": {
+  "beats": 8,
+  "last": {
+   "date": "2026-11-19",
+   "sentence": "The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov."
+  },
+  "needsNext": "Step 1 needs this: Next confirmed daily cycle low (any price)."
+ },
+ "beats": [
+  {
+   "id": "event-cycle.low.break-1d-2026-10-21",
+   "kind": "event",
+   "date": "2026-10-21",
+   "knowableAt": "2026-10-21T23:59:59.999Z",
+   "sentence": "The 1 Oct daily cycle low failed: a daily close below 332.65 on 21 Oct.",
+   "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
+   "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
+   "conditionIds": [
+    "c1",
+    "c4"
+   ],
+   "sources": [
+    "GOOG|2026-10-21#cycle.low.break#daily"
+   ],
+   "highlight": {
+    "date": "2026-10-01",
+    "price": 332.65,
+    "breakDate": "2026-10-21",
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-09-21",
+    "to": "2026-10-31"
+   }
+  },
+  {
+   "id": "window-weekly",
+   "kind": "window",
+   "date": "2026-10-26",
+   "knowableAt": "2026-10-26",
+   "sentence": "The weekly cycle low window opened 26 Oct.",
+   "checkedAs": null,
+   "means": "The window the engine draws for the next weekly cycle low: centre about 23 Nov, closes about 4 Jan. Window dates are engine estimates, unverified.",
+   "highlight": {
+    "band": "weekly"
+   },
+   "frame": {
+    "from": "2026-09-18",
+    "to": "2027-01-14"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "event-cycle.low.confirmed-1d-2026-11-05",
+   "kind": "event",
+   "date": "2026-11-05",
+   "knowableAt": "2026-11-11T23:59:59.999Z",
+   "sentence": "A daily cycle low was confirmed: 5 Nov, at 276.2.",
+   "checkedAs": "Next confirmed daily cycle low (any price)",
+   "means": "This one is dated 5 Nov, known 11 Nov. Step 1 counts a confirmed daily cycle low dated after 5 Nov. It was set 19 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for step 1.",
+   "conditionIds": [
+    "c1"
+   ],
+   "sources": [
+    "GOOG|2026-11-05#cycle.low.confirmed#daily"
+   ],
+   "highlight": {
+    "date": "2026-11-05",
+    "price": 276.2,
+    "breakDate": null,
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-10-25",
+    "to": "2026-11-22"
+   }
+  },
+  {
+   "id": "saved",
+   "kind": "saved",
+   "date": "2026-11-18",
+   "knowableAt": "2026-11-18",
+   "sentence": "Saved: GOOG: the next confirmed daily cycle low (any price), then a higher daily low or a bullish daily trend-line break.",
+   "checkedAs": null,
+   "means": "From here DWLF checks each condition once a night after the close; nothing known before counts.",
+   "highlight": {
+    "date": "2026-11-18",
+    "price": null,
+    "callout": "saved"
+   },
+   "frame": {
+    "from": "2026-11-04",
+    "to": "2026-12-02"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "event-cycle.low.break-1d-2026-11-19",
+   "kind": "event",
+   "date": "2026-11-19",
+   "knowableAt": "2026-11-19T23:59:59.999Z",
+   "sentence": "The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov.",
+   "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
+   "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
+   "conditionIds": [
+    "c1",
+    "c4"
+   ],
+   "sources": [
+    "GOOG|2026-11-19#cycle.low.break#daily"
+   ],
+   "highlight": {
+    "date": "2026-11-05",
+    "price": 276.2,
+    "breakDate": "2026-11-19",
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-10-26",
+    "to": "2026-11-29"
+   }
+  },
+  {
+   "id": "now",
+   "kind": "now",
+   "date": "2026-11-19",
+   "knowableAt": null,
+   "sentence": "GOOG is inside its weekly cycle low window (opened 26 Oct, closes about 4 Jan).",
+   "lastClose": 271.02,
+   "stepLines": [
+    "○ Step 1 · Next confirmed daily cycle low (any price)",
+    "○ Step 2 · A higher daily cycle low or Daily bullish trend-line break"
+   ],
+   "asOf": "the bar of 19 Nov",
+   "stale": null,
+   "windowNote": "Window dates are engine estimates, unverified.",
+   "checkedAs": null,
+   "means": null,
+   "highlight": {
+    "now": true
+   },
+   "frame": null,
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "needs-1",
+   "kind": "needs",
+   "date": null,
+   "knowableAt": null,
+   "faint": false,
+   "sentence": "Step 1 needs this: Next confirmed daily cycle low (any price).",
+   "checkedAs": "Next confirmed daily cycle low (any price)",
+   "means": "Then step 2 is checked.",
+   "challengedIf": [
+    "Daily close below the latest confirmed daily cycle low"
+   ],
+   "highlight": {
+    "step": 1
+   },
+   "frame": null,
+   "conditionIds": [
+    "c1"
+   ],
+   "sources": []
+  },
+  {
+   "id": "needs-2",
+   "kind": "needs",
+   "date": null,
+   "knowableAt": null,
+   "faint": true,
+   "sentence": "Step 2 needs one of: A higher daily cycle low; or Daily bullish trend-line break.",
+   "checkedAs": "A higher daily cycle low · Daily bullish trend-line break",
+   "means": "Then every step is met: the thesis is complete.",
+   "challengedIf": [
+    "Daily close below the latest confirmed daily cycle low"
+   ],
+   "highlight": {
+    "step": 2
+   },
+   "frame": null,
+   "conditionIds": [
+    "c2",
+    "c3"
+   ],
+   "sources": []
+  }
+ ],
+ "chart": {
+  "start": "2026-09-18",
+  "end": "2027-01-04",
+  "levels": [],
+  "windowBands": [
+   {
+    "timeframe": "daily",
+    "side": "low",
+    "earliest": "2026-12-16",
+    "opens": "2026-12-23",
+    "centre": "2027-01-07",
+    "closes": "2027-01-20",
+    "status": "projected",
+    "note": "Window dates are engine estimates, unverified."
+   },
+   {
+    "timeframe": "weekly",
+    "side": "low",
+    "earliest": "2026-09-28",
+    "opens": "2026-10-26",
+    "centre": "2026-11-23",
+    "closes": "2027-01-04",
+    "status": "projected",
+    "note": "Window dates are engine estimates, unverified."
+   }
+  ],
+  "side": "low",
+  "lastDate": "2026-11-19",
+  "lastClose": 271.02
+ },
+ "plan": null,
+ "planNote": "No plan was captured for this revision.",
+ "current": {
+  "routes": []
+ },
+ "gaps": [],
+ "disclaimer": {
+  "version": 1,
+  "text": "What happened and what the thesis needs next, from DWLF's own data, checked once a night after the close. Information, not advice: not a forecast, a price target or a recommendation."
+ },
+ "definitions": {
+  "beat": "One step of the story: an event, a fire, a revision, where the thesis stands now, or what a step needs next.",
+  "knowableAt": "When DWLF could first know the event (a cycle low is confirmed some bars after its low bar). Nothing knowable before a condition was set counts for it.",
+  "checkedAs": "The exact condition an event speaks to, in its label's words. DWLF checks the condition's fields, not the label.",
+  "planAsDrawn": "What the thesis's chart showed when the revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed.",
+  "reconstructed": "A plan written after the fact for a thesis saved before plans were captured: today's engine reading, not the one at the time.",
+  "routes": "Illustrated routes come in a later phase; none are drawn yet."
+ },
+ "deepLink": "https://dwlf.co.uk/theses/goog-example?story=now"
+}
