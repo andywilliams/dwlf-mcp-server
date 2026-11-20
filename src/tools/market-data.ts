@@ -13,8 +13,9 @@ export function registerMarketDataTools(
     'dwlf_get_market_data',
     'Get OHLCV candle data (open, high, low, close, volume) for a trading symbol at a chosen timeframe. ' +
       'Reach for this when you need ACTUAL BARS — sweeps, ranges, exact intraday highs/lows, ' +
-      '"did price touch $X on date D", the close on a specific bar — rather than the pivot-based reconstruction ' +
-      'from `dwlf_get_price_picture` / `dwlf_get_events`. ' +
+      '"did price touch $X on date D", the close on a specific bar. `dwlf_get_price_picture` / `dwlf_get_events` are ' +
+      'something else: dated records of what happened (pivots, crosses, trend-line breaks), each with the price on its date; ' +
+      'they describe structure, cycles and breaks, not candles. ' +
       'Timeframes: `daily`, `weekly`, `hourly` (hourly is available only for symbols that have 1h data). ' +
       'Gated to the owner account; other API keys get a 403 with a pivot-based fallback hint.',
     {
@@ -171,8 +172,9 @@ export function registerMarketDataTools(
       'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
       'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
       'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
-      '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
-      'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date; ' +
+      '💡 Events are dated records of what happened: cycle pivots, swing points, MA/EMA crosses and trend-line breaks, ' +
+      'each with the price on its date. They describe structure, cycles and breaks, and are not candles; for accounts ' +
+      'without raw OHLC access (most API-key callers) they are how DWLF shows what price did. ' +
       'for a single-call summary across those types, use `dwlf_get_price_picture` instead. ' +
       'RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ' +
       'Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
