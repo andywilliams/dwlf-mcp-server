@@ -132,6 +132,12 @@ const savedSummary = (data: Json, verb: string): string => {
   return t ? `${verb} ${thesisLine(t)}${where}` : verb;
 };
 
+/** The dry-run summary only for a reply that says it was one; otherwise say plainly that SPT may have saved it. */
+const dryRunSummary = (data: Json, saved: string) => (data.dryRun === true
+  ? REVISION_DRY_RUN
+  : `This API did not run a dry run (it may not support one for revisions yet), so the change may have been saved. ${saved}`);
+const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the changed conditions (listed in `changed`): whether each can occur or is already true. `wouldSave` says whether the revision would be accepted.';
+
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_thesis_guide',
@@ -247,7 +253,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_revise_thesis',
-    `Change a thesis: writes a new revision and keeps the earlier ones. Send expectedRevision (the currentRevision you read; 409 REVISION_CONFLICT if it moved) and only the fields to change. steps/invalidation, when sent, replace the whole list: keep each unchanged condition's id so it keeps its arming and result. A changed or new condition is armed from now (nothing before counts). Same refusals as create (422 CANNOT_OCCUR / ALREADY_MET). ${TYPE_HINT}`,
+    `Change a thesis: writes a new revision and keeps the earlier ones. Send expectedRevision (the currentRevision you read; 409 REVISION_CONFLICT if it moved) and only the fields to change. steps/invalidation, when sent, replace the whole list: keep each unchanged condition's id so it keeps its arming and result. A changed or new condition is armed from now (nothing before counts). Same refusals as create (422 CANNOT_OCCUR / ALREADY_MET), for the changed conditions only. Use dryRun: true first: the same check for the revision (only the changed conditions, listed in \`changed\`, are judged; an unchanged condition already met is fine), writing nothing; show it to the user. ${TYPE_HINT}`,
     {
       thesisId: z.string().describe('Thesis ID'),
       expectedRevision: z.number().int().describe('The currentRevision you read.'),
@@ -257,23 +263,24 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
       steps: stepsSchema.optional(),
       invalidation: invalidationSchema.optional(),
       allowAlreadyMet: z.boolean().optional(),
+      dryRun: z.boolean().optional().describe('Check the revision as it would be saved; nothing is written.'),
     },
-    async ({ thesisId, expectedRevision, title, context, nextStep, steps, invalidation, allowAlreadyMet }) => {
+    async ({ thesisId, expectedRevision, title, context, nextStep, steps, invalidation, allowAlreadyMet, dryRun }) => {
       try {
         const body = defined({
           expectedRevision, title, context, nextStep, allowAlreadyMet, source: 'mcp',
           steps: stepsWithSymbols(steps as { match: string; conditions: Json[] }[] | undefined), invalidation: withSymbols(invalidation as Json[] | undefined),
         });
-        const data = await client.patch(`/theses/${encodeURIComponent(thesisId)}`, body) as Json;
+        const data = await client.patch(`/theses/${encodeURIComponent(thesisId)}${dryRun ? '?dryRun=true' : ''}`, body) as Json;
         const t = data.thesis as Thesis | undefined;
-        return ok(data, { summary: savedSummary(data, 'Revised:'), definitions: thesisDefinitions(t ? [t] : []), why: WHY });
+        return ok(data, { summary: dryRun ? dryRunSummary(data, savedSummary(data, 'Revised:')) : savedSummary(data, 'Revised:'), definitions: thesisDefinitions(t ? [t] : []), why: WHY });
       } catch (error) { return fail(error); }
     }
   );
 
   server.tool(
     'dwlf_review_thesis',
-    `Record the user's answer to a thesis (usually a challenged one): keep (unchanged; clears the challenge), revise (a new revision: send expectedRevision and the fields to change, as dwlf_revise_thesis) or close (ends it, with an outcome). Record the user's own answer; do not choose it for them.`,
+    `Record the user's answer to a thesis (usually a challenged one): keep (unchanged; clears the challenge), revise (a new revision: send expectedRevision and the fields to change, as dwlf_revise_thesis) or close (ends it, with an outcome). Record the user's own answer; do not choose it for them. For revise, dryRun: true checks the revision first (as dwlf_revise_thesis), writing nothing.`,
     {
       thesisId: z.string().describe('Thesis ID'),
       answer: z.enum(['keep', 'revise', 'close']),
@@ -289,15 +296,21 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
       steps: stepsSchema.optional(),
       invalidation: invalidationSchema.optional(),
       allowAlreadyMet: z.boolean().optional().describe('For revise: save even if a step condition is already true now.'),
+      dryRun: z.boolean().optional().describe('For revise only: check the revision as it would be saved; nothing is written.'),
     },
-    async ({ thesisId, answer, outcome, expectedRevision, title, context, nextStep, steps, invalidation, allowAlreadyMet }) => {
+    async ({ thesisId, answer, outcome, expectedRevision, title, context, nextStep, steps, invalidation, allowAlreadyMet, dryRun }) => {
       try {
         const body = defined({
           answer, outcome, expectedRevision, title, context, nextStep, allowAlreadyMet, source: 'mcp',
           steps: stepsWithSymbols(steps as { match: string; conditions: Json[] }[] | undefined), invalidation: withSymbols(invalidation as Json[] | undefined),
         });
-        const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/review`, body) as Json;
+        // A dry run only exists for a revise: keep and close are never sent with it (they would be recorded).
+        if (dryRun && answer !== 'revise') {
+          return { content: [{ type: 'text' as const, text: 'Error: dryRun applies to answer revise only; keep and close have no dry run. Nothing was sent.' }], isError: true };
+        }
+        const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/review${dryRun ? '?dryRun=true' : ''}`, body) as Json;
         const t = data.thesis as Thesis | undefined;
+        if (dryRun) { return ok(data, { summary: dryRunSummary(data, t ? `Review recorded (revise): ${thesisLine(t)}` : 'Review recorded (revise).'), definitions: thesisDefinitions(t ? [t] : []), why: WHY }); }
         return ok(data, { summary: t ? `Review recorded (${answer}): ${thesisLine(t)}` : `Review recorded (${answer}).`, definitions: thesisDefinitions(t ? [t] : []), why: WHY });
       } catch (error) { return fail(error); }
     }
