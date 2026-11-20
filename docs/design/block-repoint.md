@@ -125,6 +125,10 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
   so. `server.json` declares no required variable for the Block profile.
 
 **D7 · The key-taking hosted endpoint: a decision for Andy, not made here; nothing hosted is built in this work.**
+> **Decided 20-Nov-2026 (Andy, 09:56): both.** OAuth is the primary path (A; how the upstream credential works is
+> proposed in hosted-auth H2), and a pasted `dwlfk_` key is the fallback for local clients (B). Design: `docs/design/hosted-auth.md`
+> (DWLF-622). The text below is the question as it was put.
+
 - `docs/HOSTED-MCP.md` (DWLF-622) is the hosted design in force. It puts OAuth 2.1 in front, a managed upstream key
   behind (§4.2), and **forbids token passthrough** (§2). A hosted endpoint that takes a person's `dwlfk_` key in
   `Authorization` and forwards it would contradict it. So the choice is Andy's, made there (§4.1, §9), with two
@@ -143,7 +147,8 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
   client per request. No key-shape check lives here: the Block API refuses a malformed or unknown key with its own
   401, and the tool passes that through. That keeps `@andywilliams/dwlf-authz`, a private package, out of this
   public one.
-- For WP2, whichever option is chosen: its per-IP limit on `/v1` (1,200 per 5 min) is below what one hosted egress
+- *(Since changed: identity's `dwlf-edge` now keys `/v1` on `Authorization`, 1,200 per key per 5 min, with a 12,000
+  per-IP backstop; hosted-auth H9 carries the remaining ask.)* For WP2, whichever option is chosen: its per-IP limit on `/v1` (1,200 per 5 min) is below what one hosted egress
   IP sends for many accounts. Key it on `Authorization`, or exempt the hosted egress (`wp2-block-api.md`).
 
 **D8 · Charter lines.**

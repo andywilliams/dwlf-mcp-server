@@ -3,6 +3,22 @@
 *DWLF-622 (BA-21). Claude for Andy, 4-Nov-2026. A design plus a local-only spike (§10). Nothing is deployed, and no
 listing or OAuth client exists.*
 
+> **Amended 20-Nov-2026 by `docs/design/hosted-auth.md`** (Andy's sign-in decision, 09:56: OAuth primary, a pasted
+> Block API key as the fallback). Where they differ, that note wins:
+> - **What it calls:** the Block API (`block-api` backend), not SPT `/v2` (§3). Quotas are the Block API's per-account
+>   allowance and plan checks, not SPT's tier limits (§5).
+> - **Authorization server:** dwlf-identity, option A of §4.1 (decided).
+> - **Upstream credential (proposed, hosted-auth H2):** the MCP exchanges the OAuth token at identity for an
+>   `aud = block` delegated token, with no managed key and no credential table. It needs an identity route that's
+>   asked for, not yet agreed; until it is, §4.2's managed key is the fallback. How identity stores a grant is
+>   identity's decision (proposed: a personal token of kind `oauth`).
+> - **Passthrough (§2):** still forbidden for OAuth tokens. A person's pasted `dwlfk_` Block API key may be carried to
+>   the Block API unchanged, as the stdio package does (hosted-auth §2).
+> - **Scopes (§4.3):** Block's permission names, not SPT's API-key scopes.
+> - The hosted entry lives in `hosted/`, outside the npm package (§3's `src/http.ts` replaced). No cache read with a
+>   credential is shared between callers (§3's shared loader replaced).
+> - Transport (§2–§3), abuse limits (§6; the loop guard is deferred, hosted-auth H9), directory readiness (§7) and the spike (§10) stand.
+
 ## 1 · Why, and what it ends
 
 - **The trigger the charter named has fired.** The charter's stdio standing decision (2026-01-30, confirmed
