@@ -30,7 +30,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **New platform capability.** A tool may only surface something `api.dwlf.co.uk/v2` already does;
   capability is added in `serverless-portfolio-tracker` first *(inferred from: SYSTEM.md "API-first —
   no privileged client"; every tool is an HTTP call through `src/client.ts`)*.
-- **Auth, account or key management.** One `DWLF_API_KEY` = one account for the process lifetime;
+- **Auth, account or key management.** *(20-Nov-2026: the hosted endpoint, DWLF-622, will be multi-tenant and
+  verify OAuth tokens; this line is rescoped to the stdio process when `hosted/` lands, step 2.)* One `DWLF_API_KEY` = one account for the process lifetime;
   no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
   `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
   a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
@@ -192,7 +193,8 @@ A reviewer should be able to test a diff against each of these:
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
    (or, in the local hosted spike only, from the caller's request, never stored; the hosted endpoint, hosted-auth
-   design, takes it per request in the same way, never logged or stored); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
+   design, takes it per request in the same way: the credential is never logged or stored, and a token exchanged
+   for it is held in memory only until it expires); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
    ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
    `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any
@@ -302,14 +304,14 @@ A reviewer should be able to test a diff against each of these:
   the Block profile on the `block-api` backend only. Design: `docs/design/hosted-auth.md`.
   - **Proposed in the design, not yet Andy's decision** (each is recorded as decided here when he answers): the
     CDK stack and the `hosted/` package in this repo, and deploys only of published tags (hosted-auth H7, H10; Q4);
-    the domain `mcp.block.dwlf.co.uk`, which becomes a permanent token audience (Q5). The bullets below hold
-    whatever the placement.
+    the domain `mcp.block.dwlf.co.uk`, which becomes a permanent token audience (Q5); and how an OAuth token becomes
+    a Block API credential: exchanged at identity for an `aud = block` token (H2, a route identity is asked for, in
+    place of HOSTED-MCP §4.2's managed key). The bullets below hold whatever the placement.
   - It ships dark (a closed switch) until a launch tap; the registry entry gains `remotes` only at launch.
-  - **The hosted server never forwards an OAuth token and never makes policy.** It verifies an OAuth token issued for
-    it and exchanges it at identity for an `aud = block` token. The only credential it carries unchanged is a person's
-    own Block API key, to the Block API, as the stdio package does. The Block API and identity decide everything
+  - **The hosted server never forwards an OAuth token and never makes policy.** The only credential it carries
+    unchanged is a person's own Block API key, to the Block API, as the stdio package does. The Block API and identity decide everything
     else (plan, scope, allowance, revocation). It keeps no tool → scope map: a scope refusal is the Block API's.
-  - It holds no credential at rest. An exchanged token is cached in memory until it expires.
+  - It holds no credential at rest. A token it gets in exchange may be cached in memory until it expires.
   - The npm package's files and runtime dependencies don't change because of the hosted entry.
   - Follow-through, each in the PR that makes it true: step 2 (`hosted/` lands) rewrites *Not for* "Hosting a
     remote/multi-user MCP endpoint" and "Auth, account or key management… no multi-tenancy" (scoped: the stdio
