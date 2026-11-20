@@ -300,6 +300,10 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
           answer, outcome, expectedRevision, title, context, nextStep, allowAlreadyMet, source: 'mcp',
           steps: stepsWithSymbols(steps as { match: string; conditions: Json[] }[] | undefined), invalidation: withSymbols(invalidation as Json[] | undefined),
         });
+        // A dry run only exists for a revise: keep and close are never sent with it (they would be recorded).
+        if (dryRun && answer !== 'revise') {
+          return { content: [{ type: 'text' as const, text: 'Error: dryRun applies to answer revise only; keep and close have no dry run. Nothing was sent.' }], isError: true };
+        }
         const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/review${dryRun ? '?dryRun=true' : ''}`, body) as Json;
         const t = data.thesis as Thesis | undefined;
         if (dryRun) { return ok(data, { summary: REVISION_DRY_RUN, definitions: thesisDefinitions([]), why: WHY }); }

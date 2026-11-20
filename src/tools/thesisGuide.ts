@@ -94,7 +94,8 @@ export const THESIS_GUIDE = {
     'Arming: a condition counts only what DWLF learns after it is saved (or changed in a revision). Use `after` (a date) for "the next pivot after the one I already know of".',
     'Invalidation before the confirming low exists: do not use "a close below the new low" (that low is not known yet). Use engine_event cycle.low.break, which fires when the latest confirmed low breaks, or a close_vs_level against a level the user already knows.',
     'Each condition may name its own symbol (watch QQQ for a CNX1 thesis); it defaults to the thesis symbol.',
-    'Run dwlf_create_thesis (or dwlf_revise_thesis, for a change) with dryRun: true first and show the user the restatement of every condition (`checks`); save only what the user confirms. A condition that can never occur for its symbol is refused; one that is already true is refused unless the user chooses to save it anyway (allowAlreadyMet).',
+    'Run dwlf_create_thesis with dryRun: true first and show the user the restatement of every condition (`checks`); save only what the user confirms. A condition that can never occur for its symbol is refused; one that is already true is refused unless the user chooses to save it anyway (allowAlreadyMet).',
+    'To change a saved thesis, run dwlf_revise_thesis (or dwlf_review_thesis revise) with dryRun: true first: `checks` then covers only the changed conditions (listed in `changed`); an unchanged condition keeps its arming and result, so one already met is fine. Show the user what changes, then save.',
     'Record the user\'s own review answer (keep, revise or close); do not choose it for them.',
   ],
   workflow: [
