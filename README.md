@@ -145,8 +145,8 @@ Activate symbols for event detection and strategy signal generation. Manage whic
 ### Custom Events
 Create custom indicator-based triggers (e.g. "DSS exits oversold with bullish cross").
 
-### Thesis alerts ("Waiting for")
-Save, per symbol, the market events you are waiting for and why (ordered steps, invalidation, your own context). DWLF checks them nightly after the close and reports what happened: a Telegram digest, and a fire feed agents read with a cursor.
+### Theses (thesis alerts)
+Save, per symbol, the market events you are waiting for and why (ordered steps, invalidation, your own context). DWLF checks them nightly after the close and reports what happened: a Telegram digest, and a fire feed agents read with a cursor. `dwlf_list_theses` with `includeProgress` also says how close each active thesis is to its next condition (last close and % to a level, a forming pivot's % developed, a weekly window's date) and gives `closest`, the one "closest to trigger" choice to sort by.
 
 ### AI Summaries
 Full account dashboard, single-symbol briefs, and strategy performance overviews — pre-aggregated for AI consumption.

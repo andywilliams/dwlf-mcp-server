@@ -201,18 +201,41 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_theses',
-    'The user\'s theses ("Waiting for"): each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. Closes are withheld for keys not entitled to raw prices; the % change is not.',
+    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not.',
     {
       status: z.string().optional().describe('Filter: waiting, in_progress, complete, challenged, archived or closed.'),
       symbol: z.string().optional().describe('Filter by thesis symbol.'),
       group: z.string().optional().describe('Filter by group.'),
+      includeProgress: z.boolean().optional().describe('Also say how close each active thesis is to its next condition (and its nearest invalidation), with `closest` to sort by. A few extra reads; leave off for a plain list.'),
     },
-    async ({ status, symbol, group }) => {
+    async ({ status, symbol, group, includeProgress }) => {
       try {
-        const data = await client.get('/theses', { status, symbol: symbol ? normalizeSymbol(symbol) : undefined, group }) as Json;
+        const data = await client.get('/theses', {
+          status, symbol: symbol ? normalizeSymbol(symbol) : undefined, group, include: includeProgress ? 'progress' : undefined,
+        }) as Json;
         const theses = (data.theses || []) as Thesis[];
+        // With progress: name the closest few, in SPT's own short words and order (closest.rank, compared element by element,
+        // ascending). A thesis whose closest has no short or no numeric rank is left out of the line, never an error.
+        const rankOf = (t: Json): number[] | null => {
+          const c = (t.progress as Json | undefined)?.closest as Json | undefined;
+          const rank = c?.rank;
+          return c?.short && Array.isArray(rank) && rank.length > 0 && rank.every((v) => Number.isFinite(v)) ? rank as number[] : null;
+        };
+        const byRank = (a: number[], b: number[]) => {
+          for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+            const d = (a[i] ?? 0) - (b[i] ?? 0);
+            if (d !== 0) { return d; }
+          }
+          return 0;
+        };
+        const ranked = includeProgress
+          ? (theses as Json[]).filter((t) => rankOf(t)).sort((a, b) => byRank(rankOf(a) as number[], rankOf(b) as number[]))
+          : [];
+        const closestLine = ranked.length
+          ? ` Closest to trigger: ${ranked.slice(0, 3).map((t) => `${t.symbol} (${((t.progress as Json).closest as Json).short})`).join(', ')}.`
+          : '';
         const summary = theses.length
-          ? `${theses.length} thes${theses.length === 1 ? 'is' : 'es'}: ${describeCounts(countBy(theses as Json[], 'status'))}.`
+          ? `${theses.length} thes${theses.length === 1 ? 'is' : 'es'}: ${describeCounts(countBy(theses as Json[], 'status'))}.${closestLine}`
           : 'No theses match.';
         return ok(data, { summary, definitions: thesisDefinitions(theses), why: WHY });
       } catch (error) { return fail(error); }
