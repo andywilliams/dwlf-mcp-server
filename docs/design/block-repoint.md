@@ -125,6 +125,10 @@ the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that 
   so. `server.json` declares no required variable for the Block profile.
 
 **D7 · The key-taking hosted endpoint: a decision for Andy, not made here; nothing hosted is built in this work.**
+> **Decided 20-Nov-2026 (Andy, 09:56): both.** OAuth is the primary path (A, with identity's exchange in place of a
+> managed key), and a pasted `dwlfk_` key is the fallback for local clients (B). Design: `docs/design/hosted-auth.md`
+> (DWLF-622). The text below is the question as it was put.
+
 - `docs/HOSTED-MCP.md` (DWLF-622) is the hosted design in force. It puts OAuth 2.1 in front, a managed upstream key
   behind (§4.2), and **forbids token passthrough** (§2). A hosted endpoint that takes a person's `dwlfk_` key in
   `Authorization` and forwards it would contradict it. So the choice is Andy's, made there (§4.1, §9), with two

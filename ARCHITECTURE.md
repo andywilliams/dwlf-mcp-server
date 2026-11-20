@@ -40,7 +40,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
-- **Hosting a remote/multi-user MCP endpoint** — stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
+- **Hosting a remote/multi-user MCP endpoint** — *(20-Nov-2026: being built for the Block profile, DWLF-622,
+  `docs/design/hosted-auth.md`; until its launch, stdio is the only shipped transport.)* stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
   uses `StdioServerTransport`; no HTTP server code)*.
 
 ## Interfaces & dependencies
@@ -190,7 +191,8 @@ A reviewer should be able to test a diff against each of these:
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
-   (or, in the local hosted spike only, from the caller's request, never stored); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
+   (or, in the local hosted spike only, from the caller's request, never stored; the hosted endpoint, hosted-auth
+   design, takes it per request in the same way, never logged or stored); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
    ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
    `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any
@@ -294,6 +296,26 @@ A reviewer should be able to test a diff against each of these:
   `docs/BLOCK.md` are third-party onboarding without Andy in the loop. The decision is being revisited deliberately
   as DWLF-622 (design: `docs/HOSTED-MCP.md`, added by dwlf-mcp-server#102). Until Andy decides there, stdio stays the shipped transport, and
   the registry entry declares stdio only.
+  📌 **20-Nov-2026: decided (Andy, 09:56): build the hosted endpoint, with two sign-in paths.** **OAuth with
+  dwlf-identity as the authorization server** (primary: Claude.ai and ChatGPT connectors), and **a pasted `dwlfk_`
+  Block API key** as the fallback for local clients (Claude Code, Cursor). stdio stays; one tool codebase. It serves
+  the Block profile on the `block-api` backend only. Design: `docs/design/hosted-auth.md`.
+  - **Proposed in the design, not yet Andy's decision** (each is recorded as decided here when he answers): the
+    CDK stack and the `hosted/` package in this repo, and deploys only of published tags (hosted-auth H7, H10; Q4);
+    the domain `mcp.block.dwlf.co.uk`, which becomes a permanent token audience (Q5). The bullets below hold
+    whatever the placement.
+  - It ships dark (a closed switch) until a launch tap; the registry entry gains `remotes` only at launch.
+  - **The hosted server never forwards an OAuth token and never makes policy.** It verifies an OAuth token issued for
+    it and exchanges it at identity for an `aud = block` token. The only credential it carries unchanged is a person's
+    own Block API key, to the Block API, as the stdio package does. The Block API and identity decide everything
+    else (plan, scope, allowance, revocation). It keeps no tool → scope map: a scope refusal is the Block API's.
+  - It holds no credential at rest. An exchanged token is cached in memory until it expires.
+  - The npm package's files and runtime dependencies don't change because of the hosted entry.
+  - Follow-through, each in the PR that makes it true: step 2 (`hosted/` lands) rewrites *Not for* "Hosting a
+    remote/multi-user MCP endpoint" and "Auth, account or key management… no multi-tenancy" (scoped: the stdio
+    process stays one key, one account; the hosted entry is multi-tenant and holds nothing at rest), invariant 8 and
+    *Interfaces*; step 3 adds the runtime-role invariant (H8); step 7 amends invariant 3 for identity's `id-svc`, the
+    third authenticated host (H2).
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and
