@@ -110,9 +110,18 @@ test('★ a revision dry run (revise, or review revise) goes to ?dryRun=true, fl
     const { agentHints, ...rest } = body;
     assert.deepEqual(rest, backend);
     assert.match(agentHints.summary, /nothing was saved.*changed conditions/);
-  }  const keep = await call('dwlf_review_thesis', { thesisId: 't1', answer: 'close', outcome: { kind: 'note' }, dryRun: true });
-  assert.equal(keep.res.isError, true);
-  assert.equal(calls.length, 2, 'a close with dryRun is never sent');
+  }
+  for (const refused of [{ answer: 'close', outcome: { kind: 'note' } }, { answer: 'keep' }]) {
+    const res = await call('dwlf_review_thesis', { thesisId: 't1', ...refused, dryRun: true });
+    assert.equal(res.res.isError, true, refused.answer);
+  }
+  assert.equal(calls.length, 2, 'keep and close with dryRun are never sent');
+});
+
+test('★ a reply that is not a dry run is not called one: the agent is told the change may have been saved', async () => {
+  const { call } = setup(() => ({ thesis: thesis() }));
+  const { body } = await call('dwlf_revise_thesis', { thesisId: 't1', expectedRevision: 2, title: 'y', dryRun: true });
+  assert.match(body.agentHints.summary, /did not run a dry run.*may have been saved/);
 });
 
 test('get / revise / review / mark / archive / delete reach their routes, ids encoded', async () => {

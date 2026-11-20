@@ -132,6 +132,10 @@ const savedSummary = (data: Json, verb: string): string => {
   return t ? `${verb} ${thesisLine(t)}${where}` : verb;
 };
 
+/** The dry-run summary only for a reply that says it was one; otherwise say plainly that SPT may have saved it. */
+const dryRunSummary = (data: Json, saved: string) => (data.dryRun === true
+  ? REVISION_DRY_RUN
+  : `This API did not run a dry run (it may not support one for revisions yet), so the change may have been saved. ${saved}`);
 const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the changed conditions (listed in `changed`): whether each can occur or is already true. `wouldSave` says whether the revision would be accepted.';
 
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
@@ -269,7 +273,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
         });
         const data = await client.patch(`/theses/${encodeURIComponent(thesisId)}${dryRun ? '?dryRun=true' : ''}`, body) as Json;
         const t = data.thesis as Thesis | undefined;
-        return ok(data, { summary: dryRun ? REVISION_DRY_RUN : savedSummary(data, 'Revised:'), definitions: thesisDefinitions(t ? [t] : []), why: WHY });
+        return ok(data, { summary: dryRun ? dryRunSummary(data, savedSummary(data, 'Revised:')) : savedSummary(data, 'Revised:'), definitions: thesisDefinitions(t ? [t] : []), why: WHY });
       } catch (error) { return fail(error); }
     }
   );
@@ -306,7 +310,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
         }
         const data = await client.post(`/theses/${encodeURIComponent(thesisId)}/review${dryRun ? '?dryRun=true' : ''}`, body) as Json;
         const t = data.thesis as Thesis | undefined;
-        if (dryRun) { return ok(data, { summary: REVISION_DRY_RUN, definitions: thesisDefinitions([]), why: WHY }); }
+        if (dryRun) { return ok(data, { summary: dryRunSummary(data, t ? `Review recorded (revise): ${thesisLine(t)}` : 'Review recorded (revise).'), definitions: thesisDefinitions(t ? [t] : []), why: WHY }); }
         return ok(data, { summary: t ? `Review recorded (${answer}): ${thesisLine(t)}` : `Review recorded (${answer}).`, definitions: thesisDefinitions(t ? [t] : []), why: WHY });
       } catch (error) { return fail(error); }
     }
