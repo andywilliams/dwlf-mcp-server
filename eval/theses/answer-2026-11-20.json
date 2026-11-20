@@ -1,0 +1,49 @@
+{
+  "payload": {
+    "symbol": "NVDA",
+    "title": "NVDA: the next confirmed daily cycle low, then a higher daily low or a bullish daily trend-line break",
+    "context": "The 12 Nov daily cycle low failed on 18 Nov. I want the next daily cycle low confirmed first, then a higher daily low or a bullish daily trend-line break as a sign the decline is over. A break of the weekly cycle low would challenge this.",
+    "nextStep": "When step 2 fires, look at the NVDA daily and weekly charts and decide whether to act.",
+    "clientKey": "nvda-dcl-nov",
+    "steps": [
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "pivot_confirmed",
+            "timeframe": "daily",
+            "side": "low",
+            "after": "2026-11-12",
+            "label": "Next confirmed daily cycle low after 12 Nov (any price)"
+          }
+        ]
+      },
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "engine_event",
+            "timeframe": "daily",
+            "eventType": "cycle.low.higher_low",
+            "label": "A higher daily cycle low"
+          },
+          {
+            "type": "trendline_break",
+            "timeframe": "daily",
+            "direction": "bullish",
+            "label": "Daily bullish trend-line break"
+          }
+        ]
+      }
+    ],
+    "invalidation": [
+      {
+        "type": "engine_event",
+        "timeframe": "weekly",
+        "eventType": "cycle.low.break",
+        "label": "Weekly close below the latest confirmed weekly cycle low"
+      }
+    ]
+  },
+  "explanation": "I'll save this as a thesis on NVDA: a written note of what you're waiting for, which DWLF checks for you every night after the close.\n\nWhat I'll save:\n- Step 1: the next confirmed daily cycle low dated after 12 Nov, at any price. 12 Nov is the low that failed, so only a newer low counts.\n- Step 2, checked only once step 1 is met: either a higher daily cycle low or a bullish daily trend-line break, whichever comes first. A higher low here means a later low that is higher than the step-1 low. A higher low that is confirmed by the same bar as step 1 doesn't count.\n- Invalidation: a weekly close below the latest confirmed weekly cycle low. A wick below that closes back above doesn't count. If that happens, the thesis is marked 'challenged' and waits for your call.\n- Your context and next step go in as you gave them, and are repeated in every alert.\n\nBefore saving, I'll do a trial run that writes nothing. It shows each condition in DWLF's own plain words and checks that each one can actually happen. I'll show you that, and save only once you say it's right. If something is already true now (for example, a daily low has already confirmed since 12 Nov), DWLF refuses to save. You then choose whether to save anyway or adjust the thesis.\n\nWhat DWLF does for you:\n- You decide once, and it checks the chart every night so you don't have to.\n- It tells you when a step is met or the thesis is challenged: an in-app notification, and a Telegram digest if you've set that up. You can see it all on the Theses page (Log -> Theses).\n- The timing is honest. Each alert says when DWLF could first have known it (a cycle low only confirms a few bars after the low itself). Nothing that happened before you saved counts, so the thesis can't be met by something that had already happened.\n- It checks exactly the conditions above, using its own cycle, trend-line and pivot data, not a reading of the chart.\n- You can ask how close each condition is, e.g. whether a daily low is forming and how far along it is.\n- It keeps a journal. Edits become new revisions and the old ones are kept. A challenge is answered keep, revise or close (with what you did), so you can look back at how the idea played out.\n\nWhat it doesn't do:\n- It isn't intraday or real-time. Checks run once a night after the close, so you hear the evening after something happens, not during the session.\n- It isn't advice. It reports which conditions the market met; it doesn't tell you to buy or sell, and it doesn't forecast.\n- It doesn't place or manage trades, and it doesn't size positions.\n- It only checks what's written down. 'A higher daily low' and 'a trend-line break' are DWLF's own engine events, so its definition of a trend line may not be the one you'd draw. Anything else (news, how the chart feels) would need a manual condition that you mark yourself.\n- The thesis doesn't close itself. When it's challenged, it waits for you to decide: keep, revise or close.\n- Prices and distances in alerts may be hidden if your plan doesn't include raw-price data."
+}

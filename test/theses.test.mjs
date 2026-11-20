@@ -153,7 +153,7 @@ test('registered in the full server, and not in the Block profile', () => {
   const names = [];
   registerAll({ tool: (name) => names.push(name), resource: () => {} }, {});
   const theses = names.filter((n) => /thes/.test(n));
-  assert.equal(theses.length, 11);
+  assert.equal(theses.length, 12);
   assert.deepEqual(theses.filter((n) => BLOCK_TOOLS.has(n)), []);
 });
 
@@ -176,4 +176,70 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
     { type: 'volume_spike', multiple: 2 },
   ]);
   assert.equal(parsed.steps[0].match, 'any');
+});
+
+test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and three worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
+  const { z } = await import('zod');
+  const { tools, call } = setup();
+  const { body } = await call('dwlf_thesis_guide');
+  const g = body.guide;
+  assert.ok(g.what && g.benefits.length >= 5 && g.limits.length >= 3 && g.rules.length >= 5 && g.workflow.length >= 4);
+  assert.match(g.limits.join(' '), /End of day/);
+  assert.match(g.limits.join(' '), /Information, not advice/);
+  assert.match(g.rules.join(' '), /cycle\.low\.break/);
+  assert.match(g.statuses.challenged, /review/);
+  assert.equal(g.examples.length, 3);
+  const create = z.object(tools.get('dwlf_create_thesis').schema).strict();
+  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'trendline_break', 'engine_event', 'manual'];
+  for (const ex of g.examples) {
+    const parsed = create.safeParse(ex.create);
+    assert.ok(parsed.success, `${ex.create.symbol}: ${JSON.stringify(parsed.error?.issues)}`);
+    for (const c of [...ex.create.steps.flatMap((st) => st.conditions), ...ex.create.invalidation]) {
+      assert.ok(TYPES.includes(c.type), c.type);
+      assert.ok(c.label, 'every example condition has a label saying what is checked');
+    }
+  }
+  // Everything, the payloads agents copy included.
+  const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
+  assert.doesNotMatch(JSON.stringify(g), ADVICE);
+  assert.match(tools.get('dwlf_create_thesis').desc, /dwlf_thesis_guide/);
+});
+
+test('the recorded thesis eval answer still passes its checker (eval/theses, DWLF-891)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync('node', ['eval/theses/check.mjs', 'eval/theses/answer-2026-11-20.json'], { encoding: 'utf8' });
+  assert.match(out, /^PASS/);
+});
+
+test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const good = JSON.parse(readFileSync('eval/theses/answer-2026-11-20.json', 'utf8'));
+  const bad = {
+    payload: { ...good.payload, invalidation: [{ type: 'close_vs_level', basis: 'daily_close', op: 'below', value: 1, label: 'Close below the new low' }] },
+    explanation: 'DWLF watches NVDA in real time. This is not advice, but the price will rise after the low.',
+  };
+  const file = `${mkdtempSync(`${tmpdir()}/thesis-eval-`)}/bad.json`;
+  writeFileSync(file, JSON.stringify(bad));
+  let out = '';
+  try { execFileSync('node', ['eval/theses/check.mjs', file], { encoding: 'utf8' }); } catch (e) { out = e.stdout; }
+  for (const what of ['invalidation: weekly cycle.low.break', 'not intraday', 'no forecast', 'checked once a night']) {
+    assert.ok(out.includes(what), `${what} reported: ${out}`);
+  }
+});
+
+test('the eval checker reads denials and forecasts by clause: a negated list passes, "no doubt it will rise" fails (eval/theses)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const good = JSON.parse(readFileSync('eval/theses/answer-2026-11-20.json', 'utf8'));
+  const dir = mkdtempSync(`${tmpdir()}/thesis-eval-`);
+  const run = (extra) => {
+    const file = `${dir}/a.json`;
+    writeFileSync(file, JSON.stringify({ ...good, explanation: `${good.explanation}\n${extra}` }));
+    try { return execFileSync('node', ['eval/theses/check.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; }
+  };
+  assert.match(run('It doesn\'t give forecasts, guarantees or a price target.'), /^PASS/);
+  assert.match(run('There is no doubt the price will rise.'), /no forecast/);
 });

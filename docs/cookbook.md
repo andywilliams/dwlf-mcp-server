@@ -277,6 +277,52 @@ Over time, the trade journal becomes a dataset the agent can reference: "What ha
 
 ---
 
+## 5. Save What You're Waiting For (Theses)
+
+A thesis is what a user is waiting for on one symbol, in their own words: ordered steps of conditions DWLF detects itself, optional invalidations, their context and next step. DWLF checks it once a night after the close and tells the user when a step is met or the thesis is challenged.
+
+**What it saves the user:** deciding once, after the close, instead of re-checking charts every day; being told when it happens (Telegram digest if set up, an in-app notification, the fires feed); honest timing (each event says when DWLF could first know it, and nothing known before saving counts). **Limits:** end of day, not intraday; information, not advice.
+
+### Tool sequence
+
+```
+1. dwlf_thesis_guide                         → what, benefits, limits, rules, three worked examples
+2. dwlf_list_thesis_condition_types          → the six types and their fields (only these exist)
+3. dwlf_create_thesis { ..., dryRun: true }  → read every restatement in `checks` back to the user
+4. dwlf_create_thesis { ... }                → save what the user confirmed
+5. dwlf_list_theses { includeProgress: true } → how close each is; `closest` to sort by
+6. dwlf_list_thesis_fires { cursor }         → what happened since you last looked (keep the cursor)
+7. dwlf_review_thesis { answer }             → the user's answer to a challenged thesis: keep / revise / close
+```
+
+### Worked example: the next confirmed daily low, then a higher low or a trend-line break
+
+The user: *"Tell me when GOOG puts in its next confirmed daily low after the 5 Nov one, and after that either a higher daily low or a bullish daily trend-line break. If the weekly low breaks, I want to know."*
+
+```json
+{
+  "symbol": "GOOG",
+  "title": "GOOG: the next confirmed daily cycle low, then a higher daily low or a bullish daily trend-line break",
+  "context": "The 5 Nov daily low failed on 19 Nov. I want the next daily low confirmed first, then a sign the decline is over.",
+  "steps": [
+    { "match": "any", "conditions": [
+      { "type": "pivot_confirmed", "timeframe": "daily", "side": "low", "after": "2026-11-05", "label": "Next confirmed daily cycle low (any price)" } ] },
+    { "match": "any", "conditions": [
+      { "type": "engine_event", "timeframe": "daily", "eventType": "cycle.low.higher_low", "label": "A higher daily cycle low" },
+      { "type": "trendline_break", "timeframe": "daily", "direction": "bullish", "label": "Daily bullish trend-line break" } ] }
+  ],
+  "invalidation": [
+    { "type": "engine_event", "timeframe": "weekly", "eventType": "cycle.low.break", "label": "The latest confirmed weekly cycle low breaks" }
+  ]
+}
+```
+
+- `after` makes step 1 "the next pivot after the one I already know of".
+- The invalidation is `cycle.low.break`, not "a close below the new low": that low doesn't exist yet when the thesis is saved.
+- Every label says exactly what its fields check. DWLF checks the fields, never the label.
+
+More examples (a level-based one, and watching QQQ for a CNX1 thesis) are in `dwlf_thesis_guide`.
+
 ## Tips
 
 - **Start with AI summaries** (`dwlf_ai_dashboard`, `dwlf_ai_symbol_brief`) — they're designed to give agents maximum context in minimum tokens.
