@@ -14,11 +14,18 @@
 
 **Run it:** `npm run build && node eval/theses/bundle.mjs > /tmp/agent-docs.md` (the descriptions and the guide, nothing else), give a fresh agent that file and the user's words above, save its JSON answer, then `node eval/theses/check.mjs <answer.json>`. `npm test` re-checks the recorded answer below, so the checker can't silently drift.
 
-**Recorded:** `answer-2026-11-20.json`, the third run by a fresh general-purpose agent given only the bundle: **PASS**. All three runs passed: run 1 on the first draft; run 2 on a bundle whose schemas were empty (a bundle bug, now fixed); run 3 with the full schemas. Their questions went into the guide's `glossary`:
+**Recorded:** `answer-2026-11-20.json`, run 4 by a fresh general-purpose agent given only the bundle: **PASS**. All four runs passed:
+- run 1: the first draft;
+- run 2: a bundle whose schemas were empty (a bundle bug, now fixed);
+- run 3: its bundle had leaked the scenario's date into the glossary (removed);
+- run 4: clean, full schemas, nothing from the scenario in the docs.
+
+Questions the runs raised, now answered in the guide's `glossary`:
 - whether `after` is inclusive, and which date to use;
 - which trend line is meant;
 - which weekly low counts and on which closes;
 - what `higher_low` compares against;
 - whether a step can be met in the same night as the one before;
 - the `engine_event` allow-list;
-- `group`.
+- `group`;
+- whether the `cycle.low.break` level is fixed at save time (it moves with the latest confirmed low).

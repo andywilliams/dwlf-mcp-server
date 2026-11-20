@@ -27,17 +27,18 @@ check(inv.some((c) => c.type === 'engine_event' && c.eventType === 'cycle.low.br
 check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 
 const t = x.toLowerCase();
-// Sentence by sentence: a sentence that denies something ("it won't tell you to buy", "no price target", "not intraday")
-// states a limit; the same words without a denial assert it.
-const sentences = t.split(/(?<=[.!?:;])\s+|\n+/).filter(Boolean);
+// Clause by clause: a clause whose negation comes BEFORE the words ("it won't tell you to buy", "no price target", "not
+// intraday") states a limit; the same words with no negation before them assert it ("not advice, but it will rise" asserts).
+const clauses = t.split(/(?<=[.!?:;,])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
 const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-const denied = (re) => sentences.some((s) => re.test(s) && NEG.test(s));
-const asserted = (re) => sentences.some((s) => re.test(s) && !NEG.test(s));
+const negatedBefore = (c, re) => { const m = c.match(re); return Boolean(m) && NEG.test(c.slice(0, m.index)); };
+const denied = (re) => clauses.some((c) => negatedBefore(c, re));
+const asserted = (re) => clauses.some((c) => re.test(c) && !negatedBefore(c, re));
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');
 check(/(notif|told|telegram|digest|let you know|tells you)/.test(t), 'explains: the user is told when it happens');
 check(/(before .*saved|knowable|could first know|already happened)/.test(t), 'explains: honest timing (nothing before saving counts)');
 check(denied(/\b(intraday|real[- ]time|the moment)\b/) || /end[- ]of[- ]day only/.test(t), 'states the limit: not intraday (a denied intraday, or "end of day only")');
-check(asserted(/\binformation, not advice\b/) || denied(/\b(advice|tell you what to do|recommend)/), 'states the limit: information, not advice');
+check(denied(/\b(advice|tell you what to do|recommend)/), 'states the limit: information, not advice');
 const CALL = /\b(will (rise|fall|go up|go down|bounce|recover|reverse)|guarantee[sd]?|price target|you should (buy|sell|enter|exit)|good (buy|entry)|time to (buy|sell))\b/;
 check(!asserted(CALL), 'no forecast or call to act (a denial is the honest limit, not advice)');
 check(/(dry ?run|restate|before (i |we )?sav)/.test(t), 'mentions a dry run / confirmation before saving');

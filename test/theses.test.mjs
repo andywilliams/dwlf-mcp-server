@@ -199,7 +199,7 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
       assert.ok(c.label, 'every example condition has a label saying what is checked');
     }
   }
-  // Everything, the payloads agents copy included. ("Not advice" needs no exclusion: 'advice' is not in the list.)
+  // Everything, the payloads agents copy included.
   const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
   assert.doesNotMatch(JSON.stringify(g), ADVICE);
   assert.match(tools.get('dwlf_create_thesis').desc, /dwlf_thesis_guide/);
@@ -218,13 +218,13 @@ test('the eval checker fails a wrong answer: a close below a low that does not e
   const good = JSON.parse(readFileSync('eval/theses/answer-2026-11-20.json', 'utf8'));
   const bad = {
     payload: { ...good.payload, invalidation: [{ type: 'close_vs_level', basis: 'daily_close', op: 'below', value: 1, label: 'Close below the new low' }] },
-    explanation: 'DWLF watches NVDA in real time. The price will rise after the low; a good entry.',
+    explanation: 'DWLF watches NVDA in real time. This is not advice, but the price will rise after the low.',
   };
   const file = `${mkdtempSync(`${tmpdir()}/thesis-eval-`)}/bad.json`;
   writeFileSync(file, JSON.stringify(bad));
   let out = '';
   try { execFileSync('node', ['eval/theses/check.mjs', file], { encoding: 'utf8' }); } catch (e) { out = e.stdout; }
-  for (const what of ['invalidation: weekly cycle.low.break', 'not intraday', 'information, not advice', 'no forecast', 'checked once a night']) {
+  for (const what of ['invalidation: weekly cycle.low.break', 'not intraday', 'no forecast', 'checked once a night']) {
     assert.ok(out.includes(what), `${what} reported: ${out}`);
   }
 });
