@@ -219,8 +219,14 @@ PRs can't reach either: **staging** deploys automatically on each tag (`hosted-s
 approval); **production** deploys by hand from a tag (`hosted-production`, tag refs only, Andy's approval).
 *Automatically* means `publish.yml`, after it pushes the tag, starts the deploy with `gh workflow run
 deploy-hosted.yml --ref v<version>`. A tag pushed with `GITHUB_TOKEN` (as `publish.yml` does) starts no
-`on: push: tags` workflow, but `workflow_dispatch` is exempt from that rule. A test of the workflow files pins the
-call, so staging can't silently stop following releases. *Not taken:* a private deploy repo importing
+`on: push: tags` workflow, but `workflow_dispatch` is exempt from that rule. That step needs `actions: write` added
+to the publish job's permissions (today it has only `contents` and `id-token`), and it runs only after npm and the
+tag are done, so a failed dispatch can't undo a release. A test of the workflow files pins both the call and the
+permission, so staging can't silently stop following releases.
+- **The deploy checks the tag is a release** before it deploys, on both stages: the tag's commit is on `master`,
+  `package.json` at that commit names the tag's version, and `npm view @dwlf/mcp-server@<version> gitHead` (the
+  commit npm recorded at publish) equals that commit. A hand-pushed tag on any other commit fails there, approval
+  or not. *Not taken:* a private deploy repo importing
 this code (one more repo to keep in step with the tools, for a gain that's only obscurity) (Q4).
 - **A hosted deploy is a release.** The workflow deploys only a published version: it takes a `v<version>` tag
   (the one `publish.yml` creates after `npm test` passes and npm accepts the version), checks it out and runs
