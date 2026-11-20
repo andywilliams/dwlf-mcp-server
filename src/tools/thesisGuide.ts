@@ -5,6 +5,30 @@
  * The vocabulary and the rules are SPT's (GET /v2/theses/condition-types is authoritative); this explains them.
  */
 
+/** The vocabulary's definitions, one copy: agentHints (theses.ts) and the guide both read these. */
+export const STATUS_DEFINITIONS = {
+  waiting: 'No step met yet. The first step is being checked.',
+  in_progress: 'One or more steps met, in order. `currentStep` is the step being checked now.',
+  complete: 'Every step met.',
+  challenged: 'An invalidation condition was hit, or a step condition was missed. A thesis does not end on its own: the user answers with a review (keep, revise or close).',
+  archived: 'Kept in the journal, no longer checked.',
+  closed: 'Closed by the user through a review, with an outcome.',
+} as const;
+
+export const CONDITION_STATE_DEFINITIONS = {
+  pending: 'Not decided yet.',
+  met: 'Decided: the event happened as described (`at`, `knowableAt` say when DWLF could know it).',
+  missed: 'Decided: the event happened outside the condition (e.g. the pivot printed outside its level).',
+  marked: 'A manual condition the user marked met; the nightly check records it on its next run.',
+} as const;
+
+export const FIRE_KIND_DEFINITIONS = {
+  step_met: 'A step\'s conditions were met (any or all, as the step says).',
+  condition_missed: 'A step condition was decided outside its level; the thesis is challenged.',
+  invalidation_hit: 'An invalidation condition happened; the thesis is challenged.',
+  source_failed: 'The event that decided a condition is no longer in the engine\'s data (it was withdrawn).',
+} as const;
+
 const goog = {
   symbol: 'GOOG',
   title: 'GOOG: the next confirmed daily cycle low, then a higher daily low or a bullish daily trend-line break',
@@ -81,17 +105,20 @@ export const THESIS_GUIDE = {
     '5. A challenged thesis: ask the user, then dwlf_review_thesis (keep / revise / close). To change conditions: dwlf_revise_thesis with expectedRevision.',
   ],
   glossary: {
-    after: 'pivot_confirmed only: the pivot itself must be dated strictly after this date (the date of the pivot you already know of). It is a filter on the pivot\'s date, separate from arming.',
-    arming: 'A condition counts only what DWLF could first know after the condition was saved or last changed (its armedAt). For step n+1 the clock starts when step n was met.',
+    after: 'pivot_confirmed only: the pivot itself must be dated strictly after this date. Use the date of the pivot you already know of (its low bar, e.g. 12 Nov), not the day it failed. It is a filter on the pivot\'s date, separate from arming.',
+    engine_event: 'One of a short allow-list of engine structure events, at 0.70.0: cycle.low.higher_low, cycle.low.lower_low, cycle.high.higher_high, cycle.high.lower_high, cycle.low.break, cycle.high.break, cycle.low.failed, cycle.high.failed. dwlf_list_thesis_condition_types is authoritative.',
+    arming: 'A condition counts only what DWLF could first know after the condition was saved or last changed (its armedAt). For step n+1 the clock starts when step n was met, and only events knowable strictly after that moment count: an event confirmed by the same bar that met step n (e.g. a higher low confirmed together with step 1\'s low) does not meet step n+1.',
     knowableAt: 'When DWLF could first know an event, e.g. a cycle low is confirmed some bars after its low bar. Fires and met conditions carry it.',
-    'cycle.low.higher_low': 'The engine\'s event when the latest confirmed cycle low is higher than the previous confirmed cycle low.',
-    'cycle.low.break': 'The engine\'s event when price closes below the most recent confirmed cycle low (close-based; a wick that closes back above does not count). It works before any new low exists, so it suits invalidations.',
+    'cycle.low.higher_low': 'The engine\'s event when the latest confirmed cycle low on that timeframe is higher than the previous confirmed cycle low it holds. In a thesis it counts only once its step is being checked, so after step 1\'s low it needs a later, higher low.',
+    'cycle.low.break': 'The engine\'s event when a close on that timeframe (a daily close for daily, a weekly close for weekly) is below the most recent confirmed cycle low; a wick that closes back above does not count. It works before any new low exists, so it suits invalidations.',
     trendline_break: 'The engine\'s trend-line break event on that timeframe, whichever of its active trend lines breaks (bullish: price breaks up through a resistance line).',
     level: 'pivot_confirmed only: the confirmed pivot\'s price (the bar\'s intraday low or high) must be above, below or inside it; a first pivot outside it is a miss and challenges the thesis. Without a level, any first pivot meets it.',
     group: 'An optional free-text tag to group theses (e.g. "miners"); filter dwlf_list_theses by it.',
     clientKey: 'Optional: your own id for the thesis. Creating again with the same clientKey revises that thesis instead of adding another (a safe retry).',
   },
-  statuses: 'waiting (no step met yet) · in_progress (a step met, the next being checked) · complete (every step met) · challenged (an invalidation happened or a step condition was missed: waiting for the user\'s review) · archived / closed (kept, no longer checked).',
+  statuses: STATUS_DEFINITIONS,
+  conditionStates: CONDITION_STATE_DEFINITIONS,
+  fireKinds: FIRE_KIND_DEFINITIONS,
   whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story; the notifications bell; and the Telegram digest.',
   examples: [
     { name: 'Wait for the next confirmed daily low, then a higher low or a trend-line break, challenged if the weekly low breaks', create: goog,

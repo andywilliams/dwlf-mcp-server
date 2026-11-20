@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { THESIS_GUIDE } from './thesisGuide.js';
+import { CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
 
 /**
  * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
@@ -11,29 +11,6 @@ import { THESIS_GUIDE } from './thesisGuide.js';
  * block (invariant 2): a one-line `summary`, the `definitions` of the statuses and kinds it contains, and `why`
  * (what the data is). The definitions describe what was observed; none of it is advice.
  */
-
-const STATUS_DEFINITIONS = {
-  waiting: 'No step met yet. The first step is being checked.',
-  in_progress: 'One or more steps met, in order. `currentStep` is the step being checked now.',
-  complete: 'Every step met.',
-  challenged: 'An invalidation condition was hit, or a step condition was missed. A thesis does not end on its own: the user answers with a review (keep, revise or close).',
-  archived: 'Kept in the journal, no longer checked.',
-  closed: 'Closed by the user through a review, with an outcome.',
-} as const;
-
-const CONDITION_STATE_DEFINITIONS = {
-  pending: 'Not decided yet.',
-  met: 'Decided: the event happened as described (`at`, `knowableAt` say when DWLF could know it).',
-  missed: 'Decided: the event happened outside the condition (e.g. the pivot printed outside its level).',
-  marked: 'A manual condition the user marked met; the nightly check records it on its next run.',
-} as const;
-
-const FIRE_KIND_DEFINITIONS = {
-  step_met: 'A step\'s conditions were met (any or all, as the step says).',
-  condition_missed: 'A step condition was decided outside its level; the thesis is challenged.',
-  invalidation_hit: 'An invalidation condition happened; the thesis is challenged.',
-  source_failed: 'The event that decided a condition is no longer in the engine\'s data (it was withdrawn).',
-} as const;
 
 const WHY = 'A thesis is the user\'s own record of what they are waiting for on a symbol and why. DWLF reports which of its conditions the market has met, from events confirmed after each nightly close. It describes events; it does not say what to do about them.';
 

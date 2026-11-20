@@ -178,7 +178,8 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
   assert.equal(parsed.steps[0].match, 'any');
 });
 
-test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow and three worked examples that are valid create payloads; no advice words (DWLF-891)', async () => {
+test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and three worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
+  const { z } = await import('zod');
   const { tools, call } = setup();
   const { body } = await call('dwlf_thesis_guide');
   const g = body.guide;
@@ -186,20 +187,21 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow and three w
   assert.match(g.limits.join(' '), /End of day/);
   assert.match(g.limits.join(' '), /Information, not advice/);
   assert.match(g.rules.join(' '), /cycle\.low\.break/);
+  assert.match(g.statuses.challenged, /review/);
   assert.equal(g.examples.length, 3);
+  const create = z.object(tools.get('dwlf_create_thesis').schema).strict();
   const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'trendline_break', 'engine_event', 'manual'];
-  for (const { create } of g.examples) {
-    assert.ok(create.symbol && create.title && create.steps.length >= 1);
-    for (const c of [...create.steps.flatMap((st) => st.conditions), ...create.invalidation]) {
+  for (const ex of g.examples) {
+    const parsed = create.safeParse(ex.create);
+    assert.ok(parsed.success, `${ex.create.symbol}: ${JSON.stringify(parsed.error?.issues)}`);
+    for (const c of [...ex.create.steps.flatMap((st) => st.conditions), ...ex.create.invalidation]) {
       assert.ok(TYPES.includes(c.type), c.type);
       assert.ok(c.label, 'every example condition has a label saying what is checked');
     }
-    assert.ok(create.invalidation.every((c) => c.type !== 'manual'));
   }
-  // The guide may name the words it disclaims ("not advice"); everything else stays free of advice words.
+  // Everything, the payloads agents copy included. ("Not advice" needs no exclusion: 'advice' is not in the list.)
   const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
-  const text = JSON.stringify({ ...g, examples: g.examples.map(({ name, notes }) => ({ name, notes })) });
-  assert.doesNotMatch(text, ADVICE);
+  assert.doesNotMatch(JSON.stringify(g), ADVICE);
   assert.match(tools.get('dwlf_create_thesis').desc, /dwlf_thesis_guide/);
 });
 
@@ -207,4 +209,22 @@ test('the recorded thesis eval answer still passes its checker (eval/theses, DWL
   const { execFileSync } = await import('node:child_process');
   const out = execFileSync('node', ['eval/theses/check.mjs', 'eval/theses/answer-2026-11-20.json'], { encoding: 'utf8' });
   assert.match(out, /^PASS/);
+});
+
+test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const good = JSON.parse(readFileSync('eval/theses/answer-2026-11-20.json', 'utf8'));
+  const bad = {
+    payload: { ...good.payload, invalidation: [{ type: 'close_vs_level', basis: 'daily_close', op: 'below', value: 1, label: 'Close below the new low' }] },
+    explanation: 'DWLF watches NVDA in real time. The price will rise after the low; a good entry.',
+  };
+  const file = `${mkdtempSync(`${tmpdir()}/thesis-eval-`)}/bad.json`;
+  writeFileSync(file, JSON.stringify(bad));
+  let out = '';
+  try { execFileSync('node', ['eval/theses/check.mjs', file], { encoding: 'utf8' }); } catch (e) { out = e.stdout; }
+  for (const what of ['invalidation: weekly cycle.low.break', 'not intraday', 'information, not advice', 'no forecast', 'checked once a night']) {
+    assert.ok(out.includes(what), `${what} reported: ${out}`);
+  }
 });
