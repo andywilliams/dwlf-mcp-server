@@ -31,8 +31,10 @@ amends `docs/HOSTED-MCP.md` (4-Nov) where that design assumed SPT and a managed 
 - **Runtime:** one Lambda per stage, from a CDK stack in this repo (`hosted/` + `infra/`; H7). A fresh `McpServer` and
   `BlockApiClient` are built per request from that request's credential. **Nothing read with a credential is shared
   between callers.** Every hosted caller is signed in, and `/v1/catalogue` is the account's plan view, so the
-  catalogue cache (15 min, B4) is keyed by the credential's SHA-256 (bounded, least recently used first). It's never
-  process-wide, so a Free caller can't get a paid caller's view. This replaces HOSTED-MCP §3's shared loader, which
+  catalogue cache is keyed by the credential's SHA-256 (bounded, least recently used first). It's never
+  process-wide, so a Free caller can't get a paid caller's view. On the hosted entry it lasts **60 seconds**, not
+  stdio's 15 minutes: a cache hit makes no Block API call, so it can outlive a revocation by its own lifetime, and
+  60 s keeps the revocation bound at about 16 minutes (H11) while still covering an agent's burst. This replaces HOSTED-MCP §3's shared loader, which
   assumed a public catalogue.
 - **The edge:** CloudFront in front, with identity's shared web ACL `dwlf-edge`. AWS WAF can't attach to an API
   Gateway HTTP API, so CloudFront is how the endpoint gets per-IP rate rules. Adding the host's rules is a PR in
@@ -192,8 +194,11 @@ optimisation, never a limit, and nothing depends on their hit rate.) Instead:
 - **Per source IP:** a rate rule on the MCP's host keyed on the client's IP, as on every DWLF host. On the
   pasted-key path the `Authorization` value is whatever the caller sends, so a flood with a fresh random
   `dwlfk_…` per request would get a fresh per-credential bucket each time. The per-IP rule bounds it before it
-  reaches the MCP's egress. A junk key costs identity nothing: the Block API refuses unknown key ids locally and
-  caches the refusal (identity's personal-tokens design, T4), so it never reaches the exchange bucket.
+  reaches the MCP's egress. A junk key costs identity nothing, fresh or repeated: every key is created through
+  the Block API, which keeps the id of each one it created, and a key carries its id (`dwlfk_<key id>_…`). So the
+  Block API refuses an id it never created without asking identity (identity's personal-tokens design, T4: "the
+  product refuses unknown ids locally"). Only a real key id with a wrong secret reaches the exchange, and that's
+  identity's per-key limit and wrong-secret alarm.
 - **Overall:** the function's reserved concurrency.
 - **The plan's allowance** stays the Block API's, per account, and it bounds what an agent loop costs.
 - **Deferred:** HOSTED-MCP §6's loop guard and §5's per-account concurrency cap. Both need shared state. If step 8's
@@ -211,7 +216,11 @@ optimisation, never a limit, and nothing depends on their hit rate.) Instead:
 account, region and the identity binding come from CI environment variables and SSM. Deploys run only from
 published `v*` tags, through a GitHub OIDC role per stage trusted for that stage's environment alone, and fork
 PRs can't reach either: **staging** deploys automatically on each tag (`hosted-staging`, tag refs only, no
-approval); **production** deploys by hand from a tag (`hosted-production`, tag refs only, Andy's approval). *Not taken:* a private deploy repo importing
+approval); **production** deploys by hand from a tag (`hosted-production`, tag refs only, Andy's approval).
+*Automatically* means `publish.yml`, after it pushes the tag, starts the deploy with `gh workflow run
+deploy-hosted.yml --ref v<version>`. A tag pushed with `GITHUB_TOKEN` (as `publish.yml` does) starts no
+`on: push: tags` workflow, but `workflow_dispatch` is exempt from that rule. A test of the workflow files pins the
+call, so staging can't silently stop following releases. *Not taken:* a private deploy repo importing
 this code (one more repo to keep in step with the tools, for a gain that's only obscurity) (Q4).
 - **A hosted deploy is a release.** The workflow deploys only a published version: it takes a `v<version>` tag
   (the one `publish.yml` creates after `npm test` passes and npm accepts the version), checks it out and runs
@@ -247,13 +256,17 @@ shows up only when a tool calls the Block API. By then, `failure()` has turned i
   none, so its output doesn't change). The client notes each Block API refusal on it: status, Block's `code`, the
   permission named (H4), and whether the answer was Block's own body or the edge's.
 - After the handler returns, the hosted entry reads the recorder. A Block API `401` replaces the JSON-RPC answer
-  with the §4 HTTP `401`. A permission refusal replaces it with `403` `insufficient_scope`. The request is
-  stateless, so replacing the answer loses nothing. Every other refusal stays a tool result.
+  with the §4 HTTP `401`. A permission refusal replaces it with `403` `insufficient_scope` **only under H4's rule**:
+  on the OAuth path, when the Block API says the plan allows the permission. A `PLAN_REQUIRED` refusal, and any
+  refusal on the pasted-key path, stays a tool result with the Block API's body. The request is stateless, so
+  replacing the answer loses nothing. Every other refusal stays a tool result.
 - On the OAuth path, identity's exchange runs **before** dispatch (it's needed for any Block call), so a revoked
   grant answers `401` before any tool runs at its next exchange. A cached exchanged token keeps working until it
-  expires, so revocation takes effect within 15 minutes: identity's bound, the same as for keys.
-- Tests: a revoked key on `tools/call` gives HTTP `401` with the challenge; a permission refusal gives `403` with
-  `scope`; a stdio run with the same recordings gives today's tool text.
+  expires, and a cached catalogue for up to 60 s more (§1), so revocation takes effect within about 16 minutes:
+  identity's 15-minute bound, the same as for keys, plus the catalogue cache.
+- Tests: a revoked key on `tools/call` gives HTTP `401` with the challenge; on OAuth, a grantable permission refusal
+  gives `403` with `scope`; a `PLAN_REQUIRED` refusal, and a permission refusal on a pasted key, give a tool result
+  and no challenge; a stdio run with the same recordings gives today's tool text.
 
 ## 5 · Alarms
 
@@ -307,7 +320,7 @@ Each step is one PR unless noted. Every merge, deploy and switch flip needs a ta
 | 5 | dwlf-block-api (WP2/keys) | `/v1/connect/requests/{id}` read, approve, deny; grants in `GET /v1/keys` as connected apps; OpenAPI | 2–3 days |
 | 6 | block-site (WP6) | `/connect/` consent page; connected apps on `/account/`; the paste-a-key help | 2 days |
 | 7 | this repo | The OAuth path: verify, exchange, cache, `insufficient_scope`; invariant 3 amended | 2 days |
-| 8 | all | Staging end to end: a Claude.ai custom connector, a ChatGPT connector, the MCP Inspector, Claude Code and Cursor with a key; a revoke stops access within 15 min. An independent security pass on `/oauth/*`. | 2–3 days |
+| 8 | all | Staging end to end: a Claude.ai custom connector, a ChatGPT connector, the MCP Inspector, Claude Code and Cursor with a key; a revoke stops access within about 16 min (H11). An independent security pass on `/oauth/*`. | 2–3 days |
 | 9 | this repo | Launch: switches open, `server.json` gains `remotes`, `docs/BLOCK.md`, a version bump. Directory listings are later, each a separate decision for Andy (Claude's policy §4A on crypto). | ½ day |
 
 - **Order:** 1, then 2 and 3 (this repo) alongside 4 (identity), then 5, 6 and 7, then 8 and 9. The pasted key (b)

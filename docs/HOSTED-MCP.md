@@ -8,9 +8,10 @@ listing or OAuth client exists.*
 > - **What it calls:** the Block API (`block-api` backend), not SPT `/v2` (§3). Quotas are the Block API's per-account
 >   allowance and plan checks, not SPT's tier limits (§5).
 > - **Authorization server:** dwlf-identity, option A of §4.1 (decided).
-> - **Upstream credential:** the MCP exchanges the OAuth token at identity for an `aud = block` delegated token. There's
->   no managed key and no credential table (§4.2 replaced). How identity stores a grant is identity's decision
->   (proposed: a personal token of kind `oauth`).
+> - **Upstream credential (proposed, hosted-auth H2):** the MCP exchanges the OAuth token at identity for an
+>   `aud = block` delegated token, with no managed key and no credential table. It needs an identity route that's
+>   asked for, not yet agreed; until it is, §4.2's managed key is the fallback. How identity stores a grant is
+>   identity's decision (proposed: a personal token of kind `oauth`).
 > - **Passthrough (§2):** still forbidden for OAuth tokens. A person's pasted `dwlfk_` Block API key may be carried to
 >   the Block API unchanged, as the stdio package does (hosted-auth §2).
 > - **Scopes (§4.3):** Block's permission names, not SPT's API-key scopes.
