@@ -30,7 +30,7 @@ check(!prices.length, `no invented prices (${prices.join(', ') || 'none'})`);
 
 // No forecast or call to act, read clause by clause; a denial ("not a forecast") is the honest limit and passes.
 const clauses = t.replace(/\b(no doubt|no question|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
-const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|don't|do not|isn't|is not|can't|cannot|neither|nor|without)\b/;
+const NEG = /\b(not|no|never|none|nothing|won't|doesn't|does not|don't|do not|isn't|is not|can't|cannot|neither|nor|without)\b/;
 // A negation denies a match only within its own part of the clause ("not advice, and it will rise" asserts the rise),
 // and each match is judged on its own ("it does not say a low will form, and GOOG will rise" asserts the second).
 const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/,|;|\band\b|\bso\b/).pop());

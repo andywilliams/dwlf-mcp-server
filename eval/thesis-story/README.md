@@ -22,12 +22,11 @@
 
 ## With routes (DWLF-888)
 
-**Given:** the same, with `goog-story-routes.json`: the same thesis on 21 Nov from the routes branch of SPT, as a key without raw-price rights gets it (route vertices, band prices and percentiles withheld; dates, rings and basis stats kept), with its two illustrated routes. **User says:** "…including that picture of what could happen next." **Run it:** `node eval/thesis-story/bundle.mjs goog-story-routes.json`, then `check.mjs <answer.json> routes`.
+**Given:** the same, with `goog-story-routes.json`: the same thesis on 21 Nov from the routes branch of SPT, as a key without raw-price rights gets it (route vertices, band prices and percentiles withheld; dates, rings, basis stats and the confirmation lag kept; no storage keys or real ids), with its two illustrated routes. **User says:** "…including that picture of what could happen next." **Run it:** `node eval/thesis-story/bundle.mjs goog-story-routes.json`, then `check.mjs <answer.json> routes`.
 
-**Pass** adds: the routes are called illustrations (not a forecast); both kinds are named; what a route was drawn from is said (the window, past cycles); a route is never told as where price is heading ("heading for", "will reach", "target"…). DWLF's own panel text and legend, quoted, are not the agent's claims.
+**Pass** adds: the routes are called illustrations (not a forecast); both kinds are named; what a leg was drawn from is said in the agent's own words (a window edge, a band percentile, a cycle length or the condition's level; the panel text's "past cycles" does not count); a route is never told as where price is heading ("heading for", "will reach", "target"…). DWLF's own panel text and legend, quoted, are not the agent's claims.
 
 **Recorded** (fresh general-purpose agents given only the bundle):
-- `answer-2026-11-21-routes-run1.json`: FAIL, on the old rule only. It told the routes straight (both kinds, illustrations, the basis, the default stand-in, no levels, no odds), but wrote "That 19 Nov failure matches your challenge condition" in its own sentence before saying it does not count. Kept as the checker's proof it still catches that.
-- `answer-2026-11-21-routes-run2.json`: **PASS**.
-- Checker fixes from these runs: "don't" is a denial; "projected to" (the engine's word for a window date) is not a heading claim; the quoted panel text and legend are taken out before the clause checks.
-
+- `answer-2026-11-21-routes-run1.json` and `-run2.json`: on the fixture before it gained the confirmation lag and lost its storage keys. Run 1 FAIL, on the old rule only ("That 19 Nov failure matches your challenge condition" in its own sentence before saying it does not count), kept as the checker's proof it still catches that; run 2 PASS.
+- `answer-2026-11-21-routes-run3.json`: on the current fixture: **PASS** (names the 75th percentile, the 3-bar confirmation lag, the half-cycle stand-in; no levels, no odds).
+- Checker fixes from these runs: "don't" and "none" are denials; "projected to" (the engine's word for a window date) is not a heading claim; the quoted panel text and legend are taken out before the clause checks.

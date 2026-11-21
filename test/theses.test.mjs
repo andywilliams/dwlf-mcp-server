@@ -355,6 +355,9 @@ test('the recorded story narration still passes its checker; the faults the runs
   assert.match(badRoutes(`${routes} Price will reach that low in January.`), /where price is heading/);
   assert.match(badRoutes(`${routes} Don't read it as a level price will reach.`), /^PASS/, 'a denial passes');
   assert.match(badRoutes(base), /illustrations[\s\S]*both/, 'no routes told: fails the route checks');
+  // Illustrations, both kinds, the panel text quoted, but no leg tied to its numbers: the basis check fails alone.
+  const panel = 'Illustration, not a forecast. The dashed lines show a shape price could take for the next step to be met, and one for the thesis to be challenged. They are drawn from your conditions and this symbol\'s past cycles. Not a prediction, a price target or advice. Price may do neither.';
+  assert.match(badRoutes(`${base} There is a route that meets the steps and one that challenges it, as illustrations. "${panel}"`), /^FAIL \(1\):\n- says what a route was drawn from/);
 });
 
 test('dwlf_get_thesis_story: a body without a summary or with no beats array still reaches the agent, never a false count', async () => {
