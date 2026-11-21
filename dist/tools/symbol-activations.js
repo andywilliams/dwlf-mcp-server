@@ -3,7 +3,7 @@ import { normalizeSymbol } from '../client.js';
 export function registerSymbolActivationTools(server, client) {
     // ─── Custom Event Symbol Activation ───────────────────────────────
     // 1. Activate symbols for a custom event (bulk enable)
-    server.tool('dwlf_activate_event_symbols', '⚠️ REQUIRED STEP after creating custom events! Activate (enable) symbols for an event. Events do NOT evaluate automatically — they are invisible to backtests and the daily pipeline until activated. If backtests return 0 trades, you likely forgot this step. Call immediately after creating an event (saving compiles it).', {
+    server.tool('dwlf_activate_event_symbols', '⚠️ REQUIRED STEP after creating custom events! Activate (enable) symbols for an event. Events do NOT evaluate automatically — they are invisible to backtests and the daily pipeline until activated. If backtests return 0 trades, you likely forgot this step. Call immediately after compiling an event.', {
         eventId: z.string().describe('Custom event ID'),
         symbols: z
             .array(z.string())
@@ -29,7 +29,7 @@ export function registerSymbolActivationTools(server, client) {
         }
     });
     // 2. Get active symbols for a custom event
-    server.tool('dwlf_get_event_symbols', 'Get the symbols a custom event is activated on, plus the event\'s `health` line from last night\'s coverage check: { active, ok, failing, paused, pending, lastCheckedAt, judgedAt, lastFired: { symbol, at }, compileState }. Use it to check an event is really running, not just activated. Each activation\'s state is ok | failing (with a kind, e.g. stale_market_data, not_compiled, evaluation_failed) | paused | pending; kinds are an open set, so branch on the state.', {
+    server.tool('dwlf_get_event_symbols', 'Get the list of symbols currently activated for a custom event.', {
         eventId: z.string().describe('Custom event ID'),
     }, async ({ eventId }) => {
         try {
@@ -51,7 +51,7 @@ export function registerSymbolActivationTools(server, client) {
         }
     });
     // 3. Deactivate symbols for a custom event (bulk disable)
-    server.tool('dwlf_deactivate_event_symbols', 'Deactivate (disable) one or more symbols for a custom event: it stops evaluating, and so stops recording fires, for those symbols. An alert subscription that names those symbols is separate and is not changed: edit it with dwlf_update_subscription.', {
+    server.tool('dwlf_deactivate_event_symbols', 'Deactivate (disable) one or more symbols for a custom event. The event will stop firing for these symbols.', {
         eventId: z.string().describe('Custom event ID'),
         symbols: z
             .array(z.string())

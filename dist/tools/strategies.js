@@ -27,7 +27,7 @@ export function registerStrategyTools(server, client) {
         nodeType: z
             .string()
             .optional()
-            .describe('Give only this one node (e.g. `sl_below_recent_low`).'),
+            .describe('Return only this one node (e.g. `sl_below_recent_low`).'),
         category: z
             .enum(['signal', 'stopLoss', 'takeProfit', 'logic', 'cancellation', 'condition', 'exit'])
             .optional()

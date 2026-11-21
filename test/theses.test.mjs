@@ -331,6 +331,7 @@ test('the recorded story narration still passes its checker; the faults the runs
   // With routes (DWLF-888): the recorded pass passes; run 1 fails on the old rule only; a heading claim fails.
   const runRoutes = (file) => { try { return execFileSync('node', ['eval/thesis-story/check.mjs', file, 'routes'], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
   assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run2.json'), /^PASS/);
+  assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run3.json'), /^PASS/, 'run 3: the current fixture');
   assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run1.json'), /^FAIL \(1\):\n- ties the 19 Nov break/);
   const dir = mkdtempSync(`${tmpdir()}/story-eval-`);
   const bad = (narration) => { const f = `${dir}/a.json`; writeFileSync(f, JSON.stringify({ narration })); return run(f); };
