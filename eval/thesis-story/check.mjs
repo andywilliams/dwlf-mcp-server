@@ -51,7 +51,9 @@ if (process.argv[3] === 'routes') {
   const said = x.toLowerCase();
   check(/(illustrat|not a forecast)/.test(said), 'calls the routes illustrations (not a forecast)');
   check(/\b(route|shape|path)s?\b/.test(said) && /\bmeet/.test(said) && /challeng/.test(said), 'names both: a route that meets the steps and one that challenges the thesis');
-  check(/(window|centre|center)/.test(said) && /(past|depth|band|cycle)/.test(said), 'says what a route was drawn from (the window, past cycles)');
+  // In the agent's own words (the panel text's "past cycles" does not count): a leg tied to a window edge, a band
+  // percentile, a cycle length or the condition's level.
+  check(/(window('s)? cent(re|er)|percentile|p75|p25|median|cycle length|half (the|a) (median )?cycle|condition'?s? (own )?level)/.test(t), 'says what a route was drawn from (a window edge, a band percentile, a cycle length)');
   // ("projected to open" is the engine's own word for a window date, so "projected" is not on the list.)
   const HEADING = /\b(heading (for|to|toward)|on track (to|for)|will (reach|bottom|top|get to|land|hit|test)|is going to|targets?|aims? for|the next leg (is|will))\b/;
   check(!asserted(HEADING), 'never tells a route as where price is heading');

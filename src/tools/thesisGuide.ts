@@ -48,7 +48,7 @@ export const ROUTE_KIND_DEFINITIONS = {
 
 /** What a route leg's numbers come from, by `basis[].stat` prefix (DWLF-888). */
 export const BASIS_DEFINITIONS = {
-  window: 'A cycle window\'s edge (its date) or its cycle length (median bars between lows).',
+  window: 'A cycle window\'s edge (its date), its cycle length (median bars between pivots of that side), or how many bars after its pivot a pivot is confirmed.',
   depth: 'A percentile of the depth band: how far price moved into past pivots of that side.',
   condition: 'The condition\'s own level, the user\'s number.',
   level: 'The level a break is checked against (the latest confirmed pivot, or the illustrated one).',

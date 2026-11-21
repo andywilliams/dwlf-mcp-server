@@ -299,6 +299,12 @@ test('★ dwlf_get_thesis_story: routes are named as illustrations in the line a
   assert.deepEqual(Object.keys(body.agentHints.definitions.basis), ['window', 'depth', 'level', 'novel']);
   assert.match(body.agentHints.definitions.basis.novel, /Not described by this version/);
   assert.match(body.agentHints.how, /never score them/);
+  // A plan's routes (an older revision) define their kinds too; null elements are skipped, never an error.
+  ({ body } = await setup(() => ({ symbol: 'GOOG', summary: { beats: 1 }, beats: [], current: { routes: [null], routeNote: null }, plan: { routes: [null, { kind: 'meets', legs: [null, { basis: [null, { stat: 'depth.low.daily.median' }] }] }] } })).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.isError, undefined);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.routeKind), ['meets']);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.basis), ['depth']);
+  for (const text of [body.agentHints.how]) { assert.doesNotMatch(text, /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i); }
   assert.match(body.agentHints.how, /ILLUSTRATIONS, not forecasts/);
   assert.match(body.agentHints.how, /never say how likely a route is/);
   assert.match(body.agentHints.how, /quote illustration\.disclaimer\.text/);

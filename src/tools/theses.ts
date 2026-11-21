@@ -141,14 +141,15 @@ const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the change
 /** How to tell a story to the user: what happened and what the thesis needs, never what price will do. */
 const STORY_RULE = 'Tell it as what happened and what the thesis needs next, in the beats\' own facts. Never as an expectation or a forecast: a needs-next beat says what would meet a step, not that it will happen.';
 /** How to describe the illustrated routes (DWLF-888): illustrations from the engine's numbers, never expectations. */
-const ROUTE_RULE = 'Routes (current.routes, and a plan\'s routes as drawn at that save) are ILLUSTRATIONS, not forecasts: describe a meets route as "a shape price could take for the step to be met" and a challenges route as "one way the thesis could be challenged", always both together, and quote illustration.disclaimer.text. Name a leg\'s numbers from its basis (a window edge, a depth-band percentile, the condition\'s level); never present a route vertex\'s price as a level to aim for or one price will reach, and never say how likely a route is. A plan\'s routes are what that plan illustrated then: never score them against what price did (no hit or miss). No routes: say why, from current.routeNote.';
+const ROUTE_RULE = 'Routes (current.routes, and a plan\'s routes as drawn at that save) are ILLUSTRATIONS, not forecasts: describe a meets route as "a shape price could take for the remaining steps to be met" and a challenges route as "one way the thesis could be challenged", always both together, and quote illustration.disclaimer.text. Name a leg\'s numbers from its basis (a window edge, a depth-band percentile, the condition\'s level); never present a route vertex\'s price as a level to aim for or one price will reach, and never say how likely a route is. A plan\'s routes are what that plan illustrated then: never score them against what price did (no hit or miss). No routes: say why, from current.routeNote.';
 
-const routesOf = (v: unknown): Json[] => (Array.isArray(v) ? v as Json[] : []);
+// An array's objects only: SPT's body is read defensively (a null element is skipped, never a thrown TypeError).
+const routesOf = (v: unknown): Json[] => (Array.isArray(v) ? (v as unknown[]).filter((x): x is Json => Boolean(x) && typeof x === 'object') : []);
 
 /** The routes in a line: how many of each kind are drawn, or why none (routeNote). */
 const routesLine = (data: Json): string => {
   const current = (data.current && typeof data.current === 'object' ? data.current : {}) as { routes?: Json[]; routeNote?: string | null };
-  const routes = Array.isArray(current.routes) ? current.routes : [];
+  const routes = routesOf(current.routes);
   if (!routes.length) { return current.routeNote ? ` ${current.routeNote}` : ''; }
   const count = countBy(routes as Json[], 'kind');
   const words = Object.entries(count).map(([kind, n]) => `${n} ${kind}`).join(', ');
