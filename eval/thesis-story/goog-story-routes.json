@@ -1,0 +1,1286 @@
+{
+ "thesisId": "goog-eval",
+ "symbol": "GOOG",
+ "revision": 4,
+ "currentRevision": 4,
+ "status": "waiting",
+ "storyBuilderVersion": 2,
+ "evaluatedThrough": "2026-11-20",
+ "summary": {
+  "beats": 11,
+  "last": {
+   "date": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 4."
+  },
+  "needsNext": "Step 1 needs this: Next confirmed daily cycle low (any price)."
+ },
+ "beats": [
+  {
+   "id": "event-cycle.low.break-1d-2026-10-21",
+   "kind": "event",
+   "date": "2026-10-21",
+   "knowableAt": "2026-10-21T23:59:59.999Z",
+   "sentence": "The 1 Oct daily cycle low failed: a daily close below it on 21 Oct.",
+   "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
+   "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
+   "conditionIds": [
+    "c1",
+    "c4"
+   ],
+   "sources": [
+    "GOOG|2026-10-21#cycle.low.break#daily"
+   ],
+   "highlight": {
+    "date": "2026-10-01",
+    "price": null,
+    "breakDate": "2026-10-21",
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-09-21",
+    "to": "2026-10-31"
+   }
+  },
+  {
+   "id": "window-weekly",
+   "kind": "window",
+   "date": "2026-10-26",
+   "knowableAt": "2026-10-26",
+   "sentence": "The weekly cycle low window opened 26 Oct.",
+   "checkedAs": null,
+   "means": "The window the engine draws for the next weekly cycle low: centre about 23 Nov, closes about 4 Jan. Window dates are engine estimates, unverified.",
+   "highlight": {
+    "band": "weekly"
+   },
+   "frame": {
+    "from": "2026-09-18",
+    "to": "2027-01-14"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "event-cycle.low.confirmed-1d-2026-11-05",
+   "kind": "event",
+   "date": "2026-11-05",
+   "knowableAt": "2026-11-11T23:59:59.999Z",
+   "sentence": "A daily cycle low was confirmed: 5 Nov.",
+   "checkedAs": "Next confirmed daily cycle low (any price)",
+   "means": "This one is dated 5 Nov, known 11 Nov. Step 1 counts a confirmed daily cycle low dated after 5 Nov. It was set 19 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for step 1.",
+   "conditionIds": [
+    "c1"
+   ],
+   "sources": [
+    "GOOG|2026-11-05#cycle.low.confirmed#daily"
+   ],
+   "highlight": {
+    "date": "2026-11-05",
+    "price": null,
+    "breakDate": null,
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-10-25",
+    "to": "2026-11-22"
+   }
+  },
+  {
+   "id": "saved",
+   "kind": "saved",
+   "date": "2026-11-18",
+   "knowableAt": "2026-11-18",
+   "sentence": "Saved: GOOG: the next confirmed daily cycle low (any price), then a higher daily low or a bullish daily trend-line break.",
+   "checkedAs": null,
+   "means": "From here DWLF checks each condition once a night after the close; nothing known before counts.",
+   "highlight": {
+    "date": "2026-11-18",
+    "price": null,
+    "callout": "saved"
+   },
+   "frame": {
+    "from": "2026-11-04",
+    "to": "2026-12-02"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "event-cycle.low.break-1d-2026-11-19",
+   "kind": "event",
+   "date": "2026-11-19",
+   "knowableAt": "2026-11-19T23:59:59.999Z",
+   "sentence": "The 5 Nov daily cycle low failed: a daily close below it on 19 Nov.",
+   "checkedAs": "Next confirmed daily cycle low (any price) · Daily close below the latest confirmed daily cycle low",
+   "means": "That pivot no longer stands. Step 1 counts a confirmed daily cycle low dated after 5 Nov. The challenge waits for this kind of event. It was set 20 Nov; only what DWLF learns after that counts for it. This one was known before that, so it does not count for the challenge.",
+   "conditionIds": [
+    "c1",
+    "c4"
+   ],
+   "sources": [
+    "GOOG|2026-11-19#cycle.low.break#daily"
+   ],
+   "highlight": {
+    "date": "2026-11-05",
+    "price": null,
+    "breakDate": "2026-11-19",
+    "callout": "daily cycle low",
+    "side": "low"
+   },
+   "frame": {
+    "from": "2026-10-26",
+    "to": "2026-11-29"
+   }
+  },
+  {
+   "id": "revision-2",
+   "kind": "revision",
+   "date": "2026-11-19",
+   "knowableAt": "2026-11-19",
+   "sentence": "Revised 19 Nov: revision 2.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-19",
+    "price": null,
+    "callout": "revision 2"
+   },
+   "frame": {
+    "from": "2026-11-05",
+    "to": "2026-12-03"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "revision-3",
+   "kind": "revision",
+   "date": "2026-11-20",
+   "knowableAt": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 3.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-20",
+    "price": null,
+    "callout": "revision 3"
+   },
+   "frame": {
+    "from": "2026-11-06",
+    "to": "2026-12-04"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "revision-4",
+   "kind": "revision",
+   "date": "2026-11-20",
+   "knowableAt": "2026-11-20",
+   "sentence": "Revised 20 Nov: revision 4.",
+   "checkedAs": null,
+   "means": "A changed condition is set again from here; an unchanged one keeps its arming and its result.",
+   "highlight": {
+    "date": "2026-11-20",
+    "price": null,
+    "callout": "revision 4"
+   },
+   "frame": {
+    "from": "2026-11-06",
+    "to": "2026-12-04"
+   },
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "now",
+   "kind": "now",
+   "date": "2026-11-20",
+   "knowableAt": null,
+   "sentence": "GOOG is inside its weekly cycle low window (opened 26 Oct, closes about 4 Jan).",
+   "lastClose": null,
+   "stepLines": [
+    "○ Step 1 · Next confirmed daily cycle low (any price)",
+    "○ Step 2 · A higher daily cycle low or Daily bullish trend-line break"
+   ],
+   "asOf": "the bar of 20 Nov",
+   "stale": null,
+   "windowNote": "Window dates are engine estimates, unverified.",
+   "checkedAs": null,
+   "means": null,
+   "highlight": {
+    "now": true
+   },
+   "frame": null,
+   "conditionIds": [],
+   "sources": []
+  },
+  {
+   "id": "needs-1",
+   "kind": "needs",
+   "date": null,
+   "knowableAt": null,
+   "faint": false,
+   "sentence": "Step 1 needs this: Next confirmed daily cycle low (any price).",
+   "checkedAs": "Next confirmed daily cycle low (any price)",
+   "means": "Then step 2 is checked.",
+   "challengedIf": [
+    "Daily close below the latest confirmed daily cycle low"
+   ],
+   "highlight": {
+    "step": 1
+   },
+   "frame": null,
+   "conditionIds": [
+    "c1"
+   ],
+   "sources": [],
+   "routeIds": [
+    "meets",
+    "challenges:c4"
+   ],
+   "notDrawn": [],
+   "routeNote": null
+  },
+  {
+   "id": "needs-2",
+   "kind": "needs",
+   "date": null,
+   "knowableAt": null,
+   "faint": true,
+   "sentence": "Step 2 needs one of: A higher daily cycle low; or Daily bullish trend-line break.",
+   "checkedAs": "A higher daily cycle low · Daily bullish trend-line break",
+   "means": "Then every step is met: the thesis is complete.",
+   "challengedIf": [
+    "Daily close below the latest confirmed daily cycle low"
+   ],
+   "highlight": {
+    "step": 2
+   },
+   "frame": null,
+   "conditionIds": [
+    "c2",
+    "c3"
+   ],
+   "sources": [],
+   "routeIds": [
+    "meets",
+    "challenges:c4"
+   ],
+   "notDrawn": [],
+   "routeNote": null
+  }
+ ],
+ "chart": {
+  "start": "2026-09-18",
+  "end": "2027-03-22",
+  "levels": [],
+  "windowBands": [
+   {
+    "timeframe": "daily",
+    "side": "low",
+    "earliest": "2026-12-16",
+    "opens": "2026-12-23",
+    "centre": "2027-01-07",
+    "closes": "2027-01-20",
+    "status": "projected",
+    "note": "Window dates are engine estimates, unverified."
+   },
+   {
+    "timeframe": "weekly",
+    "side": "low",
+    "earliest": "2026-09-28",
+    "opens": "2026-10-26",
+    "centre": "2026-11-23",
+    "closes": "2027-01-04",
+    "status": "projected",
+    "note": "Window dates are engine estimates, unverified."
+   }
+  ],
+  "depthBands": [
+   {
+    "timeframe": "daily",
+    "side": "low",
+    "n": 20,
+    "thin": false,
+    "from": null,
+    "to": null,
+    "label": "Where past daily lows landed (p25 to p75 of the fall, n=20)"
+   },
+   {
+    "timeframe": "weekly",
+    "side": "low",
+    "n": 20,
+    "thin": false,
+    "from": null,
+    "to": null,
+    "label": "Where past weekly lows landed (p25 to p75 of the fall, n=20)"
+   }
+  ],
+  "side": "low",
+  "lastDate": "2026-11-20",
+  "lastClose": null
+ },
+ "plan": {
+  "gaps": [],
+  "steps": [
+   {
+    "armedAt": "2026-11-19T22:08:09.137Z",
+    "conditionId": "c1",
+    "drawAs": "pivot_zone",
+    "label": "Next confirmed daily cycle low (any price)",
+    "step": 1,
+    "symbol": "GOOG",
+    "type": "pivot_confirmed",
+    "values": {
+     "after": "2026-11-05",
+     "forming": null
+    },
+    "where": "step"
+   },
+   {
+    "armedAt": "2026-11-19T22:08:09.137Z",
+    "conditionId": "c2",
+    "drawAs": "pivot_zone",
+    "label": "A higher daily cycle low",
+    "step": 2,
+    "symbol": "GOOG",
+    "type": "engine_event",
+    "values": {
+     "eventType": "cycle.low.higher_low"
+    },
+    "where": "step"
+   },
+   {
+    "armedAt": "2026-11-19T22:08:09.137Z",
+    "conditionId": "c3",
+    "drawAs": "trend_line",
+    "label": "Daily bullish trend-line break",
+    "step": 2,
+    "symbol": "GOOG",
+    "type": "trendline_break",
+    "values": {
+     "direction": "bullish",
+     "lineIds": [
+      "goog-line-1"
+     ]
+    },
+    "where": "step"
+   },
+   {
+    "armedAt": "2026-11-20T13:04:24.997Z",
+    "conditionId": "c4",
+    "drawAs": "level",
+    "label": "Daily close below the latest confirmed daily cycle low",
+    "step": null,
+    "symbol": "GOOG",
+    "type": "engine_event",
+    "values": {
+     "agreesWithRuler": true,
+     "follows": "latest confirmed pivot",
+     "from": "2026-11-05",
+     "price": null,
+     "source": "cycle state"
+    },
+    "where": "invalidation"
+   }
+  ],
+  "capturedAt": "2026-11-21T10:25:58.656Z",
+  "reason": "reconstructed",
+  "reconstructed": true,
+  "inputs": {
+   "windows": [
+    {
+     "bands": {
+      "core": {
+       "highBars": 54,
+       "lowBars": 34
+      },
+      "outer": {
+       "closes": {
+        "bars": 63,
+        "date": "2027-02-02",
+        "derived": true,
+        "extrapolated": true
+       },
+       "highBars": 63,
+       "lowBars": 33,
+       "opens": {
+        "bars": 33,
+        "date": "2026-12-22",
+        "derived": true,
+        "extrapolated": true
+       }
+      },
+      "version": 1
+     },
+     "boundariesFinal": false,
+     "calibration": "calibrated",
+     "edges": {
+      "centre": {
+       "bars": 45,
+       "date": "2027-01-07",
+       "derived": false,
+       "extrapolated": true
+      },
+      "closes": {
+       "bars": 54,
+       "date": "2027-01-20",
+       "derived": false,
+       "extrapolated": true
+      },
+      "earliest": {
+       "bars": 29,
+       "date": "2026-12-16",
+       "derived": true,
+       "extrapolated": true
+      },
+      "hardMax": {
+       "bars": 79,
+       "date": "2027-02-24",
+       "derived": false,
+       "extrapolated": true
+      },
+      "opens": {
+       "bars": 34,
+       "date": "2026-12-23",
+       "derived": false,
+       "extrapolated": true
+      }
+     },
+     "gaps": {
+      "maxBars": 79,
+      "medianBars": 46,
+      "minBars": 29,
+      "n": 20,
+      "q25Bars": 34,
+      "q50Bars": 45,
+      "q75Bars": 54
+     },
+     "knowableFromDate": "2026-11-11",
+     "ruler": {
+      "confirmedOn": "2026-11-05",
+      "pivotDate": "2026-11-05",
+      "price": null
+     },
+     "side": "low",
+     "status": "projected",
+     "symbol": "GOOG",
+     "timeframe": "daily",
+     "verification": "unverified"
+    },
+    {
+     "bands": {
+      "core": {
+       "highBars": 40,
+       "lowBars": 30
+      },
+      "outer": {
+       "closes": {
+        "bars": 51,
+        "date": "2027-03-22",
+        "derived": true,
+        "extrapolated": true
+       },
+       "highBars": 51,
+       "lowBars": 29,
+       "opens": {
+        "bars": 29,
+        "date": "2026-10-19",
+        "derived": true,
+        "extrapolated": false
+       }
+      },
+      "version": 1
+     },
+     "boundariesFinal": false,
+     "calibration": "calibrated",
+     "edges": {
+      "centre": {
+       "bars": 34,
+       "date": "2026-11-23",
+       "derived": false,
+       "extrapolated": true
+      },
+      "closes": {
+       "bars": 40,
+       "date": "2027-01-04",
+       "derived": false,
+       "extrapolated": true
+      },
+      "earliest": {
+       "bars": 26,
+       "date": "2026-09-28",
+       "derived": true,
+       "extrapolated": false
+      },
+      "hardMax": {
+       "bars": 70,
+       "date": "2027-08-02",
+       "derived": false,
+       "extrapolated": true
+      },
+      "opens": {
+       "bars": 30,
+       "date": "2026-10-26",
+       "derived": false,
+       "extrapolated": false
+      }
+     },
+     "gaps": {
+      "maxBars": 70,
+      "medianBars": 35,
+      "minBars": 26,
+      "n": 20,
+      "q25Bars": 30,
+      "q50Bars": 34,
+      "q75Bars": 40
+     },
+     "knowableFromDate": "2026-04-27",
+     "ruler": {
+      "confirmedOn": "2026-04-20",
+      "pivotDate": "2026-03-30",
+      "price": null
+     },
+     "side": "low",
+     "status": "projected",
+     "symbol": "GOOG",
+     "timeframe": "weekly",
+     "verification": "unverified"
+    }
+   ]
+  },
+  "evaluatedThrough": "2026-11-20",
+  "routes": [],
+  "planVersion": 1,
+  "chart": {
+   "lastBar": {
+    "close": null,
+    "date": "2026-11-20"
+   },
+   "priceBasis": "stored daily closes, as served",
+   "range": {
+    "from": "2026-03-30",
+    "to": "2027-01-19"
+   },
+   "symbol": "GOOG",
+   "timeframe": "daily"
+  },
+  "engine": {
+   "derivedBy": "19.7.0",
+   "disclaimerVersion": null,
+   "generation": 2,
+   "pathBuilderVersion": null,
+   "storyBuilderVersion": 1,
+   "windows": [
+    {
+     "detectorConfigHash": "-939192777",
+     "generation": 2,
+     "libVersion": "19.8.1",
+     "projectionHash": "9d39a5755168a4c733a6b7233fc02b1fedc53a780c7dfc2360505998cf0fe91f",
+     "projectionVersion": 2,
+     "side": "low",
+     "symbol": "GOOG",
+     "timeframe": "daily"
+    },
+    {
+     "detectorConfigHash": "1851302943",
+     "generation": 2,
+     "libVersion": "19.7.0",
+     "projectionHash": "3c7726bec64022e7d41dedc36041cf0274f30e236ab55f677751578fb2958093",
+     "projectionVersion": 2,
+     "side": "low",
+     "symbol": "GOOG",
+     "timeframe": "weekly"
+    }
+   ]
+  },
+  "revision": 4,
+  "thesisId": "goog-eval",
+  "anchors": [
+   {
+    "edges": {
+     "centre": "2027-01-07",
+     "closes": "2027-01-20",
+     "earliest": "2026-12-16",
+     "hardMax": "2027-02-24",
+     "opens": "2026-12-23"
+    },
+    "id": "window:GOOG:daily:low",
+    "kind": "window",
+    "knowableAt": "2026-11-11",
+    "role": "context",
+    "side": "low",
+    "status": "projected",
+    "symbol": "GOOG",
+    "timeframe": "daily",
+    "price": null
+   },
+   {
+    "date": "2026-11-05",
+    "id": "pivot:GOOG:daily:low:2026-11-05",
+    "kind": "pivot",
+    "knowableAt": "2026-11-05",
+    "price": null,
+    "role": "context",
+    "side": "low",
+    "status": "confirmed",
+    "symbol": "GOOG",
+    "timeframe": "daily"
+   },
+   {
+    "edges": {
+     "centre": "2026-11-23",
+     "closes": "2027-01-04",
+     "earliest": "2026-09-28",
+     "hardMax": "2027-08-02",
+     "opens": "2026-10-26"
+    },
+    "id": "window:GOOG:weekly:low",
+    "kind": "window",
+    "knowableAt": "2026-04-27",
+    "role": "context",
+    "side": "low",
+    "status": "projected",
+    "symbol": "GOOG",
+    "timeframe": "weekly",
+    "price": null
+   },
+   {
+    "date": "2026-03-30",
+    "id": "pivot:GOOG:weekly:low:2026-03-30",
+    "kind": "pivot",
+    "knowableAt": "2026-04-20",
+    "price": null,
+    "role": "context",
+    "side": "low",
+    "status": "confirmed",
+    "symbol": "GOOG",
+    "timeframe": "weekly"
+   },
+   {
+    "date": "2026-11-02",
+    "developingPct": 33,
+    "id": "pivot:GOOG:weekly:low:2026-11-02:forming",
+    "kind": "pivot",
+    "knowableAt": null,
+    "price": null,
+    "role": "context",
+    "side": "low",
+    "status": "forming",
+    "symbol": "GOOG",
+    "timeframe": "weekly"
+   },
+   {
+    "from": {
+     "date": "2026-09-22",
+     "price": null
+    },
+    "id": "trendline:c3:goog-line-1",
+    "kind": "trendline",
+    "lineType": "resistance",
+    "role": "step:2:c3",
+    "symbol": "GOOG",
+    "timeframe": "daily",
+    "to": {
+     "date": "2026-11-20",
+     "price": null
+    }
+   },
+   {
+    "date": "2026-11-20",
+    "id": "close:last",
+    "kind": "close",
+    "price": null,
+    "role": "context",
+    "symbol": "GOOG"
+   }
+  ],
+  "priceWithheld": true
+ },
+ "planNote": "Reconstructed, not captured at the time.",
+ "current": {
+  "routes": [
+   {
+    "id": "meets",
+    "kind": "meets",
+    "leadsTo": "step:2",
+    "label": "A route that meets the steps",
+    "points": [
+     {
+      "t": "2026-11-20",
+      "price": null,
+      "ring": null
+     },
+     {
+      "t": "2027-01-07",
+      "price": null,
+      "ring": {
+       "conditionId": "c1",
+       "where": "step",
+       "step": 1,
+       "label": "Next confirmed daily cycle low (any price)"
+      }
+     },
+     {
+      "t": "2027-02-08",
+      "price": null,
+      "ring": null
+     },
+     {
+      "t": "2027-03-12",
+      "price": null,
+      "ring": {
+       "conditionId": "c2",
+       "where": "step",
+       "step": 2,
+       "label": "A higher daily cycle low"
+      }
+     }
+    ],
+    "legs": [
+     {
+      "from": 0,
+      "to": 1,
+      "basis": [
+       {
+        "stat": "window.daily.low.centre",
+        "date": "2027-01-07",
+        "bars": 45,
+        "extrapolated": true
+       },
+       {
+        "stat": "depth.low.daily.p75",
+        "value": null,
+        "n": 20,
+        "thin": false,
+        "price": null,
+        "anchor": {
+         "date": "2026-11-13",
+         "price": null,
+         "source": "confirmed-pivot"
+        }
+       },
+       {
+        "stat": "window.daily.low.confirmLagBars",
+        "value": 3,
+        "days": 4
+       }
+      ]
+     },
+     {
+      "from": 1,
+      "to": 2,
+      "basis": [
+       {
+        "stat": "window.daily.low.gaps.q50Bars",
+        "value": 45,
+        "bars": 23,
+        "default": true
+       },
+       {
+        "stat": "depth.high.daily.median",
+        "value": null,
+        "n": 20,
+        "thin": false,
+        "from": "2027-01-07"
+       }
+      ]
+     },
+     {
+      "from": 2,
+      "to": 3,
+      "basis": [
+       {
+        "stat": "window.daily.low.gaps.q50Bars",
+        "value": 45,
+        "bars": 23,
+        "default": true
+       },
+       {
+        "stat": "depth.low.daily.median",
+        "value": null,
+        "n": 20,
+        "thin": false,
+        "from": "2027-02-08"
+       },
+       {
+        "stat": "pivot.daily.low.prior",
+        "date": "2027-01-07"
+       }
+      ]
+     }
+    ],
+    "marks": [],
+    "missing": [],
+    "priceWithheld": true
+   },
+   {
+    "id": "challenges:c4",
+    "kind": "challenges",
+    "leadsTo": "invalidation:c4",
+    "label": "A route that challenges the thesis",
+    "points": [
+     {
+      "t": "2026-11-20",
+      "price": null,
+      "ring": null
+     },
+     {
+      "t": "2027-01-07",
+      "price": null,
+      "ring": null
+     },
+     {
+      "t": "2027-02-08",
+      "price": null,
+      "ring": {
+       "conditionId": "c4",
+       "where": "invalidation",
+       "step": null,
+       "label": "Daily close below the latest confirmed daily cycle low"
+      }
+     }
+    ],
+    "legs": [
+     {
+      "from": 0,
+      "to": 1,
+      "basis": [
+       {
+        "stat": "window.daily.low.centre",
+        "date": "2027-01-07",
+        "bars": 45,
+        "extrapolated": true
+       },
+       {
+        "stat": "depth.low.daily.p75",
+        "value": null,
+        "n": 20,
+        "thin": false,
+        "price": null,
+        "anchor": {
+         "date": "2026-11-13",
+         "price": null,
+         "source": "confirmed-pivot"
+        }
+       },
+       {
+        "stat": "window.daily.low.confirmLagBars",
+        "value": 3,
+        "days": 4
+       }
+      ]
+     },
+     {
+      "from": 1,
+      "to": 2,
+      "basis": [
+       {
+        "stat": "window.daily.low.gaps.q50Bars",
+        "value": 45,
+        "bars": 23,
+        "default": true
+       },
+       {
+        "stat": "level.break",
+        "conditionId": "c4",
+        "value": null,
+        "onIllustratedPivot": true
+       }
+      ]
+     }
+    ],
+    "marks": [],
+    "missing": [],
+    "priceWithheld": true
+   }
+  ],
+  "routeMissing": [],
+  "routeNote": null,
+  "inputs": {
+   "windows": [
+    {
+     "symbol": "GOOG",
+     "timeframe": "daily",
+     "side": "low",
+     "status": "projected",
+     "boundariesFinal": false,
+     "knowableFromDate": "2026-11-11",
+     "edges": {
+      "earliest": {
+       "date": "2026-12-16",
+       "bars": 29,
+       "extrapolated": true,
+       "derived": true
+      },
+      "opens": {
+       "date": "2026-12-23",
+       "bars": 34,
+       "extrapolated": true,
+       "derived": false
+      },
+      "centre": {
+       "date": "2027-01-07",
+       "bars": 45,
+       "extrapolated": true,
+       "derived": false
+      },
+      "closes": {
+       "date": "2027-01-20",
+       "bars": 54,
+       "extrapolated": true,
+       "derived": false
+      },
+      "hardMax": {
+       "date": "2027-02-24",
+       "bars": 79,
+       "extrapolated": true,
+       "derived": false
+      }
+     },
+     "ruler": {
+      "pivotDate": "2026-11-05",
+      "price": null,
+      "confirmedOn": "2026-11-05",
+      "confirmLagBars": 3
+     },
+     "gaps": {
+      "n": 20,
+      "q25Bars": 34,
+      "q50Bars": 45,
+      "q75Bars": 54,
+      "minBars": 29,
+      "medianBars": 46,
+      "maxBars": 79
+     },
+     "bands": {
+      "version": 1,
+      "core": {
+       "lowBars": 34,
+       "highBars": 54
+      },
+      "outer": {
+       "lowBars": 33,
+       "highBars": 63,
+       "opens": {
+        "date": "2026-12-22",
+        "bars": 33,
+        "extrapolated": true,
+        "derived": true
+       },
+       "closes": {
+        "date": "2027-02-02",
+        "bars": 63,
+        "extrapolated": true,
+        "derived": true
+       }
+      }
+     },
+     "verification": "unverified",
+     "calibration": "calibrated"
+    },
+    {
+     "symbol": "GOOG",
+     "timeframe": "weekly",
+     "side": "low",
+     "status": "projected",
+     "boundariesFinal": false,
+     "knowableFromDate": "2026-04-27",
+     "edges": {
+      "earliest": {
+       "date": "2026-09-28",
+       "bars": 26,
+       "extrapolated": false,
+       "derived": true
+      },
+      "opens": {
+       "date": "2026-10-26",
+       "bars": 30,
+       "extrapolated": false,
+       "derived": false
+      },
+      "centre": {
+       "date": "2026-11-23",
+       "bars": 34,
+       "extrapolated": true,
+       "derived": false
+      },
+      "closes": {
+       "date": "2027-01-04",
+       "bars": 40,
+       "extrapolated": true,
+       "derived": false
+      },
+      "hardMax": {
+       "date": "2027-08-02",
+       "bars": 70,
+       "extrapolated": true,
+       "derived": false
+      }
+     },
+     "ruler": {
+      "pivotDate": "2026-03-30",
+      "price": null,
+      "confirmedOn": "2026-04-20",
+      "confirmLagBars": 3
+     },
+     "gaps": {
+      "n": 20,
+      "q25Bars": 30,
+      "q50Bars": 34,
+      "q75Bars": 40,
+      "minBars": 26,
+      "medianBars": 35,
+      "maxBars": 70
+     },
+     "bands": {
+      "version": 1,
+      "core": {
+       "lowBars": 30,
+       "highBars": 40
+      },
+      "outer": {
+       "lowBars": 29,
+       "highBars": 51,
+       "opens": {
+        "date": "2026-10-19",
+        "bars": 29,
+        "extrapolated": false,
+        "derived": true
+       },
+       "closes": {
+        "date": "2027-03-22",
+        "bars": 51,
+        "extrapolated": true,
+        "derived": true
+       }
+      }
+     },
+     "verification": "unverified",
+     "calibration": "calibrated"
+    }
+   ],
+   "depth": [
+    {
+     "symbol": "GOOG",
+     "timeframe": "daily",
+     "side": "low",
+     "version": 2,
+     "anchorBasis": "pivots+bars",
+     "cycle": {
+      "q50Bars": 45,
+      "daysPerBar": 1.4074074074074074
+     },
+     "n": 20,
+     "thin": false,
+     "pct": null,
+     "zone": null,
+     "anchor": {
+      "date": "2026-11-13",
+      "price": null,
+      "source": "confirmed-pivot"
+     },
+     "position": "in-zone",
+     "verification": "context-only"
+    },
+    {
+     "symbol": "GOOG",
+     "timeframe": "daily",
+     "side": "high",
+     "version": 2,
+     "anchorBasis": "pivots+bars",
+     "cycle": {
+      "q50Bars": 38,
+      "daysPerBar": 1.4285714285714286
+     },
+     "n": 20,
+     "thin": false,
+     "pct": null,
+     "zone": null,
+     "anchor": {
+      "date": "2026-11-20",
+      "price": null,
+      "source": "running-extreme"
+     },
+     "position": "not-reached",
+     "verification": "context-only"
+    },
+    {
+     "symbol": "GOOG",
+     "timeframe": "weekly",
+     "side": "low",
+     "version": 2,
+     "anchorBasis": "pivots+bars",
+     "cycle": {
+      "q50Bars": 34,
+      "daysPerBar": 7
+     },
+     "n": 20,
+     "thin": false,
+     "pct": null,
+     "zone": null,
+     "anchor": {
+      "date": "2026-05-18",
+      "price": null,
+      "source": "confirmed-pivot"
+     },
+     "position": "deep",
+     "verification": "context-only"
+    },
+    {
+     "symbol": "GOOG",
+     "timeframe": "weekly",
+     "side": "high",
+     "version": 2,
+     "anchorBasis": "pivots+bars",
+     "cycle": {
+      "q50Bars": 34,
+      "daysPerBar": 7
+     },
+     "n": 20,
+     "thin": false,
+     "pct": null,
+     "zone": null,
+     "anchor": {
+      "date": "2026-11-02",
+      "price": null,
+      "source": "running-extreme"
+     },
+     "position": "not-reached",
+     "verification": "context-only"
+    }
+   ]
+  },
+  "anchors": [
+   {
+    "id": "window:GOOG:daily:low",
+    "kind": "window",
+    "symbol": "GOOG",
+    "timeframe": "daily",
+    "side": "low",
+    "status": "projected",
+    "edges": {
+     "earliest": "2026-12-16",
+     "opens": "2026-12-23",
+     "centre": "2027-01-07",
+     "closes": "2027-01-20",
+     "hardMax": "2027-02-24"
+    },
+    "knowableAt": "2026-11-11",
+    "role": "context",
+    "price": null
+   },
+   {
+    "id": "pivot:GOOG:daily:low:2026-11-05",
+    "kind": "pivot",
+    "symbol": "GOOG",
+    "timeframe": "daily",
+    "side": "low",
+    "date": "2026-11-05",
+    "price": null,
+    "knowableAt": "2026-11-05",
+    "status": "confirmed",
+    "role": "context"
+   },
+   {
+    "id": "window:GOOG:weekly:low",
+    "kind": "window",
+    "symbol": "GOOG",
+    "timeframe": "weekly",
+    "side": "low",
+    "status": "projected",
+    "edges": {
+     "earliest": "2026-09-28",
+     "opens": "2026-10-26",
+     "centre": "2026-11-23",
+     "closes": "2027-01-04",
+     "hardMax": "2027-08-02"
+    },
+    "knowableAt": "2026-04-27",
+    "role": "context",
+    "price": null
+   },
+   {
+    "id": "pivot:GOOG:weekly:low:2026-03-30",
+    "kind": "pivot",
+    "symbol": "GOOG",
+    "timeframe": "weekly",
+    "side": "low",
+    "date": "2026-03-30",
+    "price": null,
+    "knowableAt": "2026-04-20",
+    "status": "confirmed",
+    "role": "context"
+   },
+   {
+    "id": "pivot:GOOG:weekly:low:2026-11-02:forming",
+    "kind": "pivot",
+    "symbol": "GOOG",
+    "timeframe": "weekly",
+    "side": "low",
+    "date": "2026-11-02",
+    "price": null,
+    "knowableAt": null,
+    "status": "forming",
+    "developingPct": 33,
+    "role": "context"
+   },
+   {
+    "id": "trendline:c3:goog-line-1",
+    "kind": "trendline",
+    "symbol": "GOOG",
+    "timeframe": "daily",
+    "lineType": "resistance",
+    "from": {
+     "date": "2026-09-22",
+     "price": null
+    },
+    "to": {
+     "date": "2026-11-20",
+     "price": null
+    },
+    "role": "step:2:c3"
+   },
+   {
+    "id": "close:last",
+    "kind": "close",
+    "symbol": "GOOG",
+    "date": "2026-11-20",
+    "price": null,
+    "role": "context"
+   }
+  ],
+  "priceWithheld": true
+ },
+ "illustration": {
+  "disclaimer": {
+   "version": 1,
+   "text": "Illustration, not a forecast. The dashed lines show a shape price could take for the next step to be met, and one for the thesis to be challenged. They are drawn from your conditions and this symbol's past cycles. Not a prediction, a price target or advice. Price may do neither."
+  },
+  "watermark": "ILLUSTRATION · NOT A FORECAST",
+  "legend": {
+   "meets": "A route that meets the steps",
+   "challenges": "A route that challenges the thesis"
+  },
+  "routeBuilderVersion": 1,
+  "defaultNote": "Half the median cycle length: leg durations are not served yet (DWLF-890)."
+ },
+ "gaps": [],
+ "disclaimer": {
+  "version": 1,
+  "text": "What happened and what the thesis needs next, from DWLF's own data, checked once a night after the close. Information, not advice: not a forecast, a price target or a recommendation."
+ },
+ "definitions": {
+  "beat": "One step of the story: an event, a fire, a revision, where the thesis stands now, or what a step needs next.",
+  "knowableAt": "When DWLF could first know the event (a cycle low is confirmed some bars after its low bar). Nothing knowable before a condition was set counts for it.",
+  "checkedAs": "The exact condition an event speaks to, in its label's words. DWLF checks the condition's fields, not the label.",
+  "planAsDrawn": "What the thesis's chart showed when the revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed.",
+  "reconstructed": "A plan written after the fact for a thesis saved before plans were captured: today's engine reading, not the one at the time.",
+  "routes": "Dashed shapes price could take past today: one for the remaining steps to be met, and one for each way the thesis could be challenged, shown together or not at all. An illustration drawn from your conditions and this symbol's past cycles, not a prediction: every leg names the numbers it was drawn from.",
+  "basis": "The engine numbers a route's leg was drawn from: a window edge's date, a percentile of the depth band, a condition's own level, an engine trend line extended, the cycle's median length. A number marked default stands in for one the engine does not serve yet.",
+  "depthBand": "How far price moved into past pivots of a side (p25 to p75 of the fall into a low, or the rise into a high), over the trailing cycles. Context only."
+ },
+ "deepLink": "https://dwlf.co.uk/theses/goog-eval?story=now"
+}

@@ -40,6 +40,23 @@ export const BEAT_KIND_DEFINITIONS = {
   needs: 'What an unmet step needs to be met (and what would challenge the thesis). Not a forecast: it says what would count, not that it will happen.',
 } as const;
 
+/** The illustrated route kinds (DWLF-888), for agentHints.definitions.routeKind (UNKNOWN for a kind SPT adds later). */
+export const ROUTE_KIND_DEFINITIONS = {
+  meets: 'An illustration: one shape price could take for the remaining steps to be met. Not a forecast.',
+  challenges: 'An illustration: one way the thesis could be challenged (an invalidation, or a pivot level missed). Not a forecast.',
+} as const;
+
+/** What a route leg's numbers come from, by `basis[].stat` prefix (DWLF-888). */
+export const BASIS_DEFINITIONS = {
+  window: 'A cycle window\'s edge (its date), its cycle length (median bars between pivots of that side), or how many bars after its pivot a pivot is confirmed.',
+  depth: 'A percentile of the depth band: how far price moved into past pivots of that side.',
+  condition: 'The condition\'s own level, the user\'s number.',
+  level: 'The level a break is checked against (the latest confirmed pivot, or the illustrated one).',
+  trendline: 'An engine trend line, extended through its two points.',
+  close: 'The last close (price already past the band).',
+  pivot: 'The prior confirmed pivot a higher or lower pivot is compared with.',
+} as const;
+
 const goog = {
   symbol: 'GOOG',
   title: 'GOOG: the next confirmed daily cycle low, then a higher daily low or a bullish daily trend-line break',
@@ -130,6 +147,7 @@ export const THESIS_GUIDE = {
     clientKey: 'Optional: your own id for the thesis. Creating again with the same clientKey revises that thesis instead of adding another (a safe retry).',
     story: 'dwlf_get_thesis_story: the thesis in beats, chosen by rule (never by taste): saved, revisions, the windows, the engine events its conditions name, its fires; then now; then what each unmet step needs. Tell it as what happened and what the thesis needs, never as a forecast.',
     planAsDrawn: 'What the thesis\'s chart showed when a revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed. `reconstructed: true` means it was written after the fact for a thesis saved before plans were captured.',
+    route: 'An illustrated route in a story (current.routes; routes in a plan are as drawn at that save). The story body\'s own `definitions` (routes, basis) are SPT\'s and authoritative; dwlf_get_thesis_story\'s agentHints define each route kind and basis present.',
   },
   statuses: STATUS_DEFINITIONS,
   conditionStates: CONDITION_STATE_DEFINITIONS,

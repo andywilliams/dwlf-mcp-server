@@ -288,6 +288,32 @@ test('★ dwlf_get_thesis_story: its route (revision passed through), the backen
   assert.match(agentHints.how, /never as an expectation or a forecast/i);
 });
 
+test('★ dwlf_get_thesis_story: routes are named as illustrations in the line and the rule; none says why (DWLF-888)', async () => {
+  const story = (current) => ({ symbol: 'GOOG', summary: { beats: 3 }, beats: [], current });
+  const leg = (stat) => ({ from: 0, to: 1, basis: [{ stat }] });
+  const drawn = { routes: [{ id: 'meets', kind: 'meets', legs: [leg('window.daily.low.centre'), leg('depth.low.daily.p75')] }, { id: 'challenges:c4', kind: 'challenges', legs: [leg('level.break')] }, { id: 'x', kind: 'sideways', legs: [leg('novel.stat')] }], routeNote: null };
+  let { body } = await setup(() => story(drawn)).call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats. Illustrated routes (illustrations, not forecasts): 1 meets, 1 challenges, 1 sideways.');
+  assert.deepEqual(Object.keys(body.agentHints.definitions.routeKind), ['meets', 'challenges', 'sideways']);
+  assert.match(body.agentHints.definitions.routeKind.sideways, /Not described by this version/, 'a route kind SPT adds is named, not dropped');
+  assert.deepEqual(Object.keys(body.agentHints.definitions.basis), ['window', 'depth', 'level', 'novel']);
+  assert.match(body.agentHints.definitions.basis.novel, /Not described by this version/);
+  assert.match(body.agentHints.how, /never score them/);
+  // A plan's routes (an older revision) define their kinds too; null elements are skipped, never an error.
+  ({ body } = await setup(() => ({ symbol: 'GOOG', summary: { beats: 1 }, beats: [], current: { routes: [null], routeNote: null }, plan: { routes: [null, { kind: 'meets', legs: [null, { basis: [null, { stat: 'depth.low.daily.median' }] }] }] } })).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.isError, undefined);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.routeKind), ['meets']);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.basis), ['depth']);
+  for (const text of [body.agentHints.how]) { assert.doesNotMatch(text, /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i); }
+  assert.match(body.agentHints.how, /ILLUSTRATIONS, not forecasts/);
+  assert.match(body.agentHints.how, /never say how likely a route is/);
+  assert.match(body.agentHints.how, /quote illustration\.disclaimer\.text/);
+  ({ body } = await setup(() => story({ routes: [], routeNote: 'No route is drawn: nothing DWLF checks would challenge this thesis yet.' })).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats. No route is drawn: nothing DWLF checks would challenge this thesis yet.');
+  ({ body } = await setup(() => story(undefined)).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats.', 'an older API without routes: no route words');
+});
+
 test('list includeStory asks SPT for story (and progress with it when both are set)', async () => {
   const { calls, call } = setup(() => ({ theses: [] }));
   await call('dwlf_list_theses', { includeStory: true });
@@ -302,6 +328,11 @@ test('the recorded story narration still passes its checker; the faults the runs
   const { tmpdir } = await import('node:os');
   const run = (file) => { try { return execFileSync('node', ['eval/thesis-story/check.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
   assert.match(run('eval/thesis-story/answer-2026-11-20.json'), /^PASS/);
+  // With routes (DWLF-888): the recorded pass passes; run 1 fails on the old rule only; a heading claim fails.
+  const runRoutes = (file) => { try { return execFileSync('node', ['eval/thesis-story/check.mjs', file, 'routes'], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
+  assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run2.json'), /^PASS/);
+  assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run3.json'), /^PASS/, 'run 3: the current fixture');
+  assert.match(runRoutes('eval/thesis-story/answer-2026-11-21-routes-run1.json'), /^FAIL \(1\):\n- ties the 19 Nov break/);
   const dir = mkdtempSync(`${tmpdir()}/story-eval-`);
   const bad = (narration) => { const f = `${dir}/a.json`; writeFileSync(f, JSON.stringify({ narration })); return run(f); };
   const base = 'Your GOOG thesis is waiting: no step met. The 5 Nov daily low (known 11 Nov) failed on 19 Nov. GOOG is inside its weekly window (estimates, unverified). Step 1 needs the next confirmed daily low; step 2 a higher daily low or a bullish trend-line break. A daily close below the latest confirmed daily low would challenge it.';
@@ -318,6 +349,16 @@ test('the recorded story narration still passes its checker; the faults the runs
   assert.match(bad(`${base} On 19 Nov GOOG closed below that low. The thesis is challenged by that close.`), /challenged by a break/, 'by that close: a claim, not the rule');
   assert.match(bad(`${base} That close challenged the thesis.`), /challenged by a break/);
   assert.match(bad(`${base} That close challenges it.`), /challenged by a break/);
+  const badRoutes = (narration) => { const f = `${dir}/r.json`; writeFileSync(f, JSON.stringify({ narration })); return runRoutes(f); };
+  const routes = `${base} As an illustration, not a forecast: a route that meets the steps runs to a low near the daily window centre, from past cycles; a route that challenges the thesis runs to a close below it.`;
+  assert.match(badRoutes(routes), /^PASS/);
+  assert.match(badRoutes(`${routes} GOOG is heading for a low on 7 Jan.`), /where price is heading/);
+  assert.match(badRoutes(`${routes} Price will reach that low in January.`), /where price is heading/);
+  assert.match(badRoutes(`${routes} Don't read it as a level price will reach.`), /^PASS/, 'a denial passes');
+  assert.match(badRoutes(base), /illustrations[\s\S]*both/, 'no routes told: fails the route checks');
+  // Illustrations, both kinds, the panel text quoted, but no leg tied to its numbers: the basis check fails alone.
+  const panel = 'Illustration, not a forecast. The dashed lines show a shape price could take for the next step to be met, and one for the thesis to be challenged. They are drawn from your conditions and this symbol\'s past cycles. Not a prediction, a price target or advice. Price may do neither.';
+  assert.match(badRoutes(`${base} There is a route that meets the steps and one way it could be challenged, as illustrations. "${panel}"`), /^FAIL \(1\):\n- says what a route was drawn from/);
 });
 
 test('dwlf_get_thesis_story: a body without a summary or with no beats array still reaches the agent, never a false count', async () => {

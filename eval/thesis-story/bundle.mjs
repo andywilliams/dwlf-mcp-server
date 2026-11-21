@@ -1,11 +1,12 @@
 // What a fresh agent is given (eval/thesis-story/README.md): the story tool as an MCP client lists it, the beat-kind
-// definitions, and the tool's answer for the GOOG example (the fixture, with the agentHints the tool adds).
+// definitions, and the tool's answer for the GOOG example (the fixture, with the agentHints the tool adds). An argument
+// names another fixture in this folder (goog-story-routes.json: the same thesis a day later, with illustrated routes).
 import { readFileSync } from 'node:fs';
 import { registerThesisTools } from '../../dist/tools/theses.js';
 import { z } from 'zod';
 const tools = new Map();
 registerThesisTools({ tool: (name, desc, schema, fn) => tools.set(name, { desc, schema: z.toJSONSchema(z.object(schema || {})), fn }) }, {
-  get: async () => JSON.parse(readFileSync(new URL('./goog-story.json', import.meta.url), 'utf8')),
+  get: async () => JSON.parse(readFileSync(new URL(`./${process.argv[2] || 'goog-story.json'}`, import.meta.url), 'utf8')),
 });
 const t = tools.get('dwlf_get_thesis_story');
 const res = await t.fn({ thesisId: 'goog-example' });
