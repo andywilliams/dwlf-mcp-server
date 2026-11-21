@@ -288,6 +288,20 @@ test('★ dwlf_get_thesis_story: its route (revision passed through), the backen
   assert.match(agentHints.how, /never as an expectation or a forecast/i);
 });
 
+test('★ dwlf_get_thesis_story: routes are named as illustrations in the line and the rule; none says why (DWLF-888)', async () => {
+  const story = (current) => ({ symbol: 'GOOG', summary: { beats: 3 }, beats: [], current });
+  const drawn = { routes: [{ id: 'meets', kind: 'meets' }, { id: 'challenges:c4', kind: 'challenges' }], routeNote: null };
+  let { body } = await setup(() => story(drawn)).call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats. Illustrated routes: one that meets the steps and 1 that challenges the thesis (illustrations, not forecasts).');
+  assert.match(body.agentHints.how, /ILLUSTRATIONS, not forecasts/);
+  assert.match(body.agentHints.how, /never say how likely a route is/);
+  assert.match(body.agentHints.how, /quote illustration\.disclaimer\.text/);
+  ({ body } = await setup(() => story({ routes: [], routeNote: 'No route is drawn: nothing DWLF checks would challenge this thesis yet.' })).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats. No route is drawn: nothing DWLF checks would challenge this thesis yet.');
+  ({ body } = await setup(() => story(undefined)).call('dwlf_get_thesis_story', { thesisId: 't1' }));
+  assert.equal(body.agentHints.summary, 'GOOG story, 3 beats.', 'an older API without routes: no route words');
+});
+
 test('list includeStory asks SPT for story (and progress with it when both are set)', async () => {
   const { calls, call } = setup(() => ({ theses: [] }));
   await call('dwlf_list_theses', { includeStory: true });

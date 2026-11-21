@@ -140,6 +140,17 @@ const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the change
 
 /** How to tell a story to the user: what happened and what the thesis needs, never what price will do. */
 const STORY_RULE = 'Tell it as what happened and what the thesis needs next, in the beats\' own facts. Never as an expectation or a forecast: a needs-next beat says what would meet a step, not that it will happen.';
+/** How to describe the illustrated routes (DWLF-888): illustrations from the engine's numbers, never expectations. */
+const ROUTE_RULE = 'Routes (current.routes) are ILLUSTRATIONS, not forecasts: describe a meets route as "a shape price could take for the step to be met" and a challenges route as "one way the thesis could be challenged", always both together, and quote illustration.disclaimer.text. Name a leg\'s numbers from its basis (a window edge, a depth-band percentile, the condition\'s level); never present a route vertex\'s price as a level to aim for or one price will reach, and never say how likely a route is. No routes: say why, from current.routeNote.';
+
+/** The routes in a line: which are drawn, or why none (routeNote). */
+const routesLine = (data: Json): string => {
+  const current = (data.current && typeof data.current === 'object' ? data.current : {}) as { routes?: Json[]; routeNote?: string | null };
+  const routes = Array.isArray(current.routes) ? current.routes : [];
+  if (!routes.length) { return current.routeNote ? ` ${current.routeNote}` : ''; }
+  const challenges = routes.filter((r) => r?.kind === 'challenges').length;
+  return ` Illustrated routes: one that meets the steps and ${challenges} that challenge${challenges === 1 ? 's' : ''} the thesis (illustrations, not forecasts).`;
+};
 
 /** One line: how many beats, the last thing that happened, what it needs next, and the plan's note (reconstructed, or none). */
 const storyLine = (data: Json): string => {
@@ -148,7 +159,7 @@ const storyLine = (data: Json): string => {
   const last = s.last?.sentence ? ` Last: ${s.last.sentence}` : '';
   const next = s.needsNext ? ` Next: ${s.needsNext}` : '';
   const note = data.planNote ? ` Plan: ${String(data.planNote)}` : '';
-  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}`;
+  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}${routesLine(data)}`;
 };
 
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
@@ -268,7 +279,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_get_thesis_story',
-    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). ${STORY_RULE} Engine prices are withheld for keys not entitled to raw prices.`,
+    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). \`current.routes\`: illustrated routes past today, one that meets the remaining steps and one per way the thesis could be challenged (both or none), each leg naming the engine numbers it was drawn from (\`basis\`); \`illustration\` carries their disclaimer, watermark and legend. ${STORY_RULE} ${ROUTE_RULE} Engine prices (route vertices included) are withheld for keys not entitled to raw prices.`,
     {
       thesisId: z.string().describe('Thesis ID'),
       revision: z.number().int().positive().optional().describe('Whose plan as drawn to return (1..currentRevision). Default: the current revision.'),
@@ -277,7 +288,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
       try {
         const data = await client.get(`/theses/${encodeURIComponent(thesisId)}/story`, defined({ revision })) as Json;
         const beats = (Array.isArray(data.beats) ? data.beats : []) as Json[];
-        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)) }, how: STORY_RULE, why: WHY });
+        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)) }, how: `${STORY_RULE} ${ROUTE_RULE}`, why: WHY });
       } catch (error) { return fail(error); }
     }
   );
