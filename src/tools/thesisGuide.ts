@@ -17,7 +17,7 @@ export const STATUS_DEFINITIONS = {
 
 export const CONDITION_STATE_DEFINITIONS = {
   pending: 'Not decided yet.',
-  met: 'Decided: the event happened as described (`at`, `knowableAt` say when DWLF could know it).',
+  met: 'Decided: the event happened as described (`knowableAt`, also `at`, says when DWLF could first know it; `session` is the bar; `sourceEventId` the engine event that decided it).',
   missed: 'Decided: the event happened outside the condition (e.g. the pivot printed outside its level).',
   marked: 'A manual condition the user marked met; the nightly check records it on its next run.',
 } as const;
@@ -27,6 +27,17 @@ export const FIRE_KIND_DEFINITIONS = {
   condition_missed: 'A step condition was decided outside its level; the thesis is challenged.',
   invalidation_hit: 'An invalidation condition happened; the thesis is challenged.',
   source_failed: 'The event that decided a condition is no longer in the engine\'s data (it was withdrawn).',
+} as const;
+
+export const BEAT_KIND_DEFINITIONS = {
+  saved: 'The thesis was saved: from here DWLF checks it nightly; nothing known before counts.',
+  revision: 'The thesis was revised: a changed condition is set again from here; an unchanged one keeps its result.',
+  window: 'A cycle window the engine draws opened (dates are engine estimates while unverified).',
+  event: 'An engine event of a kind a condition names (a confirmed pivot, a pivot failing, a higher low, a trend-line break), with when DWLF could first know it.',
+  fire: 'A step was met, or the thesis was challenged, or the event behind a met condition was withdrawn.',
+  earlier: 'Older beats folded into one (a story shows at most 8 past beats).',
+  now: 'Where the thesis stands: each step met or not, the last bar checked, any open window.',
+  needs: 'What an unmet step needs to be met (and what would challenge the thesis). Not a forecast: it says what would count, not that it will happen.',
 } as const;
 
 const goog = {
@@ -80,7 +91,8 @@ export const THESIS_GUIDE = {
     'Honest timing: every event carries when DWLF could first know it (knowableAt), and nothing known before a condition was saved counts. A thesis cannot be "met" by something that had already happened.',
     'Exactly what is checked: each condition is one of a few event types DWLF detects itself, so a step is met by the engine\'s own data, not by a reading of the chart.',
     'How close: dwlf_list_theses with includeProgress says, per condition, the last close and its distance to a level, whether a pivot is forming and how developed it is, and when a weekly window opens; `closest` sorts the theses by it.',
-    'A journal: edits are new revisions (earlier ones kept); a challenged thesis is answered keep, revise or close (with an outcome), so the record shows how each idea played out. On the site each thesis also has a step-through story on its chart.',
+    'A journal: edits are new revisions (earlier ones kept); a challenged thesis is answered keep, revise or close (with an outcome), so the record shows how each idea played out.',
+    'A story: dwlf_get_thesis_story tells each thesis in steps (what happened, where it stands, what each step needs next), the same story as the site\'s step-through on its chart, with the plan as drawn when each revision was saved.',
   ],
   limits: [
     'End of day: conditions are checked once a night after the close, not intraday. An intraday condition checks the day\'s high or low after the close.',
@@ -102,7 +114,7 @@ export const THESIS_GUIDE = {
     '1. dwlf_list_thesis_condition_types: the types, fields and rules.',
     '2. dwlf_create_thesis with dryRun: true: read back the restatements and checks to the user.',
     '3. dwlf_create_thesis (no dryRun) once the user agrees; keep the clientKey if you set one (a retry with it is the same thesis).',
-    '4. Later: dwlf_list_theses (includeProgress for how close), dwlf_list_thesis_fires with your saved cursor for what happened, dwlf_ack_thesis_fires for what the user has seen.',
+    '4. Later: dwlf_list_theses (includeProgress for how close, includeStory for a line each), dwlf_list_thesis_fires with your saved cursor for what happened, dwlf_ack_thesis_fires for what the user has seen, dwlf_get_thesis_story to tell one thesis\'s story.',
     '5. A challenged thesis: ask the user, then dwlf_review_thesis (keep / revise / close). To change conditions: dwlf_revise_thesis with expectedRevision, dryRun: true first (only the changed conditions are judged), then without it once the user agrees.',
   ],
   glossary: {
@@ -116,11 +128,14 @@ export const THESIS_GUIDE = {
     level: 'pivot_confirmed only: the confirmed pivot\'s price (the bar\'s intraday low or high) must be above, below or inside it; a first pivot outside it is a miss and challenges the thesis. Without a level, any first pivot meets it.',
     group: 'An optional free-text tag to group theses (e.g. "miners"); filter dwlf_list_theses by it.',
     clientKey: 'Optional: your own id for the thesis. Creating again with the same clientKey revises that thesis instead of adding another (a safe retry).',
+    story: 'dwlf_get_thesis_story: the thesis in beats, chosen by rule (never by taste): saved, revisions, the windows, the engine events its conditions name, its fires; then now; then what each unmet step needs. Tell it as what happened and what the thesis needs, never as a forecast.',
+    planAsDrawn: 'What the thesis\'s chart showed when a revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed. `reconstructed: true` means it was written after the fact for a thesis saved before plans were captured.',
   },
   statuses: STATUS_DEFINITIONS,
   conditionStates: CONDITION_STATE_DEFINITIONS,
   fireKinds: FIRE_KIND_DEFINITIONS,
-  whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story; the notifications bell; and the Telegram digest. Users can also build and revise theses there themselves (New thesis; Revise conditions), with the same types and checks.',
+  beatKinds: BEAT_KIND_DEFINITIONS,
+  whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story (dwlf_get_thesis_story\'s deepLink opens it); the notifications bell; and the Telegram digest. Users can also build and revise theses there themselves (New thesis; Revise conditions), with the same types and checks.',
   examples: [
     { name: 'Wait for the next confirmed daily low, then a higher low or a trend-line break, challenged if the weekly low breaks', create: goog,
       notes: 'Step 1 has no level ("any price"), so any first confirmed daily low after 5 Nov meets it. The invalidation uses cycle.low.break because the low that would confirm step 1 does not exist yet.' },

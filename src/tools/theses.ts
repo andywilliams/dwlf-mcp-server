@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
+import { BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
 
 /**
  * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
@@ -138,6 +138,19 @@ const dryRunSummary = (data: Json, saved: string) => (data.dryRun === true
   : `This API did not run a dry run (it may not support one for revisions yet), so the change may have been saved. ${saved}`);
 const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the changed conditions (listed in `changed`): whether each can occur or is already true. `wouldSave` says whether the revision would be accepted.';
 
+/** How to tell a story to the user: what happened and what the thesis needs, never what price will do. */
+const STORY_RULE = 'Tell it as what happened and what the thesis needs next, in the beats\' own facts. Never as an expectation or a forecast: a needs-next beat says what would meet a step, not that it will happen.';
+
+/** One line: how many beats, the last thing that happened, what it needs next, and the plan's note (reconstructed, or none). */
+const storyLine = (data: Json): string => {
+  const s = (data.summary && typeof data.summary === 'object' ? data.summary : {}) as { beats?: number; last?: { sentence?: string } | null; needsNext?: string | null };
+  const count = Number.isFinite(s.beats) ? s.beats : Array.isArray(data.beats) ? data.beats.length : null;
+  const last = s.last?.sentence ? ` Last: ${s.last.sentence}` : '';
+  const next = s.needsNext ? ` Next: ${s.needsNext}` : '';
+  const note = data.planNote ? ` Plan: ${String(data.planNote)}` : '';
+  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}`;
+};
+
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_thesis_guide',
@@ -196,17 +209,19 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_theses',
-    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not.',
+    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next).',
     {
       status: z.string().optional().describe('Filter: waiting, in_progress, complete, challenged, archived or closed.'),
       symbol: z.string().optional().describe('Filter by thesis symbol.'),
       group: z.string().optional().describe('Filter by group.'),
       includeProgress: z.boolean().optional().describe('Also say how close each active thesis is to its next condition (and its nearest invalidation), with `closest` to sort by. A few extra reads; leave off for a plain list.'),
+      includeStory: z.boolean().optional().describe('Also give each active thesis a one-line `storySummary` { beats, last { date, sentence }, needsNext }: the story dwlf_get_thesis_story tells, in brief. A few extra reads.'),
     },
-    async ({ status, symbol, group, includeProgress }) => {
+    async ({ status, symbol, group, includeProgress, includeStory }) => {
       try {
+        const include = [includeProgress ? 'progress' : null, includeStory ? 'story' : null].filter(Boolean).join(',') || undefined;
         const data = await client.get('/theses', {
-          status, symbol: symbol ? normalizeSymbol(symbol) : undefined, group, include: includeProgress ? 'progress' : undefined,
+          status, symbol: symbol ? normalizeSymbol(symbol) : undefined, group, include,
         }) as Json;
         const theses = (data.theses || []) as Thesis[];
         // With progress: name the closest few, in SPT's own short words and order (closest.rank, compared element by element,
@@ -247,6 +262,22 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
         const t = data.thesis as (Thesis & { fires?: Json[] }) | undefined;
         if (!t) { return ok(data, { summary: 'The response carried no thesis.', why: WHY }); }
         return ok(data, { summary: thesisLine(t), definitions: thesisDefinitions([t], t.fires || []), why: WHY });
+      } catch (error) { return fail(error); }
+    }
+  );
+
+  server.tool(
+    'dwlf_get_thesis_story',
+    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). ${STORY_RULE} Engine prices are withheld for keys not entitled to raw prices.`,
+    {
+      thesisId: z.string().describe('Thesis ID'),
+      revision: z.number().int().positive().optional().describe('Whose plan as drawn to return (1..currentRevision). Default: the current revision.'),
+    },
+    async ({ thesisId, revision }) => {
+      try {
+        const data = await client.get(`/theses/${encodeURIComponent(thesisId)}/story`, defined({ revision })) as Json;
+        const beats = (Array.isArray(data.beats) ? data.beats : []) as Json[];
+        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)) }, how: STORY_RULE, why: WHY });
       } catch (error) { return fail(error); }
     }
   );

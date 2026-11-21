@@ -178,7 +178,7 @@ test('registered in the full server, and not in the Block profile', () => {
   const names = [];
   registerAll({ tool: (name) => names.push(name), resource: () => {} }, {});
   const theses = names.filter((n) => /thes/.test(n));
-  assert.equal(theses.length, 12);
+  assert.equal(theses.length, 13);
   assert.deepEqual(theses.filter((n) => BLOCK_TOOLS.has(n)), []);
 });
 
@@ -267,4 +267,64 @@ test('the eval checker reads denials and forecasts by clause: a negated list pas
   };
   assert.match(run('It doesn\'t give forecasts, guarantees or a price target.'), /^PASS/);
   assert.match(run('There is no doubt the price will rise.'), /no forecast/);
+});
+
+test('★ dwlf_get_thesis_story: its route (revision passed through), the backend body whole, a summary line and beat-kind definitions (DWLF-887)', async () => {
+  const backend = {
+    thesisId: 't 1', symbol: 'GOOG', revision: 1, planNote: 'Reconstructed, not captured at the time.',
+    summary: { beats: 8, last: { date: '2026-11-19', sentence: 'The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov.' }, needsNext: 'Step 1 needs this: Next confirmed daily cycle low (any price).' },
+    beats: [{ id: 'saved', kind: 'saved' }, { id: 'now', kind: 'now' }, { id: 'needs-1', kind: 'needs' }, { id: 'x', kind: 'replay' }],
+  };
+  const { calls, call } = setup(() => backend);
+  const { body } = await call('dwlf_get_thesis_story', { thesisId: 't 1', revision: 1 });
+  assert.deepEqual([calls[0].path, calls[0].a], ['/theses/t%201/story', { revision: 1 }]);
+  await call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.deepEqual(calls[1].a, {}, 'no revision: none sent');
+  const { agentHints, ...rest } = body;
+  assert.deepEqual(rest, backend);
+  assert.equal(agentHints.summary, 'GOOG story, 8 beats. Last: The 5 Nov daily cycle low failed: a daily close below 276.2 on 19 Nov. Next: Step 1 needs this: Next confirmed daily cycle low (any price). Plan: Reconstructed, not captured at the time.');
+  assert.deepEqual(Object.keys(agentHints.definitions.beatKind), ['saved', 'now', 'needs', 'replay']);
+  assert.match(agentHints.definitions.beatKind.replay, /Not described by this version/, 'a newer beat kind is named, not dropped');
+  assert.match(agentHints.how, /never as an expectation or a forecast/i);
+});
+
+test('list includeStory asks SPT for story (and progress with it when both are set)', async () => {
+  const { calls, call } = setup(() => ({ theses: [] }));
+  await call('dwlf_list_theses', { includeStory: true });
+  await call('dwlf_list_theses', { includeStory: true, includeProgress: true });
+  await call('dwlf_list_theses', {});
+  assert.deepEqual(calls.map((c) => c.a.include), ['story', 'progress,story', undefined]);
+});
+
+test('the recorded story narration still passes its checker; the faults the runs found fail it (eval/thesis-story, DWLF-887)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const run = (file) => { try { return execFileSync('node', ['eval/thesis-story/check.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
+  assert.match(run('eval/thesis-story/answer-2026-11-20.json'), /^PASS/);
+  const dir = mkdtempSync(`${tmpdir()}/story-eval-`);
+  const bad = (narration) => { const f = `${dir}/a.json`; writeFileSync(f, JSON.stringify({ narration })); return run(f); };
+  const base = 'Your GOOG thesis is waiting: no step met. The 5 Nov daily low (known 11 Nov) failed on 19 Nov. GOOG is inside its weekly window (estimates, unverified). Step 1 needs the next confirmed daily low; step 2 a higher daily low or a bullish trend-line break. A daily close below the latest confirmed daily low would challenge it.';
+  assert.match(bad(base), /^PASS/);
+  assert.match(bad(`${base} The 19 Nov break fits that description.`), /challenged by a break/, 'run 1');
+  assert.match(bad(`${base} The 19 Nov close below it is also the condition your thesis lists as a challenge.`), /19 Nov break to the challenge/, 'run 3');
+  assert.match(bad(`${base} The last close was 271.02.`), /invented prices \(271\.02\)/, 'the story holds no prices');
+  assert.match(bad(`${base} A new daily low will form soon.`), /no forecast/);
+  assert.match(bad(`${base} This is not advice, and a new daily low will form soon.`), /no forecast/, 'a disclaimer does not deny the forecast after it');
+  assert.match(bad(`${base} It is not a forecast; it does not say a low will form.`), /^PASS/, 'a real denial passes');
+  assert.match(bad(`${base} It does not say a low will form, and GOOG will rise.`), /no forecast/, 'each match judged on its own');
+  assert.match(bad(`${base} The thesis is challenged by a daily close below the latest confirmed daily low.`), /^PASS/, 'the definition is not a claim');
+  assert.match(bad(`${base} The thesis is now challenged.`), /challenged by a break/);
+  assert.match(bad(`${base} On 19 Nov GOOG closed below that low. The thesis is challenged by that close.`), /challenged by a break/, 'by that close: a claim, not the rule');
+  assert.match(bad(`${base} That close challenged the thesis.`), /challenged by a break/);
+  assert.match(bad(`${base} That close challenges it.`), /challenged by a break/);
+});
+
+test('dwlf_get_thesis_story: a body without a summary or with no beats array still reaches the agent, never a false count', async () => {
+  const { call } = setup(() => ({ symbol: 'GOOG', beats: [{ kind: 'now' }, { kind: 'needs' }] }));
+  assert.equal((await call('dwlf_get_thesis_story', { thesisId: 't1' })).body.agentHints.summary, 'GOOG story, 2 beats.');
+  const odd = setup(() => ({ beats: 'x' }));
+  const { res, body } = await odd.call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.equal(res.isError, undefined);
+  assert.equal(body.agentHints.summary, 'Thesis story, an unknown number of beats.');
 });
