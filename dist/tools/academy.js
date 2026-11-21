@@ -46,7 +46,7 @@ export function registerAcademyTools(server) {
         }
     });
     // 2. Get a single lesson by slug
-    server.tool('dwlf_get_academy_lesson', 'Get the full content of a DWLF Academy lesson by slug. Returns markdown. Use dwlf_list_academy_tracks first to find available lessons.', {
+    server.tool('dwlf_get_academy_lesson', 'Get the full content of a DWLF Academy lesson by slug, as markdown. Use dwlf_list_academy_tracks first to find available lessons.', {
         slug: z
             .string()
             .describe('Lesson slug from the academy manifest (e.g. "intro-to-indicators")'),
@@ -69,7 +69,7 @@ export function registerAcademyTools(server) {
         }
     });
     // 3. Search academy content by keyword
-    server.tool('dwlf_search_academy', 'Search DWLF Academy content by keyword. Searches track and lesson titles. Returns matching lessons with their track context.', {
+    server.tool('dwlf_search_academy', 'Search DWLF Academy content by keyword. Searches track and lesson titles and lists the matching lessons with their track context.', {
         query: z
             .string()
             .describe('Search term to match against track/lesson titles and descriptions'),
