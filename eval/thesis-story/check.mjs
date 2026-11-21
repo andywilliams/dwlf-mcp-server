@@ -4,7 +4,12 @@ import { readFileSync } from 'node:fs';
 
 const answer = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const x = String(answer.narration || '');
-const t = x.toLowerCase();
+// DWLF's own panel text, quoted as served (it denies a forecast and names "a price target" to rule it out), is not the
+// agent's claim: it is taken out before the clause checks.
+// So are the legend's names for the routes ("a route that challenges the thesis" names a route, it claims nothing).
+const { illustration } = JSON.parse(readFileSync(new URL('./goog-story-routes.json', import.meta.url), 'utf8'));
+const t = [illustration.disclaimer.text, ...Object.values(illustration.legend)].map((s) => s.toLowerCase())
+  .reduce((acc, quoted) => acc.split(quoted).join('~'), x.toLowerCase());
 const failures = [];
 const check = (ok, what) => { if (!ok) failures.push(what); };
 
@@ -25,7 +30,7 @@ check(!prices.length, `no invented prices (${prices.join(', ') || 'none'})`);
 
 // No forecast or call to act, read clause by clause; a denial ("not a forecast") is the honest limit and passes.
 const clauses = t.replace(/\b(no doubt|no question|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
-const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
+const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|don't|do not|isn't|is not|can't|cannot|neither|nor|without)\b/;
 // A negation denies a match only within its own part of the clause ("not advice, and it will rise" asserts the rise),
 // and each match is judged on its own ("it does not say a low will form, and GOOG will rise" asserts the second).
 const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/,|;|\band\b|\bso\b/).pop());
@@ -38,6 +43,19 @@ const CLAIMS_CHALLENGED = /\b(fits (that|the|this)|is (now )?challenged(?! (by a
 check(clauses.filter((c) => /challeng/.test(c) && /19 nov/.test(c)).every((c) => /(do(es)?n'?t|not|never) count/.test(c)),
   'ties the 19 Nov break to the challenge only to say it does not count (it was known before the challenge was set)');
 check(!asserted(CLAIMS_CHALLENGED), 'does not call the thesis challenged by a break that came before the challenge was set');
+
+// With routes (`check.mjs answer.json routes`, the goog-story-routes.json fixture, DWLF-888): told as illustrations, both
+// kinds, by what they were drawn from; never as where price is heading.
+if (process.argv[3] === 'routes') {
+  // What is said is read from the whole narration, quotes included (quoting the legend names both kinds).
+  const said = x.toLowerCase();
+  check(/(illustrat|not a forecast)/.test(said), 'calls the routes illustrations (not a forecast)');
+  check(/\b(route|shape|path)s?\b/.test(said) && /\bmeet/.test(said) && /challeng/.test(said), 'names both: a route that meets the steps and one that challenges the thesis');
+  check(/(window|centre|center)/.test(said) && /(past|depth|band|cycle)/.test(said), 'says what a route was drawn from (the window, past cycles)');
+  // ("projected to open" is the engine's own word for a window date, so "projected" is not on the list.)
+  const HEADING = /\b(heading (for|to|toward)|on track (to|for)|will (reach|bottom|top|get to|land|hit|test)|is going to|targets?|aims? for|the next leg (is|will))\b/;
+  check(!asserted(HEADING), 'never tells a route as where price is heading');
+}
 
 if (failures.length) { console.log(`FAIL (${failures.length}):\n- ${failures.join('\n- ')}`); process.exit(1); }
 console.log('PASS: the story told from its facts: what happened, where it stands, what it needs; no forecast.');

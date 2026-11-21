@@ -19,3 +19,15 @@
 - run 4: told it straight, but quoted the story's prices; the fixture is now the story a key without raw-price rights gets (no prices: an MIT repo must not carry vendor prices, and it tests that nothing is invented).
 - run 5: told it straight, quoted no price; but the fixture had been built from a list view without the thesis's revisions (revision 1, while its conditions were set 19 and 20 Nov). Rebuilt with GOOG's real revisions 1–4.
 - run 6: tells it straight: the revisions, when each condition was set, that the 19 Nov break does not count for the challenge, no price.
+
+## With routes (DWLF-888)
+
+**Given:** the same, with `goog-story-routes.json`: the same thesis on 21 Nov from the routes branch of SPT, as a key without raw-price rights gets it (route vertices, band prices and percentiles withheld; dates, rings and basis stats kept), with its two illustrated routes. **User says:** "…including that picture of what could happen next." **Run it:** `node eval/thesis-story/bundle.mjs goog-story-routes.json`, then `check.mjs <answer.json> routes`.
+
+**Pass** adds: the routes are called illustrations (not a forecast); both kinds are named; what a route was drawn from is said (the window, past cycles); a route is never told as where price is heading ("heading for", "will reach", "target"…). DWLF's own panel text and legend, quoted, are not the agent's claims.
+
+**Recorded** (fresh general-purpose agents given only the bundle):
+- `answer-2026-11-21-routes-run1.json`: FAIL, on the old rule only. It told the routes straight (both kinds, illustrations, the basis, the default stand-in, no levels, no odds), but wrote "That 19 Nov failure matches your challenge condition" in its own sentence before saying it does not count. Kept as the checker's proof it still catches that.
+- `answer-2026-11-21-routes-run2.json`: **PASS**.
+- Checker fixes from these runs: "don't" is a denial; "projected to" (the engine's word for a window date) is not a heading claim; the quoted panel text and legend are taken out before the clause checks.
+

@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
+import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, ROUTE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
 
 /**
  * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
@@ -141,15 +141,18 @@ const REVISION_DRY_RUN = 'Dry run: nothing was saved. `checks` covers the change
 /** How to tell a story to the user: what happened and what the thesis needs, never what price will do. */
 const STORY_RULE = 'Tell it as what happened and what the thesis needs next, in the beats\' own facts. Never as an expectation or a forecast: a needs-next beat says what would meet a step, not that it will happen.';
 /** How to describe the illustrated routes (DWLF-888): illustrations from the engine's numbers, never expectations. */
-const ROUTE_RULE = 'Routes (current.routes) are ILLUSTRATIONS, not forecasts: describe a meets route as "a shape price could take for the step to be met" and a challenges route as "one way the thesis could be challenged", always both together, and quote illustration.disclaimer.text. Name a leg\'s numbers from its basis (a window edge, a depth-band percentile, the condition\'s level); never present a route vertex\'s price as a level to aim for or one price will reach, and never say how likely a route is. No routes: say why, from current.routeNote.';
+const ROUTE_RULE = 'Routes (current.routes, and a plan\'s routes as drawn at that save) are ILLUSTRATIONS, not forecasts: describe a meets route as "a shape price could take for the step to be met" and a challenges route as "one way the thesis could be challenged", always both together, and quote illustration.disclaimer.text. Name a leg\'s numbers from its basis (a window edge, a depth-band percentile, the condition\'s level); never present a route vertex\'s price as a level to aim for or one price will reach, and never say how likely a route is. A plan\'s routes are what that plan illustrated then: never score them against what price did (no hit or miss). No routes: say why, from current.routeNote.';
 
-/** The routes in a line: which are drawn, or why none (routeNote). */
+const routesOf = (v: unknown): Json[] => (Array.isArray(v) ? v as Json[] : []);
+
+/** The routes in a line: how many of each kind are drawn, or why none (routeNote). */
 const routesLine = (data: Json): string => {
   const current = (data.current && typeof data.current === 'object' ? data.current : {}) as { routes?: Json[]; routeNote?: string | null };
   const routes = Array.isArray(current.routes) ? current.routes : [];
   if (!routes.length) { return current.routeNote ? ` ${current.routeNote}` : ''; }
-  const challenges = routes.filter((r) => r?.kind === 'challenges').length;
-  return ` Illustrated routes: one that meets the steps and ${challenges} that challenge${challenges === 1 ? 's' : ''} the thesis (illustrations, not forecasts).`;
+  const count = countBy(routes as Json[], 'kind');
+  const words = Object.entries(count).map(([kind, n]) => `${n} ${kind}`).join(', ');
+  return ` Illustrated routes (illustrations, not forecasts): ${words}.`;
 };
 
 /** One line: how many beats, the last thing that happened, what it needs next, and the plan's note (reconstructed, or none). */
@@ -288,7 +291,13 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
       try {
         const data = await client.get(`/theses/${encodeURIComponent(thesisId)}/story`, defined({ revision })) as Json;
         const beats = (Array.isArray(data.beats) ? data.beats : []) as Json[];
-        return ok(data, { summary: storyLine(data), definitions: { beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)) }, how: `${STORY_RULE} ${ROUTE_RULE}`, why: WHY });
+        const routes = [...routesOf((data.current as Json | undefined)?.routes), ...routesOf((data.plan as Json | undefined)?.routes)];
+        const bases = routes.flatMap((r) => routesOf(r.legs).flatMap((l) => routesOf(l.basis).map((b) => String(b?.stat ?? '').split('.')[0])));
+        const definitions = {
+          beatKind: definitionsFor(BEAT_KIND_DEFINITIONS, beats.map((b) => b?.kind)),
+          ...(routes.length ? { routeKind: definitionsFor(ROUTE_KIND_DEFINITIONS, routes.map((r) => r?.kind)), basis: definitionsFor(BASIS_DEFINITIONS, bases) } : {}),
+        };
+        return ok(data, { summary: storyLine(data), definitions, how: `${STORY_RULE} ${ROUTE_RULE}`, why: WHY });
       } catch (error) { return fail(error); }
     }
   );
