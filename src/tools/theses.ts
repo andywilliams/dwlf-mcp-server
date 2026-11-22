@@ -180,6 +180,7 @@ const replayLine = (data: Json, asked: boolean): string => {
   // The caveat is said from the flag, whatever SPT's label says.
   const caveat = r.asDrawn?.reconstructed === true && !/reconstructed/i.test(label || '') ? ' (reconstructed after the fact, not captured at the time)' : '';
   const against = label ? ` against ${label}${caveat}` : '';
+  // SPT's shape (serverless-portfolio-tracker #838, pinned by its tests): { plans: count, checkpoints: count }, present only when one is above 0.
   const omitted = [r.omitted?.plans, r.omitted?.checkpoints].some((n) => Number.isFinite(n) && (n as number) > 0);
   const left = omitted ? ' Some older plan bodies were left out for size (replay.omitted); their beats are kept.' : '';
   return `${summary} Replay${against}${r.note ? `: ${r.note}` : '.'}${left}`;

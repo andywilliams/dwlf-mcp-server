@@ -70,8 +70,11 @@ if (mode === 'routes') {
 // met on the 20 Nov bar.
 if (mode === 'replay') {
   const said = x.toLowerCase();
-  check(/step 1/.test(t) && /20 nov/.test(t) && /\bmet\b/.test(t), 'says step 1 was met on 20 Nov');
-  check(/step 2/.test(t) && /(not (yet )?(been )?met|waiting|still needs|unmet|open|remains)/.test(t), 'says step 2 is not met yet');
+  // Each fact read within one sentence (a window "opens", a revision on 20 Nov, do not count for it).
+  const sentences = t.split(/(?<=[.!?])\s+|\n+/);
+  const inOne = (re) => sentences.some((c) => re.test(c));
+  check(inOne(/step 1\b[^.]*\bmet\b[^.]*\b20 nov|\b20 nov\b[^.]*step 1\b[^.]*\bmet\b/), 'says step 1 was met on 20 Nov');
+  check(inOne(/step 2\b[^.]*\b(not (yet )?(been )?met|is not\b|isn'?t met|has not been met|unmet|still needs)/), 'says step 2 is not met yet');
   check(/reconstruct/.test(said) && /(not captured|after the fact|wasn'?t captured|was not captured)/.test(said), 'says the plan it is replayed against was reconstructed after the fact, not captured at the time');
   // Never a score: no early/late, no right/wrong, no "as planned", no gap in days between the plan and the event.
   const SCORE = /\b(early|late|ahead of (schedule|plan|time)|behind (schedule|plan)|on (time|schedule)|accurate(ly)?|inaccurate|(was|were|got it|proved) (right|wrong)|correct(ly)? (called|predicted)|hit (the|its) (mark|target)|missed (the|its) (mark|target)|off by|as (predicted|planned|expected|forecast)|went (to|according to) plan|played out (as|like) (planned|drawn|expected)|matched the plan|beat the plan|\d+ (trading )?days? (early|late|before|after|sooner|ahead))\b/;

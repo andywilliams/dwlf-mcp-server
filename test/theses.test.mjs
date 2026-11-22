@@ -368,6 +368,8 @@ test('the recorded replay narration passes its checker; a score, a missing cavea
   assert.match(bad(`${base} The plan was right about the low.`), /never scores/);
   assert.match(bad(`${base} It was not early or late: nothing is scored.`), /^PASS/, 'a denial passes');
   assert.match(bad('Step 1 was met on 20 Nov. Step 2 is not met yet.'), /reconstructed after the fact/);
+  assert.match(bad('Step 1 was met on 19 Nov. Revised 20 Nov. Step 2 is not met yet. The plan was reconstructed, not captured at the time.'), /step 1 was met on 20 Nov/, 'the date in the same sentence');
+  assert.match(bad('Step 1 was met on 20 Nov. Step 2 was met too. The daily window opens 23 Dec. The plan was reconstructed, not captured at the time.'), /step 2 is not met yet/, 'a window that opens is not step 2 open');
   assert.match(bad(`${base} The plan had illustrated step 1 in early January.`), /invents no illustrated point/);
   assert.match(bad(`${base} A dashed route shows where price goes next.`), /called an illustration/);
   assert.match(bad(`${base} The last close was 299.66.`), /invented prices/);
