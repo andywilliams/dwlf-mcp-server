@@ -28,6 +28,10 @@ const allowedBase = (url: string): boolean => {
   } catch { return false; }
 };
 
+const isHttps = (url: unknown): boolean => {
+  try { return typeof url === 'string' && new URL(url).protocol === 'https:'; } catch { return false; }
+};
+
 export interface BlockServerOptions {
   /**
    * What the Block API accepts as `Bearer` on `/v1`: today a person's own Block API key (`dwlfk_…`); once OAuth ships
@@ -41,6 +45,11 @@ export interface BlockServerOptions {
    * input: the host fixes it per stage from its own configuration, never from the request.
    */
   baseURL: string;
+  /**
+   * The keys page the instructions send a keyless person to (HTTPS), e.g. the host's own `getKey` URL, so one setting
+   * names it. Optional: without it, the page of `baseURL`'s stage (`keysPageFor`; production's for any other host).
+   */
+  keysPage?: string;
   timeoutMs?: number;
   /** Told of each Block API refusal or failure during this request (hosted-auth H11). */
   recorder?: UpstreamRecorder;
@@ -61,7 +70,9 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
   if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
-  const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(keysPageFor(options.baseURL)) });
+  if (options.keysPage !== undefined && !isHttps(options.keysPage)) throw new Error('createBlockServer\'s keysPage must be an HTTPS URL.');
+  const keysPage = options.keysPage ?? keysPageFor(options.baseURL);
+  const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(keysPage) });
   const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;
