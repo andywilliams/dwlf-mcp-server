@@ -37,7 +37,7 @@ export function registerDivergenceTools(server: McpServer, client: DWLFClient): 
       '`unknown` or `missing` means the pivot is unverified, not confirmed. A divergence, or a confluence of layers, is something that happened on ' +
       'the chart, not a recommendation: never turn them into buy, sell or hold recommendations. ' +
       '`truncated: true` means more matched than were returned. A key whose plan lacks the cycles family gets a teaser ' +
-      '(`locked: true`, `newThisWeek`, `requiredPlan`, `pricingUrl`) and no items: tell your human what unlocks it.',
+      '(`locked: true`, `newThisWeek`, `requiredPlan`, `upgradeUrl`, `pricingUrl`) and no items: tell your human what unlocks it and give them `upgradeUrl` (the plans page).',
     {
       days: z.number().int().min(1).max(365).optional().describe('Window on the later pivot\'s date, in days (default 30).'),
       oscillator: z.enum(['rsi', 'dss']).optional().describe('RSI(14) or DSS.'),

@@ -16,9 +16,9 @@ const refusingWith = async (status, body, fn) => {
 const SPT_FAMILY_REFUSAL = { success: false, error: 'PLAN_REQUIRED', entitlement: 'family', family: 'cycles', plan: 'free', requiredPlan: 'block',
   upgradeUrl: 'https://block.dwlf.co.uk/pricing', pricingUrl: 'https://block.dwlf.co.uk/pricing/', message: 'Your plan (Free) doesn\'t include Cycles.' };
 
-test('★ a Block family refusal keeps its code, family, requiredPlan and pricingUrl in the tool-visible error', async () => {
+test('★ a Block family refusal keeps its code, family, requiredPlan, upgradeUrl and pricingUrl in the tool-visible error', async () => {
   const msg = await refusingWith(403, SPT_FAMILY_REFUSAL, (c) => c.get('/stages/BTC-USD'));
-  assert.equal(msg, 'HTTP 403 — Your plan (Free) doesn\'t include Cycles. [PLAN_REQUIRED; family=cycles; requiredPlan=block; pricingUrl=https://block.dwlf.co.uk/pricing/]');
+  assert.equal(msg, 'HTTP 403 — Your plan (Free) doesn\'t include Cycles. [PLAN_REQUIRED; family=cycles; requiredPlan=block; upgradeUrl=https://block.dwlf.co.uk/pricing; pricingUrl=https://block.dwlf.co.uk/pricing/]');
 });
 
 test('the nested `{ error: { code, … } }` envelope carries the same facts', async () => {

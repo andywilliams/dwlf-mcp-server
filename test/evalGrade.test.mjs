@@ -81,3 +81,10 @@ test('the case files\' date pattern takes the date forms an answer uses (ISO day
   for (const yes of ['on 2026-10-03', 'on 3 Oct', 'on 3 October 2026', 'on October 3, 2026', 'on Oct. 3', 'on Sept 14', 'known at 2026-10-04T06:12:00Z', 'on October 3rd', 'the 3rd of October']) { assert.match(yes, date, yes); }
   for (const no of ['Hash rate declined 15% over 30 days', 'the market 30 days on', 'it decreased 4 times', 'maybe 2', 'across 3 markets', 'recently']) { assert.doesNotMatch(no, date, no); }
 });
+
+test('a mustCall entry that is a list passes on any one of its tools, and names them all when none was called', () => {
+  const q = { id: 'x', expect: { mustCall: [['dwlf_get_conditions', 'dwlf_get_events']] } };
+  assert.equal(grade({ question: q, answer: 'On 2026-11-05 an event fired.', toolCalls: ['dwlf_get_events'] }).pass, true);
+  assert.deepEqual(grade({ question: q, answer: 'On 2026-11-05 an event fired.', toolCalls: ['dwlf_get_series'] }).failures,
+    ['did not call dwlf_get_conditions or dwlf_get_events']);
+});

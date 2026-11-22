@@ -39,11 +39,11 @@ test('BlockApiClient: no key → /public/v1 with no Authorization; a key → /v1
 });
 
 test('BlockApiClient: the Block API\'s error body is kept whole in the error the tool returns', async () => {
-  const body = { error: 'PLAN_REQUIRED', requiredPlan: 'block', pricingUrl: 'https://block.dwlf.co.uk/pricing/' };
+  const body = { error: 'PLAN_REQUIRED', requiredPlan: 'block', upgradeUrl: 'https://block.dwlf.co.uk/pricing', pricingUrl: 'https://api.block.dwlf.co.uk/public/v1/pricing' };
   const api = await upstream(403, body);
   try {
     await assert.rejects(new BlockApiClient({ baseURL: api.url, apiKey: undefined }).get('/series/x'), (e) => e instanceof BlockApiError && e.status === 403
-      && e.message.includes('PLAN_REQUIRED') && e.message.includes('pricingUrl'));
+      && e.message.includes('PLAN_REQUIRED') && e.message.includes(body.upgradeUrl) && e.message.includes(body.pricingUrl));
   } finally { await api.close(); }
 });
 

@@ -88,14 +88,15 @@ key (403 `NOT_ON_BLOCK`). For Bitcoin, `dwlf_get_conditions` carries the same pi
 What a plan reads in full is its families: `GET https://api.dwlf.co.uk/v2/public/block/pricing` lists them (`families`,
 and each plan's `families`) and is the source of truth. Below the plan:
 
-- an event row comes back locked: `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what
+- an event row comes back locked: `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, upgradeUrl, pricingUrl }` (what
   fired and when; no price, levels, values or meaning);
 - a conditions section (`regime.daily`, `regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, … }`;
 - a state read of that family (stage, regime, cycle windows, levels, COT) is `403 PLAN_REQUIRED`; the tool's error ends
-  `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`;
+  `[PLAN_REQUIRED; family=…; requiredPlan=…; upgradeUrl=…; pricingUrl=…]`;
 - an alert on that family is refused.
 
-Your assistant is told to say what is locked and which plan unlocks it, never to guess a locked value. The profile
+Your assistant is told to say what is locked and which plan unlocks it, to give you `upgradeUrl` (the plans page;
+`pricingUrl` is the price list for programs), and never to guess a locked value. The profile
 hides tools; the API decides what a plan reads.
 
 The exact list is `BLOCK_TOOLS` in `src/profiles.ts`. Tests fail if any of them stops existing, or if a Block tool's description points to a tool the profile hides.

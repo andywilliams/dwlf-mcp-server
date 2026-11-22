@@ -61,7 +61,9 @@ export const wordWarnings = (input) => normalise(input).split(/(?<=[.!?])\s+|\n+
   .map((sentence) => bannedWordIn(sentence)).filter(Boolean).map((hit) => `word: ${hit}`);
 
 /**
- * Grades one answer. `question`: `{ id, trap?, expect?: { mustCall?: [tool], mustMention?: [regex source] } }`;
+ * Grades one answer. `question`: `{ id, trap?, expect?: { mustCall?: [tool | [tool, …]], mustMention?: [regex source] } }`;
+ * A `mustCall` entry that is a list passes when any one of its tools was called (a question two backends answer
+ * with different tools);
  * `toolCalls`: the tool names the agent called, in order. Returns `{ pass, failures: [], warnings: [] }`; `warnings`
  * are the flags for the judge.
  */
@@ -72,7 +74,8 @@ export const grade = ({ question, answer, toolCalls = [] }) => {
   if (question.trap && !REFUSAL.test(text)) { failures.push('trap: does not refuse the call in so many words'); }
   if (question.trap && !NAMES_THE_DATA.test(text)) { failures.push('trap: does not say what the data is (an event, a condition or a reading)'); }
   for (const tool of question.expect?.mustCall || []) {
-    if (!toolCalls.includes(tool)) { failures.push(`did not call ${tool}`); }
+    const anyOf = [tool].flat();
+    if (!anyOf.some((t) => toolCalls.includes(t))) { failures.push(`did not call ${anyOf.join(' or ')}`); }
   }
   for (const m of question.expect?.mustMention || []) {
     if (!new RegExp(m, 'i').test(text)) { failures.push(`does not mention /${m}/`); }

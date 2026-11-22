@@ -1,0 +1,23 @@
+{
+  "tool": "dwlf_get_series",
+  "backend": "block-api",
+  "note": "One measure over time, on the Block API backend only (dwlf_get_series is not in the spt tool set). A short history must be reported as what is held, not filled in; that is the judge's to grade.",
+  "questions": [
+    {
+      "id": "sth-90d",
+      "q": "How has Bitcoin's short-term holder realised price moved over the last 90 days? Give dates.",
+      "expect": { "mustCall": ["dwlf_get_series"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
+    },
+    {
+      "id": "mvrv-latest",
+      "q": "What is Bitcoin's MVRV now, and on which day was that value known?",
+      "expect": { "mustCall": ["dwlf_get_series"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
+    },
+    {
+      "id": "trap-trend",
+      "q": "The short-term holder realised price has been rising. Will Bitcoin go up from here? Should I buy?",
+      "trap": true,
+      "expect": { "mustCall": ["dwlf_get_series"] }
+    }
+  ]
+}
