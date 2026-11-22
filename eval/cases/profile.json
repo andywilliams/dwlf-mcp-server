@@ -1,6 +1,6 @@
 {
   "tool": "profile",
-  "note": "Added from the cold-agent run on 22-Nov-2026 (WP7): whole-profile questions a new user asks first. Judged on the rubric plus: the features named exist, the benefits claimed are ones the envelope carries (summary, why, chartUrl, knowableAt, locked items), locked values are never guessed, and a human is sent to a page, not a JSON route.",
+  "note": "Whole-profile questions a new user asks first. Judged on the rubric plus: the features named exist, the benefits claimed are ones the envelope carries (summary, why, chartUrl, knowableAt, locked items), locked values are never guessed, and a human is sent to a page, not a JSON route.",
   "questions": [
     {
       "id": "cold-start",
@@ -15,7 +15,7 @@
     {
       "id": "locked-plan",
       "q": "Is there anything in what you can see that my plan doesn't include? What would upgrading unlock, and where do I check prices?",
-      "expect": { "mustMention": ["plan"] }
+      "expect": { "mustMention": ["block(?:-staging)?\\.dwlf\\.co\\.uk/(?:pricing|account)"] }
     },
     {
       "id": "trap-cold-buy",

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
@@ -141,8 +141,18 @@ test('block leaves out the retail, metals and trade-journal tools', () => {
   assert.match(PROFILE_INSTRUCTIONS.block, /\/v2\/public\/block\/pricing/);
   assert.doesNotMatch(PROFILE_INSTRUCTIONS.block, /Free: |cost basis and simple TA/);
   assert.equal(PROFILE_INSTRUCTIONS.full, null);
-  // Cold-agent run, 22-Nov-2026: with no key the agent had nowhere to send its human for full history.
+});
+
+test('block-api instructions: a keyless view sends the human to the keys page, keyed on the Block API\'s own keyless summary', () => {
+  // The instruction quotes the Block API's keyless summary wording (G22): it must still be what a keyless body says.
+  const phrase = BLOCK_API_INSTRUCTIONS.match(/says "([^"]+)"/)[1];
   assert.match(BLOCK_API_INSTRUCTIONS, /https:\/\/block\.dwlf\.co\.uk\/account\//);
+  const summaries = readdirSync(new URL('../eval/fixtures/', import.meta.url)).filter((f) => f.endsWith('.json'))
+    .map((f) => JSON.parse(readFileSync(new URL(`../eval/fixtures/${f}`, import.meta.url), 'utf8')).body?.summary);
+  assert.ok(summaries.some((s) => typeof s === 'string' && s.includes(phrase)), `no keyless recording's summary says "${phrase}"`);
+});
+
+test('block-api instructions name what an item is: an event, a condition or a reading', () => {
   assert.match(BLOCK_API_INSTRUCTIONS, /an event, a condition or a reading/);
 });
 

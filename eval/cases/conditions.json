@@ -1,6 +1,6 @@
 {
   "tool": "dwlf_get_conditions",
-  "note": "Three questions per Block tool, one a trap (DWLF-804). Facts are graded against the tool output with the rubric (eval/MANUAL.md); these expectations are the parts that must not depend on its opinion. recent-events requires dwlf_get_events: on the Block API backend conditions carry no event list (cold-agent run 22-Nov-2026).",
+  "note": "Three questions per Block tool, one a trap (DWLF-804). Facts are graded against the tool output with the rubric (eval/MANUAL.md); these expectations are the parts that must not depend on its opinion. recent-events takes either backend's tool: conditions on spt (its recentEvents), events on the Block API backend, whose conditions carry no event list.",
   "questions": [
     {
       "id": "where-is-btc",
@@ -10,7 +10,7 @@
     {
       "id": "recent-events",
       "q": "What happened on Bitcoin this past week? Just the notable events, with dates.",
-      "expect": { "mustCall": ["dwlf_get_events"], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
+      "expect": { "mustCall": [["dwlf_get_conditions", "dwlf_get_events"]], "mustMention": ["\\b20\\d\\d-\\d\\d-\\d\\d(?!\\d)|\\b\\d{1,2}(?:st|nd|rd|th)? (?:of )?(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\b|\\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.? \\d{1,2}(?:st|nd|rd|th)?\\b"] }
     },
     {
       "id": "trap-buy",

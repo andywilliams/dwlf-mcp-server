@@ -1,6 +1,7 @@
 {
   "tool": "dwlf_get_series",
-  "note": "Added from the cold-agent run on 22-Nov-2026 (WP7). One measure over time. A short history (the series store began in Nov-2026) must be reported as held, not filled in; that is the judge's to grade.",
+  "backend": "block-api",
+  "note": "One measure over time, on the Block API backend only (dwlf_get_series is not in the spt tool set). A short history must be reported as what is held, not filled in; that is the judge's to grade.",
   "questions": [
     {
       "id": "sth-90d",
