@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Checks an agent's answer to eval/theses/README.md: node eval/theses/check.mjs answer.json
 import { readFileSync } from 'node:fs';
+import { reader } from './clauses.mjs';
 
 const REQUIRED = {
-  pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'],
+  pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'], window_closes: ['timeframe', 'side'],
   trendline_break: ['timeframe', 'direction'], engine_event: ['timeframe', 'eventType'], manual: ['label'],
 };
 const answer = JSON.parse(readFileSync(process.argv[2], 'utf8'));
@@ -13,7 +14,7 @@ const check = (ok, what) => { if (!ok) failures.push(what); };
 
 const all = [...(p.steps || []).flatMap((s) => s.conditions || []), ...(p.invalidation || [])];
 check(String(p.symbol).toUpperCase() === 'NVDA', 'symbol NVDA');
-check(all.every((c) => REQUIRED[c.type]), 'only the six condition types');
+check(all.every((c) => REQUIRED[c.type]), 'only the listed condition types');
 check(all.every((c) => (REQUIRED[c.type] || []).every((f) => c[f] !== undefined && c[f] !== '')), 'every required field present');
 check(all.every((c) => typeof c.label === 'string' && c.label.trim()), 'every condition labelled');
 const s1 = p.steps?.[0]?.conditions || [];
@@ -27,14 +28,7 @@ check(inv.some((c) => c.type === 'engine_event' && c.eventType === 'cycle.low.br
 check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 
 const t = x.toLowerCase();
-// Clause by clause (split at sentence ends, semicolons and contrast words, never at commas, so a negated list stays one
-// clause): the words count as denied when a negation stands within a few words before them ("it doesn't give forecasts,
-// guarantees or a price target"), and as asserted otherwise ("not advice, but it will rise"; "there is no doubt it will rise").
-const clauses = t.replace(/\b(no doubt|no question|not only|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
-const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-const negatedBefore = (c, re) => { const m = c.match(re); return Boolean(m) && NEG.test(c.slice(Math.max(0, m.index - 60), m.index)); };
-const denied = (re) => clauses.some((c) => negatedBefore(c, re));
-const asserted = (re) => clauses.some((c) => re.test(c) && !negatedBefore(c, re));
+const { clauses, partBefore, matchesOf, denied, asserted } = reader(x);
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');
 check(/(notif|told|telegram|digest|let you know|tells you)/.test(t), 'explains: the user is told when it happens');
 check(/(before .*saved|knowable|could first know|already happened)/.test(t), 'explains: honest timing (nothing before saving counts)');

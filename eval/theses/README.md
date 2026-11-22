@@ -29,3 +29,34 @@ Questions the runs raised, now answered in the guide's `glossary`:
 - the `engine_event` allow-list;
 - `group`;
 - whether the `cycle.low.break` level is fixed at save time (it moves with the latest confirmed low).
+
+## Scenario 2: void by time with window_closes (DWLF-897)
+
+**User says:** "I trade GDX. I'm waiting for its weekly cycle low inside the weekly low window. Tell me when that window opens and when the next weekly cycle low is confirmed. I don't have a price level that would prove me wrong, but if the window closes without a confirmed weekly low, the idea is void, so I want to know then. What exactly will DWLF check, and what won't it do?" (The guide's worked example is SLV, so copying it won't pass.)
+
+**Pass** (`node eval/theses/check-window.mjs <answer.json>`):
+1. **Payload:**
+   - `window_closes` (weekly, low) is the invalidation, and it appears in no step;
+   - a step waits for the next confirmed weekly low;
+   - no price level is invented;
+   - only listed types, every field and label present.
+2. **Explanation:**
+   - says it is checked against the stored window's close;
+   - says it is decided 28 days after the close;
+   - gives **Andy's rule** (22-Nov): a low dated inside the window that confirms after the close, within those days, still counts;
+   - never states the old strict rule;
+   - gives the nightly timing and the limits;
+   - makes no forecast;
+   - mentions a dry run.
+
+**Recorded:** each run was made by a fresh general-purpose agent given only the bundle.
+- `answer-window-2026-11-22-run3.json`: **PASS**.
+- `answer-window-2026-11-22-run4.json`: **PASS**.
+- Runs 1 and 2, made under the earlier strict rule, are retired: they fail this checker, as they should.
+- The rule is judged per sentence, because it is a contrast ("after the close, but within those 28 days, still counts").
+
+Questions the runs raised, now answered in the guide:
+- whether a step's low must be dated in the window;
+- what a low confirmed before the window opens does;
+- whether step 2 needs `after`;
+- that a low dated after the close can meet step 2 while the void still fires (both are reported).

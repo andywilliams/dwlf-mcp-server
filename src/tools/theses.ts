@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, REPLAY_BEAT_KIND_DEFINITIONS, ROUTE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
+import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, SETTLED_DEFINITIONS, FIRE_KIND_DEFINITIONS, REPLAY_BEAT_KIND_DEFINITIONS, ROUTE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
 
 /**
  * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
@@ -14,7 +14,7 @@ import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, 
 
 const WHY = 'A thesis is the user\'s own record of what they are waiting for on a symbol and why. DWLF reports which of its conditions the market has met, from events confirmed after each nightly close. It describes events; it does not say what to do about them.';
 
-const TYPE_HINT = 'Condition types: pivot_confirmed (the next confirmed cycle low/high, optionally inside a level), close_vs_level (a daily/weekly close or intraday trade beyond a level), window_opens, trendline_break, engine_event (a short allow-list), manual. Full parameters and definitions: dwlf_list_thesis_condition_types.';
+const TYPE_HINT = 'Condition types: pivot_confirmed (the next confirmed cycle low/high, optionally inside a level), close_vs_level (a daily/weekly close or intraday trade beyond a level), window_opens, window_closes (invalidation only: the stored window closes with no pivot of its side; only when the user asks to void the thesis by time), trendline_break, engine_event (a short allow-list), manual. Full parameters and definitions: dwlf_list_thesis_condition_types.';
 
 type Json = Record<string, unknown>;
 type Thesis = { thesisId?: string; symbol?: string; title?: string; status?: string; currentStep?: number; steps?: unknown[]; liveness?: { note?: string } };
@@ -46,6 +46,11 @@ const thesisDefinitions = (theses: Thesis[], fires: Json[] = []) => {
   return {
     status: definitionsFor(STATUS_DEFINITIONS, theses.map((t) => t.status)),
     conditionState: definitionsFor(CONDITION_STATE_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.status)),
+    // A window_closes the evaluator settled (DWLF-897): status stays pending, but it can no longer be met.
+    ...(() => {
+      const settled = conditions.map((c) => (c.state as Json | undefined)?.settled).filter((v) => typeof v === 'string' && v);
+      return settled.length ? { settled: definitionsFor(SETTLED_DEFINITIONS, settled) } : {};
+    })(),
     ...(fires.length ? { fireKind: definitionsFor(FIRE_KIND_DEFINITIONS, fires.map((f) => f.kind)) } : {}),
   };
 };
@@ -77,7 +82,7 @@ const timeframe = z.enum(['daily', 'weekly']);
 const idField = z.string().optional().describe('Keep the id you read when revising: an unchanged condition keeps its arming and its result. Omit for a new condition.');
 const label = z.string().optional().describe('Your short name for the condition (≤120 chars).');
 
-const knownCondition = z.discriminatedUnion('type', [
+const stepConditionTypes = [
   z.looseObject({
     type: z.literal('pivot_confirmed'), id: idField, label, symbol: symbolField, timeframe,
     side: z.enum(['low', 'high']),
@@ -98,17 +103,25 @@ const knownCondition = z.discriminatedUnion('type', [
     eventType: z.string().describe('One of the allow-list in dwlf_list_thesis_condition_types (e.g. cycle.low.higher_low).'),
   }),
   z.looseObject({ type: z.literal('manual'), id: idField, label: z.string().describe('What you will mark (required).'), symbol: symbolField }),
-]);
-const conditionSchema = z.union([
-  knownCondition,
-  z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') }),
-]);
+] as const;
+// DWLF-897: an invalidation only (SPT refuses it in a step).
+const windowCloses = z.looseObject({
+  type: z.literal('window_closes'), id: idField, label, symbol: symbolField, timeframe, side: z.enum(['low', 'high']),
+}).describe('Invalidation only. The STORED window for the next cycle low/high, measured from the last pivot of that side when saved. Decided 7 (daily) or 28 (weekly) days after its close (the end of its closing bar): met then if no pivot of that side dated by the close (inside the window, or before it opens) has been confirmed since saving. A low inside the window that confirms after the close but within those days still counts; one dated after the close does not. Add it only when the user wants the thesis voided by time.');
+const newerType = z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') });
+// The fallback for a newer type still refuses window_closes in a step, so the schema says where it goes.
+const newerStepType = z.looseObject({
+  type: z.string().refine((t) => t !== 'window_closes', 'window_closes is an invalidation only: put it under invalidation')
+    .describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.'),
+});
+const stepCondition = z.union([z.discriminatedUnion('type', [...stepConditionTypes]), newerStepType]);
+const invalidationCondition = z.union([z.discriminatedUnion('type', [...stepConditionTypes, windowCloses]), newerType]);
 
 const stepsSchema = z.array(z.looseObject({
   match: z.enum(['any', 'all']).default('any').describe('The step is met when any (or all) of its conditions are.'),
-  conditions: z.array(conditionSchema).min(1),
+  conditions: z.array(stepCondition).min(1),
 })).min(1).describe('Ordered: step n+1 is checked only after step n is met. Limits: dwlf_list_thesis_condition_types.');
-const invalidationSchema = z.array(conditionSchema).describe('Any one of these happening marks the thesis challenged (review it). Optional.');
+const invalidationSchema = z.array(invalidationCondition).describe('Any one of these happening marks the thesis challenged (review it). Optional. window_closes goes only here.');
 
 const textFields = {
   title: z.string().describe('One line: what you are waiting for.'),
@@ -189,10 +202,10 @@ const replayLine = (data: Json, asked: boolean): string => {
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_thesis_guide',
-    'Start here for theses (what a user is waiting for on a symbol, checked by DWLF every night after the close). Returns what theses are, what they save the user (decide once; told when it happens; honest knowable-at timing; how close each is), their honest limits (end of day; information, not advice), the rules for building one that DWLF can check exactly, the workflow across the thesis tools, and three worked examples with the exact dwlf_create_thesis payloads. No API call.',
+    'Start here for theses (what a user is waiting for on a symbol, checked by DWLF every night after the close). Returns what theses are, what they save the user (decide once; told when it happens; honest knowable-at timing; how close each is), their honest limits (end of day; information, not advice), the rules for building one that DWLF can check exactly, the workflow across the thesis tools, and worked examples with the exact dwlf_create_thesis payloads. No API call.',
     {},
     async () => ok({ guide: THESIS_GUIDE }, {
-      summary: 'The theses guide: what, benefits, limits, rules, workflow and three worked examples.',
+      summary: 'The theses guide: what, benefits, limits, rules, workflow and worked examples.',
       why: 'Read before building a thesis or explaining the feature to the user. The condition types and fields themselves come from dwlf_list_thesis_condition_types.',
     })
   );
@@ -204,7 +217,9 @@ export function registerThesisTools(server: McpServer, client: DWLFClient) {
     async () => {
       try {
         const data = await client.get('/theses/condition-types');
-        return ok(data, { summary: 'The six condition types a thesis can wait for, and the rules that apply to all of them.', why: WHY });
+        // SPT owns the vocabulary: the count comes from its answer, never a number that goes stale with the next type.
+        const n = Array.isArray((data as Json)?.types) ? ((data as Json).types as unknown[]).length : null;
+        return ok(data, { summary: `The ${n ?? ''} condition types a thesis can wait for, where each may go (step, invalidation), and the rules that apply to all of them.`.replace('The  ', 'The '), why: WHY });
       } catch (error) { return fail(error); }
     }
   );
@@ -244,7 +259,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_theses',
-    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or the thesis is complete or challenged; null before).',
+    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date; a window_closes invalidation\'s windowCloses, windowEnds and closesInDays, or pivotConfirmed / windowMoved once it can no longer be met), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or the thesis is complete or challenged; null before).',
     {
       status: z.string().optional().describe('Filter: waiting, in_progress, complete, challenged, archived or closed.'),
       symbol: z.string().optional().describe('Filter by thesis symbol.'),

@@ -201,9 +201,24 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
     { type: 'volume_spike', multiple: 2 },
   ]);
   assert.equal(parsed.steps[0].match, 'any');
+  // DWLF-897: steps and invalidations now have their own unions; a newer type still reaches SPT as an invalidation.
+  const inv = shape.parse({ thesisId: 't1', expectedRevision: 1, invalidation: [{ type: 'volume_spike', multiple: 2 }] });
+  assert.deepEqual(inv.invalidation, [{ type: 'volume_spike', multiple: 2 }]);
 });
 
-test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and three worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
+test('★ window_closes state and counts (DWLF-897): a settled one is defined in agentHints; condition-types counts its own types', async () => {
+  const settled = thesis({ invalidation: [{ id: 'v1', type: 'window_closes', timeframe: 'weekly', side: 'low', state: { status: 'pending', settled: 'pivot' } }] });
+  const { call } = setup((m, path) => (path.includes('condition-types') ? { types: [{ type: 'a' }, { type: 'b' }, { type: 'c' }] } : { theses: [settled] }));
+  const { body } = await call('dwlf_list_theses');
+  assert.match(body.agentHints.definitions.settled.pivot, /can no longer be met/);
+  const falsy = thesis({ invalidation: [{ id: 'v1', type: 'window_closes', timeframe: 'weekly', side: 'low', state: { status: 'pending', settled: false } }] });
+  const quiet = setup(() => ({ theses: [falsy, settled] }));
+  assert.deepEqual(Object.keys((await quiet.call('dwlf_list_theses')).body.agentHints.definitions.settled), ['pivot'], 'a falsy settled is not a value');
+  const types = await call('dwlf_list_thesis_condition_types');
+  assert.match(types.body.agentHints.summary, /^The 3 condition types/);
+});
+
+test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and four worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
   const { z } = await import('zod');
   const { tools, call } = setup();
   const { body } = await call('dwlf_thesis_guide');
@@ -213,9 +228,11 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
   assert.match(g.limits.join(' '), /Information, not advice/);
   assert.match(g.rules.join(' '), /cycle\.low\.break/);
   assert.match(g.statuses.challenged, /review/);
-  assert.equal(g.examples.length, 3);
+  assert.equal(g.examples.length, 4);
+  assert.match(g.rules.join(' '), /window_closes voids a thesis by time: an invalidation only, and optional/);
+  assert.match(g.glossary.window_closes, /A low inside the window that confirms after the close but by the decision point still counts/);
   const create = z.object(tools.get('dwlf_create_thesis').schema).strict();
-  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'trendline_break', 'engine_event', 'manual'];
+  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'window_closes', 'trendline_break', 'engine_event', 'manual'];
   for (const ex of g.examples) {
     const parsed = create.safeParse(ex.create);
     assert.ok(parsed.success, `${ex.create.symbol}: ${JSON.stringify(parsed.error?.issues)}`);
@@ -224,6 +241,10 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
       assert.ok(c.label, 'every example condition has a label saying what is checked');
     }
   }
+  // window_closes (DWLF-897): an invalidation only, so the schema refuses it in a step.
+  const slv = g.examples.find((ex) => ex.create.symbol === 'SLV').create;
+  assert.deepEqual(slv.invalidation.map((c) => c.type), ['window_closes']);
+  assert.equal(create.safeParse({ ...slv, steps: [{ match: 'any', conditions: [slv.invalidation[0]] }] }).success, false);
   // Everything, the payloads agents copy included.
   const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
   assert.doesNotMatch(JSON.stringify(g), ADVICE);
@@ -234,6 +255,28 @@ test('the recorded thesis eval answer still passes its checker (eval/theses, DWL
   const { execFileSync } = await import('node:child_process');
   const out = execFileSync('node', ['eval/theses/check.mjs', 'eval/theses/answer-2026-11-20.json'], { encoding: 'utf8' });
   assert.match(out, /^PASS/);
+});
+
+test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_closes in a step, an invented price level, no decision point, or the old strict rule fails', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const run = (file) => { try { return execFileSync('node', ['eval/theses/check-window.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
+  for (const r of ['run3', 'run4']) { assert.match(run(`eval/theses/answer-window-2026-11-22-${r}.json`), /^PASS/); }
+  const good = JSON.parse(readFileSync('eval/theses/answer-window-2026-11-22-run4.json', 'utf8'));
+  const dir = mkdtempSync(join(tmpdir(), 'wc-eval-'));
+  const bad = (mutate) => { const a = structuredClone(good); mutate(a); const f = join(dir, `${Math.random()}.json`); writeFileSync(f, JSON.stringify(a)); return run(f); };
+  assert.match(bad((a) => { a.payload.steps.push({ match: 'any', conditions: [a.payload.invalidation[0]] }); }), /window_closes only as an invalidation/);
+  assert.match(bad((a) => { a.payload.invalidation.push({ type: 'close_vs_level', basis: 'weekly_close', op: 'below', value: 40, label: 'Weekly close below 40' }); }), /no price level invented/);
+  assert.match(bad((a) => { a.explanation = a.explanation.replace(/28 days|four weeks|4 weeks/gi, 'later'); }), /decided 28 days after the close/);
+  assert.match(bad((a) => { a.payload.invalidation = []; }), /invalidation: window_closes on the weekly low window/);
+  // Andy's rule (22-Nov): a low inside the window that confirms after the close still counts; the old strict rule fails.
+  const strip = (a) => a.explanation.replace(/[^.]*(inside|in) the window[^.]*\./gi, '');
+  assert.match(bad((a) => { a.explanation = strip(a); }), /explains Andy's rule/);
+  assert.match(bad((a) => { a.explanation = `${a.explanation} A low confirmed after the window closes does not count, even one dated inside it.`; }), /does not state the old strict rule/);
+  assert.match(bad((a) => { a.explanation = `${a.explanation} This is not advice, and GDX will bounce once the window opens.`; }), /no forecast or call to act/);
+  assert.match(bad((a) => { a.explanation = `${strip(a)} A low dated in the window that is confirmed after the close, within the 28 days, still counts.`; }), /^PASS/);
 });
 
 test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {
