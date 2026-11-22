@@ -314,6 +314,36 @@ test('★ dwlf_get_thesis_story: routes are named as illustrations in the line a
   assert.equal(body.agentHints.summary, 'GOOG story, 3 beats.', 'an older API without routes: no route words');
 });
 
+test('★ dwlf_get_thesis_story replay: asks SPT for replay=1, a summary line with the sentence and the plan replayed against, replay beat kinds defined, the facts-only rule (DWLF-889)', async () => {
+  const leg = (stat) => ({ from: 0, to: 1, basis: [{ stat }] });
+  const backend = {
+    symbol: 'MSTR', summary: { beats: 4 }, beats: [], replaySummary: 'Saved 18 Nov. Step 1 met 19 Nov (Daily close below $90). Complete after 1 day.',
+    replay: {
+      available: true, asDrawn: { revision: 1, label: 'The plan reconstructed 21 Nov, not captured at the time', reconstructed: true }, note: null,
+      met: [{ step: 1, date: '2026-11-19', label: '✓ step 1 met 19 Nov', illustrated: null }],
+      beats: [{ id: 'replay-saved', kind: 'saved' }, null, { id: 'replay-fire-f1', kind: 'fire' }, { id: 'replay-outcome', kind: 'outcome' }, { id: 'x', kind: 'novel' }],
+      plans: [{ routes: [] }], checkpoints: [null, { routes: [{ kind: 'meets', legs: [leg('window.daily.low.centre')] }] }],
+    },
+  };
+  const { calls, call } = setup(() => backend);
+  const { body } = await call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.deepEqual(calls[0].a, { replay: 1 });
+  await call('dwlf_get_thesis_story', { thesisId: 't1', replay: false });
+  assert.deepEqual(calls[1].a, {}, 'replay false: not asked for');
+  assert.equal(body.isError, undefined);
+  assert.equal(body.agentHints.summary, 'MSTR story, 4 beats. Summary: Saved 18 Nov. Step 1 met 19 Nov (Daily close below $90). Complete after 1 day. Replay against The plan reconstructed 21 Nov, not captured at the time.');
+  assert.deepEqual(Object.keys(body.agentHints.definitions.replayBeatKind), ['saved', 'fire', 'outcome', 'novel']);
+  assert.match(body.agentHints.definitions.replayBeatKind.novel, /Not described by this version/);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.routeKind), ['meets'], 'a checkpoint\'s routes define their kinds too');
+  assert.match(body.agentHints.how, /never as a difference, and never score the illustration/);
+  assert.match(body.agentHints.how, /reconstructed after the fact/);
+  assert.doesNotMatch(body.agentHints.how.replace(/no right, wrong, early, late, accurate, hit or miss/, ''), /\b(buy|sell|entry|should|recommend|opportunity|target)\b/i);
+  const closed = await setup(() => ({ symbol: 'GOOG', summary: { beats: 2 }, beats: [], replaySummary: 'Saved 18 Nov. Step 1 of 2 not met yet.', replay: { available: false, note: 'Replay opens once a step is met or the thesis has an outcome.' } })).call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.equal(closed.body.agentHints.summary, 'GOOG story, 2 beats. Summary: Saved 18 Nov. Step 1 of 2 not met yet. Replay: Replay opens once a step is met or the thesis has an outcome.');
+  const older = await setup(() => ({ symbol: 'GOOG', summary: { beats: 2 }, beats: [] })).call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.equal(older.body.agentHints.summary, 'GOOG story, 2 beats.', 'an older API without replay: no replay words');
+});
+
 test('list includeStory asks SPT for story (and progress with it when both are set)', async () => {
   const { calls, call } = setup(() => ({ theses: [] }));
   await call('dwlf_list_theses', { includeStory: true });
