@@ -55,12 +55,23 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
 - **Library entry `@dwlf/mcp-server/block`** (22-Nov, DWLF-622 step 2a; `src/block/server.ts`): `createBlockServer({
-  apiKey, baseURL?, timeoutMs?, recorder?, catalogueCache? })` gives one `McpServer` with the Block profile on the
-  `block-api` backend (the same registrations as stdio, through `registerForProfile`), for the private hosted repo to
-  build per request. `recorder` hears each Block API refusal (hosted-auth H11); `catalogueCache` lets the host keep
-  the catalogue per credential. `package.json` `exports` names it, `.` (the stdio entry) and `./dist/*` (so a deep
-  import that worked before still does). Its options and types are a published contract: a breaking change is a
-  major bump for the hosted repo's pin.
+  credential, baseURL?, timeoutMs?, recorder?, catalogueCache? })` gives one `McpServer` with the Block profile on the
+  `block-api` backend, for the private hosted repo to build per request. `credential` is whatever the Block API takes
+  as `Bearer` on `/v1` (a `dwlfk_` key today; identity's exchanged `aud = block` token once OAuth ships), named so
+  step 7 needs no breaking change. `recorder` hears each Block API refusal (hosted-auth H11); `catalogueCache` lets
+  the host keep the catalogue per credential. It registers through `registerBlockApiTools`, the function
+  `registerForProfile` calls on `block-api`, so stdio and hosted give the same tools, and it imports no SPT tool module
+  (both pinned by `test/blockServer.test.mjs`).
+  - **The contract is that file's exports only:** `createBlockServer`, its options, and the `UpstreamRecorder`,
+    `UpstreamRefusal` and `CatalogueCache` types. A breaking change to them is a semver-breaking bump (a minor while 0.x), named in the PR. `package.json` `exports`
+    also keeps `.` (the stdio entry) and `./dist/*`, so a deep import that worked before `exports` existed still
+    resolves. `./dist/*` is compatibility, not contract: internals can change in any release, and the hosted repo
+    imports `./block` only.
+  - **One version line for the CLI and the library**, not a separate package: the hosted endpoint and npm must run
+    the same tool code, and one package keeps one release (invariant 7) behind one tap. *Accepted:* a hosted-only
+    change is a public npm release, and the 0.x line means a breaking library change is a minor bump the hosted repo's
+    exact pin absorbs. *Not taken:* a second published package (a second release pipeline, a second version to keep in
+    step).
 - **~100 `dwlf_*` tools** grouped in 28 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
@@ -197,12 +208,14 @@ A reviewer should be able to test a diff against each of these:
    of** `registerAll`, so a name has one implementation per
    backend and `full` never sees the Block versions. Its list is `BLOCK_API_TOOLS` (`src/profiles.ts`), and the
    block-api wording test checks the two agree. That is the third wiring point.
+   `createBlockServer` (`src/block/server.ts`, 22-Nov) also calls `registerBlockApiTools` directly, so a hosted bundle
+   carries no SPT module; `test/blockServer.test.mjs` pins that it lists exactly what `registerForProfile` lists.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
 8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` (or `DWLF_BLOCK_KEY`) in the
-   environment, or from the caller of `createBlockServer` (`@dwlf/mcp-server/block`), which holds it only in that
+   environment, or from the caller of `createBlockServer` (`@dwlf/mcp-server/block`, its `credential`), which holds it only in that
    server's client and never logs or stores it (in the local hosted spike, from the caller's request, never stored;
    the hosted endpoint, in its private repo, takes it per request in the same way: the credential is never logged or
    stored, and a token exchanged for it is held in memory only until it expires); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;

@@ -6,8 +6,11 @@ import { readFileSync } from 'node:fs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { createBlockServer, BLOCK_API_TOOLS, BLOCK_API_INSTRUCTIONS } from '@dwlf/mcp-server/block';
+import * as entry from '@dwlf/mcp-server/block';
 import { registerForProfile } from '../dist/register.js';
+import { BLOCK_API_TOOLS, BLOCK_API_INSTRUCTIONS } from '../dist/profiles.js';
+
+const { createBlockServer } = entry;
 
 /** A local stand-in for the Block API: `route(url)` gives `[status, body, contentType?]`; every request is recorded. */
 const upstream = async (route) => {
@@ -42,16 +45,32 @@ test('the package exports `./block`, and `.` still names the stdio entry', () =>
   assert.deepEqual(pkg.files, ['dist', 'README.md', 'LICENSE'], 'the hosted entry changes no shipped files');
 });
 
+test('`./block` exports createBlockServer and nothing else at runtime (its types aside): that is the contract', () => {
+  assert.deepEqual(Object.keys(entry), ['createBlockServer']);
+});
+
+test('createBlockServer imports no SPT tool module: a hosted bundle carries the Block tools only', () => {
+  const graph = new Set();
+  const walk = (file) => {
+    if (graph.has(file)) { return; }
+    graph.add(file);
+    for (const [, spec] of readFileSync(file, 'utf8').matchAll(/from '(\.[^']+)'/g)) { walk(new URL(spec, file)); }
+  };
+  walk(new URL('../dist/block/server.js', import.meta.url));
+  const reached = [...graph].map((u) => u.pathname.split('/dist/')[1]).sort();
+  assert.ok(!reached.some((f) => f.startsWith('tools/') || f === 'register.js' || f === 'client.js'), reached.join(', '));
+});
+
 test('createBlockServer refuses a missing or blank key: a hosted caller is always signed in', () => {
-  assert.throws(() => createBlockServer({ apiKey: '' }), /Block API key/);
-  assert.throws(() => createBlockServer({ apiKey: '   ' }), /Block API key/);
-  assert.throws(() => createBlockServer({}), /Block API key/);
+  assert.throws(() => createBlockServer({ credential: '' }), /credential/);
+  assert.throws(() => createBlockServer({ credential: '   ' }), /credential/);
+  assert.throws(() => createBlockServer({}), /credential/);
 });
 
 test('createBlockServer gives the block-api tools and instructions the stdio entry gives, signed in with the key', async () => {
   const api = await upstream(() => [200, { summary: 'ok', items: [] }]);
   try {
-    const mcp = await connect(createBlockServer({ apiKey: ' dwlfk_test ', baseURL: api.url }));
+    const mcp = await connect(createBlockServer({ credential: ' dwlfk_test ', baseURL: api.url }));
     assert.equal(mcp.getInstructions(), BLOCK_API_INSTRUCTIONS);
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((t) => t.name).sort(), [...BLOCK_API_TOOLS].sort());
@@ -70,7 +89,7 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
     : url.startsWith('/v1/events') ? [403, '<html>Forbidden</html>', 'text/html'] : [200, { summary: 'ok' }]));
   try {
     const heard = [];
-    const mcp = await connect(createBlockServer({ apiKey: 'dwlfk_test', baseURL: api.url, recorder: (r) => heard.push(r) }));
+    const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: api.url, recorder: (r) => heard.push(r) }));
     const revoked = await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
     assert.equal(revoked.isError, true);
     assert.match(revoked.content[0].text, /Block API 401: .*key revoked/);
@@ -79,7 +98,7 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
     assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true }, { status: 403, code: null, blockBody: false }]);
 
     const offline = [];
-    const down = await connect(createBlockServer({ apiKey: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, recorder: (r) => offline.push(r) }));
+    const down = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, recorder: (r) => offline.push(r) }));
     assert.equal((await down.callTool({ name: 'dwlf_get_conditions', arguments: {} })).isError, true);
     assert.deepEqual(offline, [{ status: null, code: null, blockBody: false }]);
   } finally { await api.close(); }
@@ -88,7 +107,7 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
 test('a recorder that throws never changes the tool\'s answer', async () => {
   const api = await upstream(() => [401, { error: 'UNAUTHORIZED', message: 'key revoked' }]);
   try {
-    const mcp = await connect(createBlockServer({ apiKey: 'dwlfk_test', baseURL: api.url, recorder: () => { throw new Error('boom'); } }));
+    const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: api.url, recorder: () => { throw new Error('boom'); } }));
     const r = await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
     assert.equal(r.isError, true);
     assert.match(r.content[0].text, /Block API 401/);
@@ -102,15 +121,15 @@ test('a host-supplied catalogue cache: a hit makes no Block API call; a miss rea
   try {
     const store = new Map();
     const cacheFor = (key) => ({ get: () => store.get(key), set: (body) => { store.set(key, body); } });
-    const first = await connect(createBlockServer({ apiKey: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
+    const first = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
     await first.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
-    const second = await connect(createBlockServer({ apiKey: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
+    const second = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
     await second.callTool({ name: 'dwlf_describe_onchain_events', arguments: { family: 'cost-basis' } });
     assert.equal(api.seen.filter((s) => s.url.startsWith('/v1/catalogue')).length, 1, 'the second server, same key, read the kept catalogue');
     assert.deepEqual(store.get('a'), catalogue);
 
     fail = true;
-    const other = await connect(createBlockServer({ apiKey: 'dwlfk_b', baseURL: api.url, catalogueCache: cacheFor('b') }));
+    const other = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url, catalogueCache: cacheFor('b') }));
     assert.equal((await other.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} })).isError, true);
     assert.equal(store.has('b'), false, 'a failed read is never kept');
   } finally { await api.close(); }

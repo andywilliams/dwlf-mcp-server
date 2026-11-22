@@ -1,20 +1,24 @@
 import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BlockApiClient, type UpstreamRecorder } from './client.js';
-import type { CatalogueCache } from './tools.js';
-import { registerForProfile } from '../register.js';
+import { registerBlockApiTools, type CatalogueCache } from './tools.js';
 import { BLOCK_API_INSTRUCTIONS } from '../profiles.js';
 
-export { BlockApiClient, BlockApiError, type UpstreamRecorder, type UpstreamRefusal } from './client.js';
+// The published contract of `@dwlf/mcp-server/block` is this file's exports and nothing else (charter *Interfaces*).
+export type { UpstreamRecorder, UpstreamRefusal } from './client.js';
 export type { CatalogueCache } from './tools.js';
-export { BLOCK_API_TOOLS, BLOCK_API_INSTRUCTIONS } from '../profiles.js';
 
 // package.json sits two levels above dist/block/ in both a clone and the published tarball.
 const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
 
 export interface BlockServerOptions {
-  /** The caller's own Block API key (`dwlfk_…`), sent as `Bearer` to the Block API and nowhere else. Required. */
-  apiKey: string;
+  /**
+   * What the Block API accepts as `Bearer` on `/v1`: today a person's own Block API key (`dwlfk_…`); once OAuth ships
+   * (hosted-auth step 7), also the `aud = block` token identity's exchange gives. The host decides which it passes;
+   * this never inspects it, logs it or keeps it beyond this server's client, and sends it to the Block API only.
+   * Required: a hosted caller is always signed in.
+   */
+  credential: string;
   /** The Block API's base URL. The host fixes it from its own configuration, never from the request. */
   baseURL?: string;
   timeoutMs?: number;
@@ -25,16 +29,17 @@ export interface BlockServerOptions {
 }
 
 /**
- * The library entry for a per-request host (`@dwlf/mcp-server/block`; DWLF-622, docs/design/hosted-auth.md): one
- * `McpServer` with the Block profile on the `block-api` backend, the same tools and instructions the stdio server gives
- * with `--profile block` on that backend, signed in with the caller's key. Build one per request and close it after;
- * nothing read with one caller's key is kept in it. The host owns the transport, the credential check and every limit.
+ * The library entry for a per-request host (`@dwlf/mcp-server/block`; DWLF-622, docs/design/hosted-auth.md step 2a):
+ * one `McpServer` with the Block profile on the `block-api` backend, signed in with the caller's credential. It
+ * registers through `registerBlockApiTools`, the function `registerForProfile` calls on that backend for stdio, so
+ * both give the same tools and instructions (`test/blockServer.test.mjs` pins it), without importing the SPT tool
+ * modules. Build one per request and close it after. The host owns the transport, the credential check and every limit.
  */
 export function createBlockServer(options: BlockServerOptions): McpServer {
-  const apiKey = typeof options.apiKey === 'string' ? options.apiKey.trim() : '';
-  if (!apiKey) throw new Error('createBlockServer needs the caller\'s Block API key.');
+  const credential = typeof options.credential === 'string' ? options.credential.trim() : '';
+  if (!credential) throw new Error('createBlockServer needs the caller\'s credential (a Block API key).');
   const server = new McpServer({ name: 'dwlf', version }, { instructions: BLOCK_API_INSTRUCTIONS });
-  const client = new BlockApiClient({ apiKey, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
-  registerForProfile(server, 'block', 'block-api', { block: () => client }, { catalogueCache: options.catalogueCache });
+  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
+  registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;
 }
