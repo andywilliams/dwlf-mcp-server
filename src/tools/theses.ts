@@ -160,23 +160,28 @@ const routesLine = (data: Json): string => {
 };
 
 /** One line: how many beats, the last thing that happened, what it needs next, and the plan's note (reconstructed, or none). */
-const storyLine = (data: Json): string => {
+const storyLine = (data: Json, { replayAsked = false }: { replayAsked?: boolean } = {}): string => {
   const s = (data.summary && typeof data.summary === 'object' ? data.summary : {}) as { beats?: number; last?: { sentence?: string } | null; needsNext?: string | null };
   const count = Number.isFinite(s.beats) ? s.beats : Array.isArray(data.beats) ? data.beats.length : null;
   const last = s.last?.sentence ? ` Last: ${s.last.sentence}` : '';
   const next = s.needsNext ? ` Next: ${s.needsNext}` : '';
   const note = data.planNote ? ` Plan: ${String(data.planNote)}` : '';
-  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}${routesLine(data)}${replayLine(data)}`;
+  return `${data.symbol ?? 'Thesis'} story, ${count ?? 'an unknown number of'} beats.${last}${next}${note}${routesLine(data)}${replayLine(data, replayAsked)}`;
 };
 
 /** The replay in a line (DWLF-889): the summary sentence, and whether replay is open (asked for) and against what plan. */
-const replayLine = (data: Json): string => {
+const replayLine = (data: Json, asked: boolean): string => {
   const summary = typeof data.replaySummary === 'string' && data.replaySummary ? ` Summary: ${data.replaySummary}` : '';
-  const r = (data.replay && typeof data.replay === 'object' ? data.replay : null) as { available?: boolean; note?: string | null; asDrawn?: { label?: string } | null; omitted?: Json } | null;
-  if (!r) { return summary; }
+  const r = (data.replay && typeof data.replay === 'object' ? data.replay : null) as { available?: boolean; note?: string | null; asDrawn?: { label?: string; reconstructed?: boolean } | null; omitted?: { plans?: number; checkpoints?: number } } | null;
+  // Asked for and not returned: an API without replay, never "not open yet".
+  if (!r) { return asked ? `${summary} This API did not return a replay (it may not support one yet); that says nothing about the thesis.` : summary; }
   if (r.available !== true) { return `${summary} Replay: ${r.note || 'not open yet.'}`; }
-  const against = r.asDrawn?.label ? ` against ${r.asDrawn.label}` : '';
-  const left = r.omitted ? ' Some older plan bodies were left out for size (replay.omitted); their beats are kept.' : '';
+  const label = r.asDrawn?.label ? String(r.asDrawn.label) : null;
+  // The caveat is said from the flag, whatever SPT's label says.
+  const caveat = r.asDrawn?.reconstructed === true && !/reconstructed/i.test(label || '') ? ' (reconstructed after the fact, not captured at the time)' : '';
+  const against = label ? ` against ${label}${caveat}` : '';
+  const omitted = [r.omitted?.plans, r.omitted?.checkpoints].some((n) => Number.isFinite(n) && (n as number) > 0);
+  const left = omitted ? ' Some older plan bodies were left out for size (replay.omitted); their beats are kept.' : '';
   return `${summary} Replay${against}${r.note ? `: ${r.note}` : '.'}${left}`;
 };
 
@@ -238,13 +243,13 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_theses',
-    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or it is challenged).',
+    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or the thesis is complete or challenged; null before).',
     {
       status: z.string().optional().describe('Filter: waiting, in_progress, complete, challenged, archived or closed.'),
       symbol: z.string().optional().describe('Filter by thesis symbol.'),
       group: z.string().optional().describe('Filter by group.'),
       includeProgress: z.boolean().optional().describe('Also say how close each active thesis is to its next condition (and its nearest invalidation), with `closest` to sort by. A few extra reads; leave off for a plain list.'),
-      includeStory: z.boolean().optional().describe('Also give each active thesis a one-line `storySummary` { beats, last { date, sentence }, needsNext, replaySummary }: the story dwlf_get_thesis_story tells, in brief (replaySummary null until a step is met or it is challenged). A few extra reads.'),
+      includeStory: z.boolean().optional().describe('Also give each active thesis a one-line `storySummary` { beats, last { date, sentence }, needsNext, replaySummary }: the story dwlf_get_thesis_story tells, in brief (replaySummary null until a step is met or the thesis is complete or challenged; dwlf_get_thesis_story always gives one). A few extra reads.'),
     },
     async ({ status, symbol, group, includeProgress, includeStory }) => {
       try {
@@ -297,7 +302,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_get_thesis_story',
-    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). \`current.routes\`: illustrated routes past today, one that meets the remaining steps and one per way the thesis could be challenged (both or none), each leg naming the engine numbers it was drawn from (\`basis\`); \`illustration\` carries their disclaimer, watermark and legend. \`replaySummary\`: one sentence of facts (saved, each step met, challenge and revision with its date, the outcome). With replay: true, once a step is met or the thesis has an outcome, \`replay\` tells the plan as drawn against what happened: \`asDrawn\`, \`met\` (where each step was met, beside where its plan had illustrated it), \`windows\` (as drawn vs today), \`beats\`, \`plans\` and \`checkpoints\` (the plan just after each fire). ${STORY_RULE} ${ROUTE_RULE} ${REPLAY_RULE} Engine prices (route vertices included) are withheld for keys not entitled to raw prices.`,
+    `One thesis told as a story, in steps ("beats"): what happened (saved, revisions, the cycle windows, the engine events its conditions name, its fires), where it stands now, and what each unmet step needs next. Each beat has a plain \`sentence\`, \`knowableAt\` (when DWLF could first know it), \`checkedAs\` (the condition it speaks to, in its label's words) and \`means\` (what it does to the steps). Also the plan as drawn when a revision was saved (\`plan\`, stored once and never changed; \`planNote\` says when it was reconstructed after the fact or none was captured), \`definitions\`, a \`disclaimer\` and \`deepLink\` (opens the story on the DWLF site at "now"; set its \`story\` query value to a beat's \`id\` to open that beat). \`current.routes\`: illustrated routes past today, one that meets the remaining steps and one per way the thesis could be challenged (both or none), each leg naming the engine numbers it was drawn from (\`basis\`); \`illustration\` carries their disclaimer, watermark and legend. \`replaySummary\` (always present): one sentence of facts (saved, each step met, challenge and revision with its date, the outcome). With replay: true, once a step is met or the thesis has an outcome, \`replay\` tells the plan as drawn against what happened: \`asDrawn\`, \`met\` (where each step was met, beside where its plan had illustrated it), \`windows\` (as drawn vs today), \`beats\`, \`plans\` and \`checkpoints\` (the plan just after each fire). ${STORY_RULE} ${ROUTE_RULE} ${REPLAY_RULE} Engine prices (route vertices included) are withheld for keys not entitled to raw prices.`,
     {
       thesisId: z.string().describe('Thesis ID'),
       revision: z.number().int().positive().optional().describe('Whose plan as drawn to return (1..currentRevision). Default: the current revision.'),
@@ -317,7 +322,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
           ...(routes.length ? { routeKind: definitionsFor(ROUTE_KIND_DEFINITIONS, routes.map((x) => x?.kind)), basis: definitionsFor(BASIS_DEFINITIONS, bases) } : {}),
           ...(replayBeats.length ? { replayBeatKind: definitionsFor(REPLAY_BEAT_KIND_DEFINITIONS, replayBeats.map((b) => b?.kind)) } : {}),
         };
-        return ok(data, { summary: storyLine(data), definitions, how: `${STORY_RULE} ${ROUTE_RULE} ${REPLAY_RULE}`, why: WHY });
+        return ok(data, { summary: storyLine(data, { replayAsked: replay === true }), definitions, how: `${STORY_RULE} ${ROUTE_RULE} ${REPLAY_RULE}`, why: WHY });
       } catch (error) { return fail(error); }
     }
   );
