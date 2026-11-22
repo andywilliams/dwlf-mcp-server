@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { registerForProfile } from './register.js';
 import { blockApiBase } from './block/client.js';
-import { resolveProfile, resolveBlockBackend, PROFILE_INSTRUCTIONS, blockApiInstructions, keysPageFor, type ProfileName, type BlockBackend } from './profiles.js';
+import { resolveProfile, resolveBlockBackend, PROFILE_INSTRUCTIONS, blockApiInstructions, type ProfileName, type BlockBackend } from './profiles.js';
 
 // package.json sits one level above dist/ in both a clone and the published tarball.
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
@@ -22,7 +22,7 @@ try {
 }
 
 // The keys page follows the Block API's stage (BLOCK_API_URL), as the client the tools use does.
-const instructions = backend === 'block-api' ? blockApiInstructions(keysPageFor(blockApiBase())) : PROFILE_INSTRUCTIONS[profile];
+const instructions = backend === 'block-api' ? blockApiInstructions(blockApiBase()) : PROFILE_INSTRUCTIONS[profile];
 const server = new McpServer({ name: 'dwlf', version }, instructions ? { instructions } : undefined);
 
 // On the block-api backend (DWLF-876) SPT and DWLF_API_KEY are not used at all.

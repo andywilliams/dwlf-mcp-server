@@ -121,10 +121,11 @@ export function keysPageFor(apiBase: string): string {
 }
 
 /**
- * Server instructions for `--profile block` on the `block-api` backend, naming `keysPage` (the stage's, from
- * `keysPageFor`) for a keyless view. Worded within the shared banned-terms list.
+ * Server instructions for `--profile block` on the `block-api` backend, read against the Block API at `apiBase`: a
+ * keyless view is sent to that stage's keys page (`keysPageFor`). The base is required, so no caller can name a page
+ * that doesn't match the API it reads. Worded within the shared banned-terms list.
  */
-export const blockApiInstructions = (keysPage: string = PRODUCTION_KEYS_PAGE): string =>
+export const blockApiInstructions = (apiBase: string): string =>
   'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for where Bitcoin is now, then ' +
   'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Find an event type or ' +
   'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
@@ -133,11 +134,8 @@ export const blockApiInstructions = (keysPage: string = PRODUCTION_KEYS_PAGE): s
   'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
   'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
   'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
-  `${keysPage}, reads the full history. Call each item an event, a condition or a reading. Describe ` +
+  `${keysPageFor(apiBase)}, reads the full history. Call each item an event, a condition or a reading. Describe ` +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
-
-/** The block-api instructions against production. */
-export const BLOCK_API_INSTRUCTIONS = blockApiInstructions();
 
 /**
  * The backend named by `--block-backend X` / `--block-backend=X`, else `DWLF_BLOCK_BACKEND`, else `spt`. Throws on an

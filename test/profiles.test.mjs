@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS, blockApiInstructions, keysPageFor } from '../dist/profiles.js';
+import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, blockApiInstructions, keysPageFor } from '../dist/profiles.js';
+
+const BLOCK_API_INSTRUCTIONS = blockApiInstructions('https://api.block.dwlf.co.uk');
 import { registerAll } from '../dist/register.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS, NOTED_TOOLS, READING_NOTE } from '../dist/blockDescriptions.js';
 
@@ -168,8 +170,8 @@ test('the keys page follows the Block API\'s stage; anything that is not a DWLF 
     'https://api.block-staging.dwlf.co.uk.example.com', 'https://api.example.com', 'https://block-staging.dwlf.co.uk', 'not a url', '']) {
     assert.equal(keysPageFor(other), prod, other);
   }
-  assert.equal(BLOCK_API_INSTRUCTIONS, blockApiInstructions(prod));
-  const staging = blockApiInstructions('https://block-staging.dwlf.co.uk/account/');
+  assert.match(BLOCK_API_INSTRUCTIONS, /from https:\/\/block\.dwlf\.co\.uk\/account\/, reads/);
+  const staging = blockApiInstructions('https://api.block-staging.dwlf.co.uk');
   assert.equal(staging, BLOCK_API_INSTRUCTIONS.replace(prod, 'https://block-staging.dwlf.co.uk/account/'), 'only the link differs');
 });
 
