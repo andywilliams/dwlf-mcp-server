@@ -17,6 +17,8 @@ export interface UpstreamRefusal {
   code: string | null;
   /** True when the body is Block's own `{ error, message }`; false for anything else (an edge's or a proxy's answer). */
   blockBody: boolean;
+  /** The answer's body as received (null when unreachable), so a host can classify it itself. Never a credential. */
+  body: unknown;
 }
 export type UpstreamRecorder = (refusal: UpstreamRefusal) => void;
 
@@ -55,11 +57,11 @@ export class BlockApiClient {
         const body: unknown = error.response.data;
         const code = body !== null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
           ? (body as { error: string }).error : null;
-        this.record({ status: error.response.status, code, blockBody: code !== null });
+        this.record({ status: error.response.status, code, blockBody: code !== null, body });
         // The Block API's own error body is the agent's answer (its code, message, requiredPlan, pricingUrl): kept whole.
         throw new BlockApiError(error.response.status, body, `Block API ${error.response.status}: ${typeof body === 'string' ? body.slice(0, 500) : JSON.stringify(body)}`);
       }
-      this.record({ status: null, code: null, blockBody: false });
+      this.record({ status: null, code: null, blockBody: false, body: null });
       throw new BlockApiError(null, null, `Block API unreachable: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

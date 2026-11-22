@@ -11,8 +11,7 @@
       "types": "./dist/block/server.d.ts",
       "default": "./dist/block/server.js"
     },
-    "./package.json": "./package.json",
-    "./dist/*": "./dist/*"
+    "./package.json": "./package.json"
   },
   "bin": {
     "dwlf-mcp-server": "dist/index.js"

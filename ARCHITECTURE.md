@@ -63,10 +63,16 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `registerForProfile` calls on `block-api`, so stdio and hosted give the same tools, and it imports no SPT tool module
   (both pinned by `test/blockServer.test.mjs`).
   - **The contract is that file's exports only:** `createBlockServer`, its options, and the `UpstreamRecorder`,
-    `UpstreamRefusal` and `CatalogueCache` types. A breaking change to them is a semver-breaking bump (a minor while 0.x), named in the PR. `package.json` `exports`
-    also keeps `.` (the stdio entry) and `./dist/*`, so a deep import that worked before `exports` existed still
-    resolves. `./dist/*` is compatibility, not contract: internals can change in any release, and the hosted repo
-    imports `./block` only.
+    `UpstreamRefusal` and `CatalogueCache` types. A breaking change to them is a semver-breaking bump (a minor while
+    0.x), named in the PR. `package.json` `exports` lists `.` (the stdio entry), `./block` and `./package.json`; since
+    0.75.0 nothing under `dist/` is importable by path (no consumer was found; the 0.x line makes that a minor bump).
+  - **It returns the SDK's own `McpServer`, so `@modelcontextprotocol/sdk` is part of the contract.** The host builds
+    its transport from the same SDK; its range here (`^1.x`) and the host's must overlap so npm resolves one copy. A
+    new SDK major here is a breaking change for `./block`.
+  - **Code reachable from `./block` keeps no state read with a credential beyond the server it built.** The default
+    catalogue cache lives in the registration, so it dies with the server; anything that must outlive a request is
+    the host's, passed in (`catalogueCache`). A module-level cache there would leak one caller's plan view to the
+    next. Pinned by a test that two servers with different credentials each read for themselves.
   - **One version line for the CLI and the library**, not a separate package: the hosted endpoint and npm must run
     the same tool code, and one package keeps one release (invariant 7) behind one tap. *Accepted:* a hosted-only
     change is a public npm release, and the 0.x line means a breaking library change is a minor bump the hosted repo's
@@ -208,8 +214,9 @@ A reviewer should be able to test a diff against each of these:
    of** `registerAll`, so a name has one implementation per
    backend and `full` never sees the Block versions. Its list is `BLOCK_API_TOOLS` (`src/profiles.ts`), and the
    block-api wording test checks the two agree. That is the third wiring point.
-   `createBlockServer` (`src/block/server.ts`, 22-Nov) also calls `registerBlockApiTools` directly, so a hosted bundle
-   carries no SPT module; `test/blockServer.test.mjs` pins that it lists exactly what `registerForProfile` lists.
+   `createBlockServer` (`src/block/server.ts`, 22-Nov) is the per-request entry: it calls `registerBlockApiTools`
+   directly, so a hosted bundle carries no SPT module, and `test/blockServer.test.mjs` pins that it lists exactly
+   what `registerForProfile` lists. `registerForProfile`'s `clients` factories predate it and stay for tests.
 7. **Every PR that must ship bumps `version` in `package.json`.** CI publishes only when the version
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.

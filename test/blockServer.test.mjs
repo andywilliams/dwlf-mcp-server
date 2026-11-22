@@ -32,16 +32,12 @@ const connect = async (server) => {
   return client;
 };
 
-test('a deep import of dist/ still resolves (adding `exports` must not break one)', async () => {
-  const deep = await import('@dwlf/mcp-server/dist/block/client.js');
-  assert.equal(typeof deep.BlockApiClient, 'function');
-});
-
 test('the package exports `./block`, and `.` still names the stdio entry', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.exports['.'], './dist/index.js');
   assert.equal(pkg.main, './dist/index.js'.slice(2));
   assert.equal(pkg.exports['./block'].default, './dist/block/server.js');
+  assert.deepEqual(Object.keys(pkg.exports).sort(), ['.', './block', './package.json'], 'internals are not importable');
   assert.deepEqual(pkg.files, ['dist', 'README.md', 'LICENSE'], 'the hosted entry changes no shipped files');
 });
 
@@ -95,12 +91,13 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
     assert.match(revoked.content[0].text, /Block API 401: .*key revoked/);
     await mcp.callTool({ name: 'dwlf_get_events', arguments: {} });
     await mcp.callTool({ name: 'dwlf_get_series', arguments: { id: 'mvrv' } });
-    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true }, { status: 403, code: null, blockBody: false }]);
+    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true, body: { error: 'UNAUTHORIZED', message: 'key revoked' } },
+      { status: 403, code: null, blockBody: false, body: '<html>Forbidden</html>' }]);
 
     const offline = [];
     const down = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, recorder: (r) => offline.push(r) }));
     assert.equal((await down.callTool({ name: 'dwlf_get_conditions', arguments: {} })).isError, true);
-    assert.deepEqual(offline, [{ status: null, code: null, blockBody: false }]);
+    assert.deepEqual(offline, [{ status: null, code: null, blockBody: false, body: null }]);
   } finally { await api.close(); }
 });
 
@@ -132,5 +129,19 @@ test('a host-supplied catalogue cache: a hit makes no Block API call; a miss rea
     const other = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url, catalogueCache: cacheFor('b') }));
     assert.equal((await other.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} })).isError, true);
     assert.equal(store.has('b'), false, 'a failed read is never kept');
+  } finally { await api.close(); }
+});
+
+test('two callers share nothing: with no host cache, each server reads with its own credential and keeps nothing for the other', async () => {
+  const catalogue = { summary: 'c', items: [{ id: 'onchain.x', kind: 'eventType', family: 'cost-basis' }], definitions: { 'onchain.x': 'd' } };
+  const api = await upstream(() => [200, catalogue]);
+  try {
+    const a = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url }));
+    await a.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
+    const b = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url }));
+    await b.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
+    await b.callTool({ name: 'dwlf_get_conditions', arguments: {} });
+    assert.deepEqual(api.seen, [{ url: '/v1/catalogue', auth: 'Bearer dwlfk_a' }, { url: '/v1/catalogue', auth: 'Bearer dwlfk_b' },
+      { url: '/v1/conditions', auth: 'Bearer dwlfk_b' }]);
   } finally { await api.close(); }
 });
