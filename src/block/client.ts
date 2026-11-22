@@ -6,7 +6,20 @@ import axios, { type AxiosInstance } from 'axios';
  * for its one host. With no key it reads the public routes (`/public/v1/*`, the Free view); with a key (a personal
  * `dwlfk_` key once keys ship) it reads `/v1/*` with `Bearer`. One client per caller: `options` overrides the
  * environment, so a hosted host can build one per request (D7). The key is never logged.
+ *
+ * `recorder` (hosted-auth H11): a per-request observer told of each refusal or failure, so a hosted entry can turn a
+ * revoked key into an HTTP 401 after the tool has answered. The stdio server passes none, so its output is unchanged.
  */
+export interface UpstreamRefusal {
+  /** The HTTP status, or null when the Block API was unreachable. */
+  status: number | null;
+  /** Block's own error code (`error` in its body), when the body is Block's; null otherwise. */
+  code: string | null;
+  /** True when the body is Block's own `{ error, message }`; false for anything else (an edge's or a proxy's answer). */
+  blockBody: boolean;
+}
+export type UpstreamRecorder = (refusal: UpstreamRefusal) => void;
+
 export class BlockApiError extends Error {
   constructor(readonly status: number | null, readonly body: unknown, message: string) {
     super(message);
@@ -16,9 +29,11 @@ export class BlockApiError extends Error {
 
 export class BlockApiClient {
   private http: AxiosInstance;
+  private recorder?: UpstreamRecorder;
   readonly signedIn: boolean;
 
-  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number } = {}) {
+  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder } = {}) {
+    this.recorder = options.recorder;
     const base = (options.baseURL || process.env.BLOCK_API_URL || 'https://api.block.dwlf.co.uk').replace(/\/+$/, '');
     const raw = 'apiKey' in options ? options.apiKey : process.env.DWLF_BLOCK_KEY;
     const apiKey = raw?.trim() ? raw.trim() : undefined;
@@ -38,10 +53,19 @@ export class BlockApiClient {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         const body: unknown = error.response.data;
+        const code = body !== null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
+          ? (body as { error: string }).error : null;
+        this.record({ status: error.response.status, code, blockBody: code !== null });
         // The Block API's own error body is the agent's answer (its code, message, requiredPlan, pricingUrl): kept whole.
         throw new BlockApiError(error.response.status, body, `Block API ${error.response.status}: ${typeof body === 'string' ? body.slice(0, 500) : JSON.stringify(body)}`);
       }
+      this.record({ status: null, code: null, blockBody: false });
       throw new BlockApiError(null, null, `Block API unreachable: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  /** Tells the recorder, if any. A recorder that throws never changes the tool's answer. */
+  private record(refusal: UpstreamRefusal): void {
+    try { this.recorder?.(refusal); } catch { /* the observer's failure is not the call's */ }
   }
 }

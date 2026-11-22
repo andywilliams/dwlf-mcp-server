@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DWLFClient } from './client.js';
 import { BlockApiClient } from './block/client.js';
-import { registerBlockApiTools } from './block/tools.js';
+import { registerBlockApiTools, type CatalogueCache } from './block/tools.js';
 import { profiledServer, type ProfileName, type BlockBackend } from './profiles.js';
 import { registerMarketDataTools } from './tools/market-data.js';
 import { registerRangeTools } from './tools/ranges.js';
@@ -99,10 +99,11 @@ export function registerAll(server: McpServer, client: DWLFClient): void {
  * are built here. The block-api backend is refused for any profile but `block` (`full` never sees the Block versions).
  */
 export function registerForProfile(server: McpServer, profile: ProfileName, backend: BlockBackend,
-  clients: { dwlf?: () => DWLFClient; block?: () => BlockApiClient } = {}): void {
+  clients: { dwlf?: () => DWLFClient; block?: () => BlockApiClient } = {},
+  blockOptions: { catalogueCache?: CatalogueCache } = {}): void {
   if (backend === 'block-api') {
     if (profile !== 'block') throw new Error('The block-api backend applies to --profile block only.');
-    registerBlockApiTools(server, (clients.block ?? (() => new BlockApiClient()))());
+    registerBlockApiTools(server, (clients.block ?? (() => new BlockApiClient()))(), blockOptions);
     return;
   }
   registerAll(profiledServer(server, profile), (clients.dwlf ?? (() => new DWLFClient()))());

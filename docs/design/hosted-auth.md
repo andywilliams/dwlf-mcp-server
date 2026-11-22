@@ -7,6 +7,20 @@ Block API key as the fallback** for local clients (Claude Code, Cursor), now tha
 amends `docs/HOSTED-MCP.md` (4-Nov) where that design assumed SPT and a managed upstream key, and it answers
 `block-repoint.md` D7. Docs only: nothing is built or deployed by this PR.*
 
+> **22-Nov-2026: Andy's answers (11:20, through Jenna).** They change the plan below where it disagrees:
+> - **The pasted key comes first; one-click sign-in (OAuth) comes later.** The hosted endpoint launches with (b) only
+>   (steps 2a, 2b, 3, a key-only step 8, then 9). The OAuth steps (4–7) follow as their own launch. Until they ship,
+>   there's no authorization server to name, so the no-credential `401` (§4) carries no `resource_metadata` and the
+>   RFC 9728 document isn't served. Both arrive with step 7.
+> - **Q2: yes.** No credential gets a clear `401` that says where to get a key (§4).
+> - **Q4: the hosted server's code lives in a private repo** (working name `dwlf-mcp-hosted`), not here. This
+>   replaces H7 and H10. This repo publishes a library entry, `@dwlf/mcp-server/block` (`createBlockServer`, the
+>   H11 recorder and a catalogue-cache seam; step 2a), so the tools stay one codebase. The private repo pins a
+>   published version, and holds the HTTP entry, the CDK stacks and the deploy workflow (steps 2b and 3).
+> - **DNS isn't a blocker.** The `dwlf.co.uk` zone's limit has been 10,000 records since 18-Nov (50 used). Q5 (the
+>   name) is still open.
+> - Still open: Q1 and Q3 (before step 5), and Q5 (before step 3 deploys).
+
 ## 0 · What exists (checked read-only, 20-Nov)
 
 | Where | Has | Lacks |
@@ -15,21 +29,22 @@ amends `docs/HOSTED-MCP.md` (4-Nov) where that design assumed SPT and a managed 
 | dwlf-block-api | Keys (#42–#44): create, list and revoke through identity, a per-plan count (`apiKeysMax`) and scope (`keyScope`), `Bearer dwlfk_` exchanged at identity, the plan's allowance (`429 QUOTA_EXCEEDED`). **It already accepts delegated (`act`) tokens presented directly** (`src/auth/identity.ts`: "Block's buyers are agents"). | Anything about OAuth clients or consent. |
 | block-site | `/account/` keys page: list, create (shown once), revoke, every refusal worded (#71, on staging). | A consent page; connected apps. |
 | this repo | The stdio key path (`DWLF_BLOCK_KEY`, B4 D6). The local transport spike (`spike/hosted-http.mjs`: stateless Streamable HTTP, 401 + RFC 9728 metadata, Origin, body cap). | A shipped HTTP entry, infrastructure, OAuth verification. |
-| DNS | `block.dwlf.co.uk` names live inside the `dwlf.co.uk` zone, which was full (50 of 50 rrsets) on 16-Nov. | The 2 rrsets `mcp.block.dwlf.co.uk` needs (an alias record, the certificate's validation record). |
+| DNS | `block.dwlf.co.uk` names live inside the `dwlf.co.uk` zone. It was full (50 of 50 rrsets) on 16-Nov, and its limit has been 10,000 since 18-Nov. | The 2 rrsets `mcp.block.dwlf.co.uk` needs (an alias record, the certificate's validation record). There's room. |
 | SDK | `@modelcontextprotocol/sdk`: this repo locks 1.32.1; the latest on npm, 1.32.2, still speaks up to 2025-11-25. Its stateless mode already matches the 2026-07-28 shape (HOSTED-MCP §2). | 2026-07-28's header mirroring. That's taken when it ships, before any listing. |
 
 ## 1 · Shape
 
 - **Endpoint:** `https://mcp.block.dwlf.co.uk/mcp` (staging: `https://mcp.block-staging.dwlf.co.uk/mcp`). Stateless
   Streamable HTTP, POST only, JSON responses (HOSTED-MCP §2–§3). **The URI is also the OAuth resource and token
-  audience**, so it's permanent once the first grant exists. Step 3 confirms DNS room for it before any grant is
+  audience**, so it's permanent once the first grant exists. Step 3 makes the name live before any grant is
   issued. If Block ever moves domain, identity registers a second resource for `block`, the old URI keeps answering
   (or redirects), and old grants run out with their keys.
 - **What it serves:** the Block profile on the **`block-api` backend only** (`BLOCK_API_TOOLS`, B4). It never calls
   SPT. So HOSTED-MCP §3's "what it calls: `api.dwlf.co.uk/v2`" and §5's SPT tier limits are replaced: the Block API
   is Block's complete surface (its charter), and its per-account allowance and plan checks apply to every call.
-- **Runtime:** one Lambda per stage, from a CDK stack in this repo (`hosted/` + `infra/`; H7). A fresh `McpServer` and
-  `BlockApiClient` are built per request from that request's credential. **Nothing read with a credential is shared
+- **Runtime:** one Lambda per stage, from a CDK stack in the private hosted repo (22-Nov, Q4). A fresh `McpServer`
+  and `BlockApiClient` are built per request from that request's credential, by `createBlockServer` from this
+  repo's published `@dwlf/mcp-server/block`. **Nothing read with a credential is shared
   between callers.** Every hosted caller is signed in, and `/v1/catalogue` is the account's plan view, so the
   catalogue cache is keyed by the credential's SHA-256 (bounded, least recently used first). It's never
   process-wide, so a Free caller can't get a paid caller's view. On the hosted entry it lasts **60 seconds**, not
@@ -168,7 +183,10 @@ days. Pre-registered ids for directories that issue fixed ones.
 - This is identity's first refresh token for a delegated grant. Its charter says delegated tokens get no refresh;
   identity's design records the exception.
 
-**H7 · The hosted entry never reaches the npm package.** It lives in `hosted/` (its own tsconfig, bundled for the
+**H7 · The hosted entry never reaches the npm package.** *(Superseded 22-Nov by Q4's answer: the hosted entry lives
+in the private repo, so it can't reach the tarball at all. What carries over: the npm package's files and runtime
+dependencies don't change (`test/blockServer.test.mjs` pins `files`); the hosted repo's runtime libraries are its own
+production dependencies, audited there; and it gets the tools only through `@dwlf/mcp-server/block`.)* It lives in `hosted/` (its own tsconfig, bundled for the
 Lambda), outside `src/`, so `dist/` and the published tarball don't change. `hosted/` is **its own private package**
 (`hosted/package.json`, `"private": true`, its own lockfile). Its runtime libraries (JWT verification, SigV4, the AWS
 SDK) are that package's production `dependencies`, so `npm audit --omit=dev` there and a Dependabot entry for
@@ -212,7 +230,12 @@ optimisation, never a limit, and nothing depends on their hit rate.) Instead:
   traffic could refuse Block's API-key callers. That's a contract ask (§10): the MCP's caller gets its own bucket,
   sized from step 8.
 
-**H10 · Deploying from a public repo.** The CDK code is reviewable here, but nothing deployable is committed: the
+**H10 · Deploying from a public repo.** *(Superseded 22-Nov by Q4's answer. In the private repo the same rules
+carry over, with that repo's own release in place of this repo's tag: deploys only from its published tags,
+staging automatically and production by hand with Andy's approval, through a GitHub OIDC role per stage; its
+`package.json` pins an exact `@dwlf/mcp-server` version, and the deploy checks that version is on npm with a
+`gitHead` on this repo's master. A tool change reaches hosted by an npm release here, then a pin bump there. The
+dispatch from `publish.yml` below isn't built.)* The CDK code is reviewable here, but nothing deployable is committed: the
 account, region and the identity binding come from CI environment variables and SSM. Deploys run only from
 published `v*` tags, through a GitHub OIDC role per stage trusted for that stage's environment alone, and fork
 PRs can't reach either: **staging** deploys automatically on each tag (`hosted-staging`, tag refs only, no
@@ -244,7 +267,8 @@ Every refusal says what happened and the next step, in words, plus the machine-r
 
 | Case | Answer |
 |---|---|
-| No credential | `401`, `WWW-Authenticate: Bearer resource_metadata="https://mcp.block.dwlf.co.uk/.well-known/oauth-protected-resource/mcp"`, body `{ error: "unauthorized", message, connect }`. `message`: "Sign in to DWLF Block to use this server." `connect` names both ways in: in Claude or ChatGPT, add the connector and sign in; in Claude Code or Cursor, create a key at https://block.dwlf.co.uk/account/ and send it as `Authorization: Bearer <key>`. |
+| No credential (key-only launch, 22-Nov) | `401`, `WWW-Authenticate: Bearer realm="DWLF Block"`, body `{ error: "unauthorized", message, getKey }`. `message`: "This server needs a DWLF Block API key. Create one at https://block.dwlf.co.uk/account/ and send it as `Authorization: Bearer <key>`." `getKey`: that URL. |
+| No credential (once OAuth ships, step 7) | `401`, `WWW-Authenticate: Bearer resource_metadata="https://mcp.block.dwlf.co.uk/.well-known/oauth-protected-resource/mcp"`, body `{ error: "unauthorized", message, connect }`. `message`: "Sign in to DWLF Block to use this server." `connect` names both ways in: in Claude or ChatGPT, add the connector and sign in; in Claude Code or Cursor, create a key at https://block.dwlf.co.uk/account/ and send it as `Authorization: Bearer <key>`. |
 | A token that fails verification, or expired | `401` with `error="invalid_token"` in the challenge (the client refreshes or re-runs OAuth). Never `403` (Claude's directory rule). |
 | A key or grant that's revoked or expired (the Block API's or identity's 401) | `401`: "This key or connection no longer works. Create a new key at …, or reconnect the app." |
 | Not enough scope (OAuth, grantable; H4) | `403`, `error="insufficient_scope"`, `scope="…"`. |
@@ -259,7 +283,8 @@ The wording follows the shared banned-terms list (the release gate's T2 runs ove
 shows up only when a tool calls the Block API. By then, `failure()` has turned it into tool text, and
 `initialize` and `tools/list` succeeded. So:
 - `BlockApiClient` takes an optional per-request **upstream recorder** (in `src/`, shared; the stdio server passes
-  none, so its output doesn't change). The client notes each Block API refusal on it: status, Block's `code`, the
+  none, so its output doesn't change). *(Built in step 2a with status, Block's `code`, and whether the body was Block's own. The
+  permission named comes with step 7, once the Block API's refusal names it, §10.)* The client notes each Block API refusal on it: status, Block's `code`, the
   permission named (H4), and whether the answer was Block's own body or the edge's.
 - After the handler returns, the hosted entry reads the recorder. A Block API `401` replaces the JSON-RPC answer
   with the §4 HTTP `401`. A permission refusal replaces it with `403` `insufficient_scope` **only under H4's rule**:
@@ -320,36 +345,37 @@ Each step is one PR unless noted. Every merge, deploy and switch flip needs a ta
 | # | Repo (owner) | What | Rough effort |
 |---|---|---|---|
 | 1 | this repo | This design, HOSTED-MCP amended, the charter lines, the contract asks (§10) | 1 day |
-| 2 | this repo | `hosted/` entry (H7): Block profile on `block-api`, the pasted-key path, 401 + RFC 9728 metadata, Origin, body cap, the 24 s deadline, the per-credential catalogue cache, the §4 errors with H11's recorder, the closed switch. Local tests only. Merges only once Q4 is answered (it puts `hosted/` in this repo). | 2 days |
-| 3 | this repo, plus dwlf-identity for the edge ACL | CDK stacks (the role's, H8; the app's: Lambda, HTTP API, CloudFront, domain, alarms, switch, reserved concurrency), the deploy workflow (H10) and the role invariant. Deploy to staging, closed. | 2 days |
+| 2a | this repo | The library entry `@dwlf/mcp-server/block`: `createBlockServer` (the Block profile on `block-api`, signed in with the caller's key), H11's upstream recorder on `BlockApiClient`, a catalogue-cache seam the host keys by credential. A minor release. | ½ day |
+| 2b | the private hosted repo (new) | The HTTP entry: the pasted-key path, the `401` that says where to get a key, Origin, body cap, the 24 s deadline, the per-credential 60 s catalogue cache, the §4 errors with H11's recorder, the closed switch, credential routing and log hashing tests. Local tests only. | 2 days |
+| 3 | the private hosted repo, plus dwlf-identity for the edge ACL | CDK stacks (the role's, H8; the app's: Lambda, HTTP API, CloudFront, domain, alarms, switch, reserved concurrency), the deploy workflow (H10) and the role invariant. Deploy to staging, closed. | 2 days |
 | 4 | dwlf-identity (identity session) | Charter and design for OAuth (it reverses "no OAuth in v1"), then the build: RFC 8414 metadata; authorize; token with rotation; CIMD and DCR; the request-read and approve/deny machine routes; the MCP's exchange route and caller binding; revocation (RFC 7009); WAF rules for `/oauth/*`; the OAuth switch | ~2 weeks, **the critical path** |
 | 5 | dwlf-block-api (WP2/keys) | `/v1/connect/requests/{id}` read, approve, deny; grants in `GET /v1/keys` as connected apps; OpenAPI | 2–3 days |
 | 6 | block-site (WP6) | `/connect/` consent page; connected apps on `/account/`; the paste-a-key help | 2 days |
-| 7 | this repo | The OAuth path: verify, exchange, cache, `insufficient_scope`; invariant 3 amended | 2 days |
+| 7 | the private hosted repo (and this repo if `createBlockServer` needs a seam) | The OAuth path: verify, exchange, cache, `insufficient_scope`; invariant 3 amended | 2 days |
 | 8 | all | Staging end to end: a Claude.ai custom connector, a ChatGPT connector, the MCP Inspector, Claude Code and Cursor with a key; a revoke stops access within about 16 min (H11). An independent security pass on `/oauth/*`. | 2–3 days |
-| 9 | this repo | Launch: switches open, `server.json` gains `remotes`, `docs/BLOCK.md`, a version bump. Directory listings are later, each a separate decision for Andy (Claude's policy §4A on crypto). | ½ day |
+| 9 | both | Launch: switches open, `server.json` gains `remotes`, `docs/BLOCK.md`, a version bump. Directory listings are later, each a separate decision for Andy (Claude's policy §4A on crypto). | ½ day |
 
-- **Order:** 1, then 2 and 3 (this repo) alongside 4 (identity), then 5, 6 and 7, then 8 and 9. The pasted key (b)
-  works on staging after step 3, with no identity work.
+- **Order (22-Nov):** 1, 2a, 2b, 3, then step 8 for the pasted key alone, then 9: the key-only launch. Then 4 (identity),
+  5, 6 and 7, step 8 again for OAuth, and OAuth's own launch. The pasted key (b) works on staging after step 3, with
+  no identity work.
 - **Before launch:** the keys release (identity's keys switch and Block's keys on in production), B4's cut at or
-  before launch, room in the DNS zone, and §10's limit asks answered and sized from step 8 (the egress backstop
+  before launch, and §10's limit asks answered and sized from step 8 (the egress backstop
   and the MCP's exchange bucket, H9).
 
-## 9 · Questions for Andy (Q2 and Q4 before step 2 merges; Q5 before step 3 deploys; Q1 and Q3 before step 5)
+## 9 · Questions for Andy (Q2 and Q4 answered 22-Nov; Q5 before step 3 deploys; Q1 and Q3 before step 5)
 
 1. **Does a connected app count toward the plan's key limit?** Recommended: yes. One list, "keys and connected
    apps", and otherwise a Free account could connect unlimited agents.
-2. **The hosted endpoint answers `401` to a request with no credential**, which is what makes Claude and ChatGPT start
+2. **Answered 22-Nov: yes, with a clear `401` that says where to get a key.** **The hosted endpoint answers `401` to a request with no credential**, which is what makes Claude and ChatGPT start
    OAuth. The keyless Free view stays in the npm package. Recommended: yes.
 3. **Approving a connection needs a fresh sign-in** (identity's 10-minute step-up, as for creating a key).
    Recommended: yes.
-4. **The hosted stack's CDK code and the `hosted/` package live in this public repo** (H7, H10: nothing deployable
+4. **Answered 22-Nov: no, a private repo** (see the note at the top). **The hosted stack's CDK code and the `hosted/` package live in this public repo** (H7, H10: nothing deployable
    committed; deploys only from published tags, staging automatically, production by hand with his approval).
    Recommended: yes.
 5. **The domain is `mcp.block.dwlf.co.uk`** (HOSTED-MCP §9 Q3's recommendation), and it becomes a permanent token
-   audience. It needs 2 rrsets in the `dwlf.co.uk` zone, which was full on 16-Nov. A delegated sub-zone still needs 1,
-   so the zone's limit increase (the case identity's status already recommended Andy files) is needed either way.
-   Recommended: yes, and file the case. **Identity registers the resource only after step 3 has the name live**, so
+   audience. It needs 2 rrsets in the `dwlf.co.uk` zone, which has room (its limit has been 10,000 since 18-Nov).
+   Recommended: yes. **Identity registers the resource only after step 3 has the name live**, so
    no grant names a host that can't be served.
 
 ## 10 · The contract asks

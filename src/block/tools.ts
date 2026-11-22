@@ -26,7 +26,18 @@ const failure = (error: unknown) => ({
   isError: true,
 });
 
-export function registerBlockApiTools(server: McpServer, client: BlockApiClient): void {
+/**
+ * Where the catalogue tools keep the catalogue between calls. `get` gives a body still fresh, or undefined; `set` keeps
+ * a body just read (a failed read is never kept). The default keeps one per registration for 15 minutes. A per-request
+ * host passes its own (hosted-auth §1: keyed by the credential, 60 seconds), since its registration lives one request.
+ */
+export interface CatalogueCache {
+  get(): Record<string, unknown> | undefined;
+  set(body: Record<string, unknown>): void;
+}
+
+export function registerBlockApiTools(server: McpServer, client: BlockApiClient,
+  options: { catalogueCache?: CatalogueCache } = {}): void {
   server.tool(
     'dwlf_get_conditions',
     'Where Bitcoin is now against its own history, from DWLF Block: the cost-basis ladder (realised prices: what ' +
@@ -71,7 +82,7 @@ export function registerBlockApiTools(server: McpServer, client: BlockApiClient)
     },
   );
 
-  registerCatalogueTools(server, client);
+  registerCatalogueTools(server, client, options.catalogueCache ?? memoryCache(CATALOGUE_TTL_MS));
 }
 
 type Json = Record<string, unknown>;
@@ -95,14 +106,22 @@ const words = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Bo
 const CATALOGUE_TTL_MS = 15 * 60 * 1000;
 const MAX_ITEMS = 40;
 
-function registerCatalogueTools(server: McpServer, client: BlockApiClient): void {
-  // The catalogue is 355 KB and changes slowly: kept 15 minutes per client, as the SPT catalogues are. A failed read is
-  // never kept, so the next call tries again.
+// The catalogue is 355 KB and changes slowly: by default kept 15 minutes per registration, as the SPT catalogues are.
+const memoryCache = (ttlMs: number): CatalogueCache => {
   let cached: { at: number; body: Json } | null = null;
+  return {
+    get: () => (cached && Date.now() - cached.at < ttlMs ? cached.body : undefined),
+    set: (body) => { cached = { at: Date.now(), body }; },
+  };
+};
+
+function registerCatalogueTools(server: McpServer, client: BlockApiClient, cache: CatalogueCache): void {
+  // A failed read is never kept, so the next call tries again.
   const catalogueOf = async (): Promise<Json> => {
-    if (cached && Date.now() - cached.at < CATALOGUE_TTL_MS) { return cached.body; }
+    const hit = cache.get();
+    if (hit) { return hit; }
     const body = await client.get<Json>('/catalogue');
-    cached = { at: Date.now(), body };
+    cache.set(body);
     return body;
   };
   server.tool(

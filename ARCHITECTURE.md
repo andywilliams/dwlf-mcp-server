@@ -30,8 +30,10 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **New platform capability.** A tool may only surface something `api.dwlf.co.uk/v2` already does;
   capability is added in `serverless-portfolio-tracker` first *(inferred from: SYSTEM.md "API-first —
   no privileged client"; every tool is an HTTP call through `src/client.ts`)*.
-- **Auth, account or key management.** *(20-Nov-2026: the hosted endpoint, DWLF-622, will be multi-tenant and
-  verify OAuth tokens; this line is rescoped to the stdio process when `hosted/` lands, step 2.)* One `DWLF_API_KEY` = one account for the process lifetime;
+- **Auth, account or key management.** *(22-Nov-2026: the hosted endpoint, DWLF-622, is multi-tenant, and it lives
+  in a private repo (Andy, Q4), so this line still holds here. The library entry `@dwlf/mcp-server/block`
+  (`createBlockServer`) builds one server for one caller's key, passed in, and keeps nothing; checking the
+  credential, multi-tenancy and every limit are the host's.)* One `DWLF_API_KEY` = one account for the process lifetime;
   no key storage, no account switching, no multi-tenancy *(inferred from: `src/client.ts` reads
   `process.env.DWLF_API_KEY` once in the constructor and sets a fixed `Authorization: ApiKey` header;
   a single `DWLFClient` is constructed at module load in `src/index.ts`)*. *Since DWLF-622:* `DWLFClient` also
@@ -41,8 +43,9 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   `DWLF_API_KEY` (pinned by `test/client.options.test.mjs`).
 - **Charting/rendering and any UI** — `dwlf-charting` / `portfolio-frontend` *(inferred from: no
   render deps; README points integrators at `@dwlf/charting` instead)*.
-- **Hosting a remote/multi-user MCP endpoint** — *(20-Nov-2026: being built for the Block profile, DWLF-622,
-  `docs/design/hosted-auth.md`; until its launch, stdio is the only shipped transport.)* stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
+- **Hosting a remote/multi-user MCP endpoint** — *(22-Nov-2026: being built for the Block profile, DWLF-622,
+  `docs/design/hosted-auth.md`, in a private repo, not here (Andy, Q4). This repo gives it the tools through
+  `@dwlf/mcp-server/block` and stays stdio-only itself.)* stdio only today, and **this boundary has a stated expiry condition rather than being permanent**: see the stdio standing decision, which names the trigger (a third-party agent onboarding without Andy). ⇒ Treat this *Not-for* as *not yet*, not *never* *(inferred from: `src/index.ts`
   uses `StdioServerTransport`; no HTTP server code)*.
 
 ## Interfaces & dependencies
@@ -51,6 +54,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **npm package `@dwlf/mcp-server`** (public, MIT), bin `dwlf-mcp-server`, `engines.node >= 20`,
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
+- **Library entry `@dwlf/mcp-server/block`** (22-Nov, DWLF-622 step 2a; `src/block/server.ts`): `createBlockServer({
+  apiKey, baseURL?, timeoutMs?, recorder?, catalogueCache? })` gives one `McpServer` with the Block profile on the
+  `block-api` backend (the same registrations as stdio, through `registerForProfile`), for the private hosted repo to
+  build per request. `recorder` hears each Block API refusal (hosted-auth H11); `catalogueCache` lets the host keep
+  the catalogue per credential. `package.json` `exports` names it, `.` (the stdio entry) and `./dist/*` (so a deep
+  import that worked before still does). Its options and types are a published contract: a breaking change is a
+  major bump for the hosted repo's pin.
 - **~100 `dwlf_*` tools** grouped in 28 modules under `src/tools/` (market-data, ranges, cycle-setups, cycle-windows, divergences, stages, conditions, indicators,
   signals, watchlist, symbol-tags, strategies, backtests, portfolio, trades, custom-events,
   evaluations, annotations, trade-plans, symbol-activations, ai-summary, academy, semantic, account,
@@ -191,10 +201,11 @@ A reviewer should be able to test a diff against each of these:
    is absent from npm and otherwise silently skips *(inferred from: `publish.yml` "Check if version is
    already published" step gating both publish and tag; PR titles carrying explicit versions, e.g.
    #65 "→ 0.38.0", #64 "bump to 0.37.0")*.
-8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` in the environment
-   (or, in the local hosted spike only, from the caller's request, never stored; the hosted endpoint, hosted-auth
-   design, takes it per request in the same way: the credential is never logged or stored, and a token exchanged
-   for it is held in memory only until it expires); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
+8. **No credential is *read from* the repo.** The key comes from `DWLF_API_KEY` (or `DWLF_BLOCK_KEY`) in the
+   environment, or from the caller of `createBlockServer` (`@dwlf/mcp-server/block`), which holds it only in that
+   server's client and never logs or stores it (in the local hosted spike, from the caller's request, never stored;
+   the hosted endpoint, in its private repo, takes it per request in the same way: the credential is never logged or
+   stored, and a token exchanged for it is held in memory only until it expires); publishing uses OIDC rather than a stored `NPM_TOKEN` *(inferred from: `src/client.ts`;
    `publish.yml` `id-token: write` and its "No NODE_AUTH_TOKEN" comment)*.
    ✅ **A hole here was found and CLOSED in this PR** *(2026-08-13)*: the rules were `.env`,
    `.env.local` and `.env.*.local` — **not** `.env*` — so `.env.production`, `.env.staging` or any
@@ -302,8 +313,10 @@ A reviewer should be able to test a diff against each of these:
   dwlf-identity as the authorization server** (primary: Claude.ai and ChatGPT connectors), and **a pasted `dwlfk_`
   Block API key** as the fallback for local clients (Claude Code, Cursor). stdio stays; one tool codebase. It serves
   the Block profile on the `block-api` backend only. Design: `docs/design/hosted-auth.md`.
-  - **Proposed in the design, not yet Andy's decision** (each is recorded as decided here when he answers): the
-    CDK stack and the `hosted/` package in this repo, and deploys only of published tags (hosted-auth H7, H10; Q4);
+  - 📌 **22-Nov-2026 (Andy, 11:20): the pasted key first, one-click sign-in (OAuth) later; no credential gets a
+    clear `401` that says where to get a key (Q2); the hosted server's code lives in a private repo (Q4).** This repo
+    publishes `@dwlf/mcp-server/block` for it (hosted-auth step 2a). H7 and H10 are superseded there.
+  - **Proposed in the design, not yet Andy's decision** (each is recorded as decided here when he answers):
     the domain `mcp.block.dwlf.co.uk`, which becomes a permanent token audience (Q5); and how an OAuth token becomes
     a Block API credential: exchanged at identity for an `aud = block` token (H2, a route identity is asked for, in
     place of HOSTED-MCP §4.2's managed key). The bullets below hold whatever the placement.
@@ -313,11 +326,9 @@ A reviewer should be able to test a diff against each of these:
     else (plan, scope, allowance, revocation). It keeps no tool → scope map: a scope refusal is the Block API's.
   - It holds no credential at rest. A token it gets in exchange may be cached in memory until it expires.
   - The npm package's files and runtime dependencies don't change because of the hosted entry.
-  - Follow-through, each in the PR that makes it true: step 2 (`hosted/` lands) rewrites *Not for* "Hosting a
-    remote/multi-user MCP endpoint" and "Auth, account or key management… no multi-tenancy" (scoped: the stdio
-    process stays one key, one account; the hosted entry is multi-tenant and holds nothing at rest), invariant 8 and
-    *Interfaces*; step 3 adds the runtime-role invariant (H8); step 7 amends invariant 3 for identity's `id-svc`, the
-    third authenticated host (H2).
+  - Follow-through: step 2a (22-Nov) rescoped both *Not for* lines, invariant 8 and *Interfaces* for the library
+    entry. The runtime-role invariant (H8, step 3) and identity's `id-svc` as a third authenticated host (H2, step 7)
+    belong to the private repo's charter, unless step 7 adds a seam here.
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and
