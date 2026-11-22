@@ -14,9 +14,10 @@ const ENVELOPE =
   'The answer is the Block envelope: lead with its `summary`; each item has its own `summary`, `why` (the reasons, ' +
   'in plain words), `chartUrl` (the chart to show your human) and `knowableAt` (when it became known: date a fact by ' +
   'that, never by the time of your request). `definitions` explains each term used. An item with `locked: true` is ' +
-  'of a family this view does not read: say what it is and when, and that `requiredPlan` reads it (`pricingUrl`); ' +
+  'of a family this view does not read: say what it is and when, that `requiredPlan` reads it, and give your human ' +
+  '`upgradeUrl` (the plans page; `pricingUrl` is the price list for a program); ' +
   'never guess its value. A refusal comes back as an error, `Block API <status>: <body>`, whose body says why ' +
-  '(`error`, `message`, and for a plan refusal `requiredPlan` and `pricingUrl`). It describes the market or the chain as of its date. It is not a forecast and not a ' +
+  '(`error`, `message`, and for a plan refusal `requiredPlan`, `upgradeUrl` and `pricingUrl`). It describes the market or the chain as of its date. It is not a forecast and not a ' +
   'recommendation: never turn it into buy, sell or hold recommendations.';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

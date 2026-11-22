@@ -85,11 +85,12 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
     'when it fired, before relying on it. Describe states and conditions; never turn them ' +
     'into buy, sell or hold recommendations. Nothing here is scored as a predictor. ' +
     'PLANS: a plan reads some event families in full (which ones: https://api.dwlf.co.uk/v2/public/block/pricing, ' +
-    '`families` and each plan\'s `families`; give your human that link, or fetch it if you can). Below ' +
-    'that plan an event row is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning), a conditions section is ' +
-    '`{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, and a state read of that family fails with HTTP 403 ' +
-    'naming `[PLAN_REQUIRED; family=…; requiredPlan=…; pricingUrl=…]`. Tell your human what is locked and which plan ' +
-    'unlocks it (`pricingUrl`); never guess a locked value.',
+    '`families` and each plan\'s `families`; fetch it if you can). Below ' +
+    'that plan an event row is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, upgradeUrl, pricingUrl }` (what fired and when; no price, levels, values or meaning), a conditions section is ' +
+    '`{ locked: true, lockedFamily, requiredPlan, upgradeUrl, pricingUrl }`, and a state read of that family fails with HTTP 403 ' +
+    'naming `[PLAN_REQUIRED; family=…; requiredPlan=…; upgradeUrl=…; pricingUrl=…]`. Tell your human what is locked and ' +
+    'which plan unlocks it, and give them `upgradeUrl` (the plans page); `pricingUrl` is the price list for a program, ' +
+    'not a page for a person. Never guess a locked value.',
 };
 
 /**
@@ -110,7 +111,8 @@ export const BLOCK_API_INSTRUCTIONS =
   'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
   'Block envelope: lead with its `summary`, give each item\'s `why` and `chartUrl`, and date each fact by its ' +
   '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
-  'when it happened and which plan reads it (`requiredPlan`, `pricingUrl`); never guess a locked value. A `summary` ' +
+  'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
+  'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
   'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
   'https://block.dwlf.co.uk/account/, reads the full history. Call each item an event, a condition or a reading. Describe ' +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';

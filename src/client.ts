@@ -69,7 +69,7 @@ function planFacts(body: unknown): string {
   const nested = top.error && typeof top.error === 'object' ? (top.error as Record<string, unknown>) : {};
   const pick = (k: string) => (typeof top[k] === 'string' && top[k] ? top[k] : typeof nested[k] === 'string' && nested[k] ? nested[k] : undefined);
   const code = typeof top.error === 'string' ? top.error : pick('code');
-  const facts = (['family', 'requiredPlan', 'pricingUrl'] as const)
+  const facts = (['family', 'requiredPlan', 'upgradeUrl', 'pricingUrl'] as const)
     .map((k) => [k, pick(k)] as const)
     .filter(([, v]) => v)
     .map(([k, v]) => `${k}=${v}`);

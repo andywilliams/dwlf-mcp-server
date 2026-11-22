@@ -152,6 +152,13 @@ test('block-api instructions: a keyless view sends the human to the keys page, k
   assert.ok(summaries.some((s) => typeof s === 'string' && s.includes(phrase)), `no keyless recording's summary says "${phrase}"`);
 });
 
+test('both Block instructions send a person to upgradeUrl (the plans page) and keep pricingUrl for a program', () => {
+  for (const text of [PROFILE_INSTRUCTIONS.block, BLOCK_API_INSTRUCTIONS]) {
+    assert.match(text, /give them `upgradeUrl` \(the plans page\)/);
+    assert.match(text, /`pricingUrl` is the price list for a program, not a page for a person/);
+  }
+});
+
 test('block-api instructions name what an item is: an event, a condition or a reading', () => {
   assert.match(BLOCK_API_INSTRUCTIONS, /an event, a condition or a reading/);
 });

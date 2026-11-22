@@ -48,9 +48,9 @@ export function registerConditionsTools(server: McpServer, client: DWLFClient) {
       'Sides and states are unaffected; do not ask for the close another way.\n' +
       '- Cycle windows carry `verification` (currently unverified): treat them as rough timing, not a forecast.\n' +
       '- LOCKED (responseVersion 3, DWLF Block plans): a section the plan does not read (`regime.daily`, ' +
-      '`regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, lockedFamily, requiredPlan, pricingUrl }`, ' +
-      'and an event row of such a family is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, pricingUrl }` (what fired and when; no price, levels, values or meaning). ' +
-      'Say the reading exists and which plan unlocks it; never infer its value.',
+      '`regime.weekly`, `regime.stage`, `cycleWindows`) is `{ locked: true, lockedFamily, requiredPlan, upgradeUrl, pricingUrl }`, ' +
+      'and an event row of such a family is `{ eventType, date, …, locked: true, lockedFamily, requiredPlan, upgradeUrl, pricingUrl }` (what fired and when; no price, levels, values or meaning). ' +
+      'Say the reading exists and which plan unlocks it, and give your human `upgradeUrl` (the plans page); never infer its value.',
     {
       asset: z
         .enum(CONDITIONS_ASSETS)
