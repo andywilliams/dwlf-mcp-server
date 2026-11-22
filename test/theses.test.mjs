@@ -314,6 +314,68 @@ test('★ dwlf_get_thesis_story: routes are named as illustrations in the line a
   assert.equal(body.agentHints.summary, 'GOOG story, 3 beats.', 'an older API without routes: no route words');
 });
 
+test('★ dwlf_get_thesis_story replay: asks SPT for replay=1, a summary line with the sentence and the plan replayed against, replay beat kinds defined, the facts-only rule (DWLF-889)', async () => {
+  const leg = (stat) => ({ from: 0, to: 1, basis: [{ stat }] });
+  const backend = {
+    symbol: 'MSTR', summary: { beats: 4 }, beats: [], replaySummary: 'Saved 18 Nov. Step 1 met 19 Nov (Daily close below $90). Complete after 1 day.',
+    replay: {
+      available: true, asDrawn: { revision: 1, label: 'The plan reconstructed 21 Nov, not captured at the time', reconstructed: true }, note: null,
+      met: [{ step: 1, date: '2026-11-19', label: '✓ step 1 met 19 Nov', illustrated: null }],
+      beats: [{ id: 'replay-saved', kind: 'saved' }, null, { id: 'replay-fire-f1', kind: 'fire' }, { id: 'replay-outcome', kind: 'outcome' }, { id: 'x', kind: 'novel' }],
+      plans: [{ routes: [] }], checkpoints: [null, { routes: [{ kind: 'meets', legs: [leg('window.daily.low.centre')] }] }],
+    },
+  };
+  const { calls, call } = setup(() => backend);
+  const { body } = await call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.deepEqual(calls[0].a, { replay: 1 });
+  await call('dwlf_get_thesis_story', { thesisId: 't1', replay: false });
+  assert.deepEqual(calls[1].a, {}, 'replay false: not asked for');
+  assert.equal(body.isError, undefined);
+  assert.equal(body.agentHints.summary, 'MSTR story, 4 beats. Summary: Saved 18 Nov. Step 1 met 19 Nov (Daily close below $90). Complete after 1 day. Replay against The plan reconstructed 21 Nov, not captured at the time.');
+  assert.deepEqual(Object.keys(body.agentHints.definitions.replayBeatKind), ['saved', 'fire', 'outcome', 'novel']);
+  assert.match(body.agentHints.definitions.replayBeatKind.novel, /Not described by this version/);
+  assert.deepEqual(Object.keys(body.agentHints.definitions.routeKind), ['meets'], 'a checkpoint\'s routes define their kinds too');
+  assert.match(body.agentHints.how, /never as a difference, and never score the illustration/);
+  assert.match(body.agentHints.how, /reconstructed after the fact/);
+  assert.doesNotMatch(body.agentHints.how.replace(/no right, wrong, early, late, accurate, hit or miss/, ''), /\b(buy|sell|entry|should|recommend|opportunity|target)\b/i);
+  const closed = await setup(() => ({ symbol: 'GOOG', summary: { beats: 2 }, beats: [], replaySummary: 'Saved 18 Nov. Step 1 of 2 not met yet.', replay: { available: false, note: 'Replay opens once a step is met or the thesis has an outcome.' } })).call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.equal(closed.body.agentHints.summary, 'GOOG story, 2 beats. Summary: Saved 18 Nov. Step 1 of 2 not met yet. Replay: Replay opens once a step is met or the thesis has an outcome.');
+  const older = await setup(() => ({ symbol: 'GOOG', summary: { beats: 2 }, beats: [] })).call('dwlf_get_thesis_story', { thesisId: 't1', replay: true });
+  assert.equal(older.body.agentHints.summary, 'GOOG story, 2 beats. This API did not return a replay (it may not support one yet); that says nothing about the thesis.', 'asked for and absent: never read as "not open yet"');
+  const notAsked = await setup(() => ({ symbol: 'GOOG', summary: { beats: 2 }, beats: [] })).call('dwlf_get_thesis_story', { thesisId: 't1' });
+  assert.equal(notAsked.body.agentHints.summary, 'GOOG story, 2 beats.', 'not asked for: no replay words');
+  // The caveat comes from the flag, not SPT's label; an empty omitted marker claims nothing; a note is passed on.
+  const line = async (replay) => (await setup(() => ({ symbol: 'X', summary: { beats: 1 }, beats: [], replay })).call('dwlf_get_thesis_story', { thesisId: 't1', replay: true })).body.agentHints.summary;
+  assert.equal(await line({ available: true, asDrawn: { label: 'Revision 1 as drawn', reconstructed: true }, omitted: { plans: 0, checkpoints: 0 } }),
+    'X story, 1 beats. Replay against Revision 1 as drawn (reconstructed after the fact, not captured at the time).');
+  assert.equal(await line({ available: true, asDrawn: null, note: 'No plan was captured for this thesis, so there is no plan to replay against: the fires are told alone.', omitted: { plans: 0, checkpoints: 2 } }),
+    'X story, 1 beats. Replay: No plan was captured for this thesis, so there is no plan to replay against: the fires are told alone. Some older plan bodies were left out for size (replay.omitted); their beats are kept.');
+  assert.equal(await line({ available: true, asDrawn: { label: 'The plan as drawn, 20 Nov', reconstructed: false }, omitted: {} }), 'X story, 1 beats. Replay against The plan as drawn, 20 Nov.');
+  assert.equal(await line({ available: true, asDrawn: { revision: 4, reconstructed: true } }), 'X story, 1 beats. Replay against a plan (reconstructed after the fact, not captured at the time).', 'no label: the flag still speaks');
+});
+
+test('the recorded replay narration passes its checker; a score, a missing caveat or an invented ring fails it (eval/thesis-story replay, DWLF-889)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const run = (file) => { try { return execFileSync('node', ['eval/thesis-story/check.mjs', file, 'replay'], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
+  assert.match(run('eval/thesis-story/answer-2026-11-22-replay-run1.json'), /^PASS/);
+  const dir = mkdtempSync(`${tmpdir()}/replay-eval-`);
+  const bad = (narration) => { const f = `${dir}/a.json`; writeFileSync(f, JSON.stringify({ narration })); return run(f); };
+  const base = 'Step 1 was met on 20 Nov. Step 2 is not met yet. The plan it is replayed against was reconstructed on 21 Nov, not captured at the time.';
+  assert.match(bad(base), /^PASS/);
+  assert.match(bad(`${base} Step 1 came 3 days early.`), /never scores/);
+  assert.match(bad(`${base} So far it went according to plan.`), /never scores/);
+  assert.match(bad(`${base} The plan was right about the low.`), /never scores/);
+  assert.match(bad(`${base} It was not early or late: nothing is scored.`), /^PASS/, 'a denial passes');
+  assert.match(bad('Step 1 was met on 20 Nov. Step 2 is not met yet.'), /reconstructed after the fact/);
+  assert.match(bad('Step 1 was met on 19 Nov. Revised 20 Nov. Step 2 is not met yet. The plan was reconstructed, not captured at the time.'), /step 1 was met on 20 Nov/, 'the date in the same sentence');
+  assert.match(bad('Step 1 was met on 20 Nov. Step 2 was met too. The daily window opens 23 Dec. The plan was reconstructed, not captured at the time.'), /step 2 is not met yet/, 'a window that opens is not step 2 open');
+  assert.match(bad(`${base} The plan had illustrated step 1 in early January.`), /invents no illustrated point/);
+  assert.match(bad(`${base} A dashed route shows where price goes next.`), /called an illustration/);
+  assert.match(bad(`${base} The last close was 299.66.`), /invented prices/);
+});
+
 test('list includeStory asks SPT for story (and progress with it when both are set)', async () => {
   const { calls, call } = setup(() => ({ theses: [] }));
   await call('dwlf_list_theses', { includeStory: true });

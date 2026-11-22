@@ -40,6 +40,14 @@ export const BEAT_KIND_DEFINITIONS = {
   needs: 'What an unmet step needs to be met (and what would challenge the thesis). Not a forecast: it says what would count, not that it will happen.',
 } as const;
 
+/** The replay beat kinds (DWLF-889: `replay.beats`), for agentHints.definitions.replayBeatKind. */
+export const REPLAY_BEAT_KIND_DEFINITIONS = {
+  saved: 'The thesis was saved, with the plan as drawn then (`plan`), or a note that none was captured.',
+  revision: 'A revision, with the plan captured for it, or a note that none was.',
+  fire: 'A fire (a step met, a challenge, a withdrawn source), with its checkpoint (the plan just after it), or a note that none was captured.',
+  outcome: 'Where it ended up: complete, closed, archived, challenged, or which step is still unmet.',
+} as const;
+
 /** The illustrated route kinds (DWLF-888), for agentHints.definitions.routeKind (UNKNOWN for a kind SPT adds later). */
 export const ROUTE_KIND_DEFINITIONS = {
   meets: 'An illustration: one shape price could take for the remaining steps to be met. Not a forecast.',
@@ -147,12 +155,15 @@ export const THESIS_GUIDE = {
     clientKey: 'Optional: your own id for the thesis. Creating again with the same clientKey revises that thesis instead of adding another (a safe retry).',
     story: 'dwlf_get_thesis_story: the thesis in beats, chosen by rule (never by taste): saved, revisions, the windows, the engine events its conditions name, its fires; then now; then what each unmet step needs. Tell it as what happened and what the thesis needs, never as a forecast.',
     planAsDrawn: 'What the thesis\'s chart showed when a revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed. `reconstructed: true` means it was written after the fact for a thesis saved before plans were captured.',
+    replay: 'dwlf_get_thesis_story with replay: true, once a step is met or the thesis has an outcome: the plan as drawn told against what happened. `met` puts the date each step was met beside the date its plan had illustrated it (two dates, never a difference); `windows` sets each window as drawn beside today\'s (`redrawn`); `beats` runs saved, each fire and revision, the outcome; `replaySummary` is one sentence of facts. Nothing is scored: an illustration was never a forecast, so never call it right, wrong, early, late or accurate.',
+    checkpoint: 'The plan as it stood just after a fire (a step met, a condition missed, an invalidation), captured that night and never changed. Fires from before checkpoints existed have none, and say so.',
     route: 'An illustrated route in a story (current.routes; routes in a plan are as drawn at that save). The story body\'s own `definitions` (routes, basis) are SPT\'s and authoritative; dwlf_get_thesis_story\'s agentHints define each route kind and basis present.',
   },
   statuses: STATUS_DEFINITIONS,
   conditionStates: CONDITION_STATE_DEFINITIONS,
   fireKinds: FIRE_KIND_DEFINITIONS,
   beatKinds: BEAT_KIND_DEFINITIONS,
+  replayBeatKinds: REPLAY_BEAT_KIND_DEFINITIONS,
   whereTheUserSeesIt: 'The Theses page on the DWLF site (Log → Theses, /theses): each thesis with its steps, how close it is, its history and a step-through story (dwlf_get_thesis_story\'s deepLink opens it); the notifications bell; and the Telegram digest. Users can also build and revise theses there themselves (New thesis; Revise conditions), with the same types and checks.',
   examples: [
     { name: 'Wait for the next confirmed daily low, then a higher low or a trend-line break, challenged if the weekly low breaks', create: goog,
