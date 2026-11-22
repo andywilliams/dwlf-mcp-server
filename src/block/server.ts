@@ -10,10 +10,14 @@ export type { CatalogueCache } from './tools.js';
 
 // package.json sits two levels above dist/block/ in both a clone and the installed package. serverInfo names this
 // package's version, the tool code that answered (what an agent's report needs); the host logs its own release. A host
-// that bundles this module (esbuild moves the file) loses that path: loading still works and the version reads
-// `unknown`, so a host should keep `@dwlf/mcp-server` external to its bundle (CDK `nodeModules`).
+// that bundles this module (esbuild moves the file) loses that path, and two levels up may then be another package's
+// package.json: only ours (by name) is believed, else the version reads `unknown`. Loading works either way; a host
+// should keep `@dwlf/mcp-server` external to its bundle (CDK `nodeModules`) so the version stays known.
 const version = (() => {
-  try { return (createRequire(import.meta.url)('../../package.json') as { version: string }).version; } catch { return 'unknown'; }
+  try {
+    const pkg = createRequire(import.meta.url)('../../package.json') as { name?: string; version?: string };
+    return pkg.name === '@dwlf/mcp-server' && typeof pkg.version === 'string' ? pkg.version : 'unknown';
+  } catch { return 'unknown'; }
 })();
 
 // Plain HTTP only to this machine (the tests' stand-in); anything else must be HTTPS, since every read carries a credential.

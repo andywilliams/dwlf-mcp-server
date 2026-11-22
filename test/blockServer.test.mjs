@@ -75,6 +75,8 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
   try {
     const mcp = await connect(createBlockServer({ credential: ' dwlfk_test ', baseURL: api.url }));
     assert.equal(mcp.getInstructions(), BLOCK_API_INSTRUCTIONS);
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    assert.deepEqual(mcp.getServerVersion(), { name: 'dwlf', version: pkg.version }, 'serverInfo names the tool code that answered');
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((t) => t.name).sort(), [...BLOCK_API_TOOLS].sort());
     // The same registrations as the stdio path (registerForProfile on block-api), description for description.
