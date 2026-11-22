@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Checks an agent's answer to eval/theses/README.md: node eval/theses/check.mjs answer.json
 import { readFileSync } from 'node:fs';
+import { reader } from './clauses.mjs';
 
 const REQUIRED = {
   pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'], window_closes: ['timeframe', 'side'],
@@ -27,17 +28,7 @@ check(inv.some((c) => c.type === 'engine_event' && c.eventType === 'cycle.low.br
 check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 
 const t = x.toLowerCase();
-// Clause by clause (split at sentence ends, semicolons and contrast words, never at commas, so a negated list stays one
-// clause): the words count as denied when a negation stands within a few words before them ("it doesn't give forecasts,
-// guarantees or a price target"), and as asserted otherwise ("not advice, but it will rise"; "there is no doubt it will rise").
-const clauses = t.replace(/\b(no doubt|no question|not only|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
-const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-// Each match judged on its own: denied only when a negation stands in its own part of the clause (split at
-// semicolons, "and", "so"; not commas, so a negated list stays one part), so an earlier disclaimer ("not advice, and it will rise") never denies a later forecast.
-const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/;|\band\b|\bso\b/).pop());
-const matchesOf = (c, re) => [...c.matchAll(new RegExp(re.source, 'g'))];
-const denied = (re) => clauses.some((c) => matchesOf(c, re).some((m) => deniedAt(c, m.index)));
-const asserted = (re) => clauses.some((c) => matchesOf(c, re).some((m) => !deniedAt(c, m.index)));
+const { clauses, partBefore, matchesOf, denied, asserted } = reader(x);
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');
 check(/(notif|told|telegram|digest|let you know|tells you)/.test(t), 'explains: the user is told when it happens');
 check(/(before .*saved|knowable|could first know|already happened)/.test(t), 'explains: honest timing (nothing before saving counts)');

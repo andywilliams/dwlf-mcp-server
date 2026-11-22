@@ -276,6 +276,7 @@ test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_clo
   assert.match(bad((a) => { a.explanation = `${strip(a)} A low confirmed before the close voids nothing. A low confirmed after the close still counts.`; }), /the strict rule/);
   assert.match(bad((a) => { a.explanation = `${a.explanation} This is not advice, and GDX will bounce once the window opens.`; }), /no forecast or call to act/);
   // the rule with its negation first passes: "no low confirmed after the close counts", "only a low confirmed before the close counts"
+  assert.match(bad((a) => { a.explanation = `${strip(a)} It doesn't watch intraday and a low confirmed after the window closes still counts.`; }), /the strict rule/, 'a disclaimer joined by "and" does not deny the opposite rule');
   for (const rule of ['No low confirmed after the window closes counts.', 'Only a low confirmed before the close counts.']) {
     assert.match(bad((a) => { a.explanation = `${strip(a)} ${rule}`; }), /^PASS/, rule);
   }
