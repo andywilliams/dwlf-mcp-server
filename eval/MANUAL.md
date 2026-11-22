@@ -84,7 +84,7 @@ The steps are the same, with three changes:
 
 - **Cleanup.** In step 6, also `unset DWLF_BLOCK_KEY`.
 
-A case file with `"backend": "block-api"` (`series.json`) only applies here. A `mustCall` entry that is a list
+A case file with `"backend": "block-api"` (`series.json`, `profile.json`) only applies here. A `mustCall` entry that is a list
 passes when any one of its tools was called. `cases/profile.json` holds whole-profile questions: what Block does, why use it, what a plan unlocks, and a cold
 trap. Its `tool` is `profile`, not a tool name.
 

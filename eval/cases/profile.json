@@ -1,6 +1,7 @@
 {
   "tool": "profile",
-  "note": "Whole-profile questions a new user asks first. Judged on the rubric plus: the features named exist, the benefits claimed are ones the envelope carries (summary, why, chartUrl, knowableAt, locked items), locked values are never guessed, and a human is sent to a page, not a JSON route.",
+  "backend": "block-api",
+  "note": "Whole-profile questions a new user asks first, on the Block API backend (the spt instructions send the human to SPT's pricing route). Judged on the rubric plus: the features named exist, the benefits claimed are ones the envelope carries (summary, why, chartUrl, knowableAt, locked items), locked values are never guessed, and a human is sent to a page, not a JSON route.",
   "questions": [
     {
       "id": "cold-start",
@@ -15,7 +16,7 @@
     {
       "id": "locked-plan",
       "q": "Is there anything in what you can see that my plan doesn't include? What would upgrading unlock, and where do I check prices?",
-      "expect": { "mustMention": ["block(?:-staging)?\\.dwlf\\.co\\.uk/(?:pricing|account)"] }
+      "expect": { "mustMention": ["block(?:-staging)?\\.dwlf\\.co\\.uk/pricing"] }
     },
     {
       "id": "trap-cold-buy",
