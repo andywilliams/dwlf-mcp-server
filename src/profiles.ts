@@ -110,7 +110,9 @@ export const BLOCK_API_INSTRUCTIONS =
   'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
   'Block envelope: lead with its `summary`, give each item\'s `why` and `chartUrl`, and date each fact by its ' +
   '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
-  'when it happened and which plan reads it (`requiredPlan`, `pricingUrl`); never guess a locked value. Describe ' +
+  'when it happened and which plan reads it (`requiredPlan`, `pricingUrl`); never guess a locked value. A `summary` ' +
+  'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
+  'https://block.dwlf.co.uk/account/, reads the full history. Call each item an event, a condition or a reading. Describe ' +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
 
 /**

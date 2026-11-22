@@ -69,5 +69,18 @@ or spend anything, even with a real key.
 6. Record what you found (pass, or what failed and why) on the release's ticket. A failure is something to fix in a
    description or a tool, not a release blocker. Then `rm -rf "$T"; unset DWLF_API_KEY`.
 
+## On the Block API backend (`--block-backend block-api`; the default after the cut)
+
+The steps are the same, with three changes:
+- **No DWLF key.** Leave the key out to test the keyless public view, or read a Block API key (`dwlfk_…`) the same
+  way as in step 2 into `DWLF_BLOCK_KEY`, and pass `"DWLF_BLOCK_KEY":"${DWLF_BLOCK_KEY}"` in the config's `env`.
+- **Args and target.** The args are `["%s/dist/index.js","--profile","block","--block-backend","block-api"]`.
+  For staging, add `"BLOCK_API_URL":"https://api.block-staging.dwlf.co.uk"` to `env`.
+- **Tools.** Allow the launch set: in step 3, import `BLOCK_API_TOOLS` in place of `BLOCK_TOOLS`. Every tool in it
+  is a read.
+
+`cases/profile.json` holds whole-profile questions: what Block does, why use it, what a plan unlocks, and a cold
+trap. Its `tool` is `profile`, not a tool name.
+
 Which model answers is whatever your Claude Code session uses: note it with the result, so runs on different dates
 can be compared.

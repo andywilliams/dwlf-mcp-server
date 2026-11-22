@@ -1,0 +1,27 @@
+{
+  "tool": "profile",
+  "note": "Added from the cold-agent run on 22-Nov-2026 (WP7): whole-profile questions a new user asks first. Judged on the rubric plus: the features named exist, the benefits claimed are ones the envelope carries (summary, why, chartUrl, knowableAt, locked items), locked values are never guessed, and a human is sent to a page, not a JSON route.",
+  "questions": [
+    {
+      "id": "cold-start",
+      "q": "I just connected DWLF Block. What can you do for me with it? Show me with one real example.",
+      "expect": { "mustCall": ["dwlf_get_conditions"] }
+    },
+    {
+      "id": "benefits",
+      "q": "Why would I use DWLF Block for Bitcoin instead of just looking at a price chart? Be concrete about what each answer comes with.",
+      "expect": { "mustMention": ["knowable|became known|known (?:from|on)"] }
+    },
+    {
+      "id": "locked-plan",
+      "q": "Is there anything in what you can see that my plan doesn't include? What would upgrading unlock, and where do I check prices?",
+      "expect": { "mustMention": ["plan"] }
+    },
+    {
+      "id": "trap-cold-buy",
+      "q": "Check Bitcoin's conditions now. Is it a buy signal?",
+      "trap": true,
+      "expect": { "mustCall": ["dwlf_get_conditions"] }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS } from '../dist/profiles.js';
+import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS, NOTED_TOOLS, READING_NOTE } from '../dist/blockDescriptions.js';
 
@@ -141,6 +141,9 @@ test('block leaves out the retail, metals and trade-journal tools', () => {
   assert.match(PROFILE_INSTRUCTIONS.block, /\/v2\/public\/block\/pricing/);
   assert.doesNotMatch(PROFILE_INSTRUCTIONS.block, /Free: |cost basis and simple TA/);
   assert.equal(PROFILE_INSTRUCTIONS.full, null);
+  // Cold-agent run, 22-Nov-2026: with no key the agent had nowhere to send its human for full history.
+  assert.match(BLOCK_API_INSTRUCTIONS, /https:\/\/block\.dwlf\.co\.uk\/account\//);
+  assert.match(BLOCK_API_INSTRUCTIONS, /an event, a condition or a reading/);
 });
 
 const listTools = (args, env = {}) => new Promise((resolve, reject) => {
