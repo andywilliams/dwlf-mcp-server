@@ -351,6 +351,7 @@ test('★ dwlf_get_thesis_story replay: asks SPT for replay=1, a summary line wi
   assert.equal(await line({ available: true, asDrawn: null, note: 'No plan was captured for this thesis, so there is no plan to replay against: the fires are told alone.', omitted: { plans: 0, checkpoints: 2 } }),
     'X story, 1 beats. Replay: No plan was captured for this thesis, so there is no plan to replay against: the fires are told alone. Some older plan bodies were left out for size (replay.omitted); their beats are kept.');
   assert.equal(await line({ available: true, asDrawn: { label: 'The plan as drawn, 20 Nov', reconstructed: false }, omitted: {} }), 'X story, 1 beats. Replay against The plan as drawn, 20 Nov.');
+  assert.equal(await line({ available: true, asDrawn: { revision: 4, reconstructed: true } }), 'X story, 1 beats. Replay against a plan (reconstructed after the fact, not captured at the time).', 'no label: the flag still speaks');
 });
 
 test('the recorded replay narration passes its checker; a score, a missing caveat or an invented ring fails it (eval/thesis-story replay, DWLF-889)', async () => {
