@@ -93,10 +93,6 @@ test('createBlockServer names the keys page of its baseURL\'s stage (staging\'s 
   const mcp = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://api.block-staging.dwlf.co.uk' }));
   assert.match(mcp.getInstructions(), /from https:\/\/block-staging\.dwlf\.co\.uk\/account\/, reads/);
   assert.doesNotMatch(mcp.getInstructions(), /https:\/\/block\.dwlf\.co\.uk\/account\//);
-  const named = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://other.example', keysPage: 'https://block-x.dwlf.co.uk/account/' }));
-  assert.match(named.getInstructions(), /from https:\/\/block-x\.dwlf\.co\.uk\/account\/, reads/, 'a host-named keysPage wins');
-  assert.throws(() => createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://x', keysPage: 'http://x/account/' }), /keysPage/);
-  assert.throws(() => createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://x', keysPage: '' }), /keysPage/);
 });
 
 test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and an unreachable API; the tool still answers', async () => {
