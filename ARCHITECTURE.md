@@ -150,7 +150,7 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   page follows the same base (`keysPageFor`): `https://api.<site>` on a DWLF Block site gives `https://<site>/account/`,
   anything else production's, so a staging view sends a person to staging's keys page. It is built here only because
   the keyless envelope names no keys URL (it does send `upgradeUrl` per stage); if it ever does, the instructions
-  point to that field instead. An unknown host gets production's page because that is where real keys are made.
+  point to that field instead (asked on DWLF-899). An unknown host gets production's page because that is where real keys are made.
   *Also (22-Nov):* through `@dwlf/mcp-server/block`, whenever a host calls `createBlockServer`, with no profile or
   backend switch: `/v1/*` only, with the caller's `credential` as `Bearer`, at the `baseURL` the host passes (HTTPS,
   or plain HTTP to loopback for tests). Its instructions name the keys page of that `baseURL`'s stage, for sameness
