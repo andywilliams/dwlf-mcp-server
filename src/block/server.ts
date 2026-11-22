@@ -8,7 +8,8 @@ import { BLOCK_API_INSTRUCTIONS } from '../profiles.js';
 export type { UpstreamRecorder, UpstreamRefusal } from './client.js';
 export type { CatalogueCache } from './tools.js';
 
-// package.json sits two levels above dist/block/ in both a clone and the published tarball.
+// package.json sits two levels above dist/block/ in both a clone and the published tarball. serverInfo names this
+// package's version, the tool code that answered (what an agent's report needs); the host logs its own release.
 const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
 
 export interface BlockServerOptions {
@@ -27,7 +28,7 @@ export interface BlockServerOptions {
   timeoutMs?: number;
   /** Told of each Block API refusal or failure during this request (hosted-auth H11). */
   recorder?: UpstreamRecorder;
-  /** Where the catalogue is kept between requests; the host keys it by credential (hosted-auth §1). */
+  /** Where the catalogue is kept between requests: one store may serve every caller, since it's keyed by view. */
   catalogueCache?: CatalogueCache;
 }
 

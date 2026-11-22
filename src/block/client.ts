@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import axios, { type AxiosInstance } from 'axios';
 
 /**
@@ -11,6 +12,8 @@ import axios, { type AxiosInstance } from 'axios';
  * revoked key into an HTTP 401 after the tool has answered. The stdio server passes none, so its output is unchanged.
  * This file is the only code that parses the Block API's error format: the refusal is classified here, and the fields
  * H4 needs later (the permission named, whether the plan allows it) are added here, additively, in hosted-auth step 7.
+ * It reports each upstream refusal, not what the tool made of it: H11's rule reads the status alone (a Block 401 means
+ * the credential no longer works, whichever read hit it, even one a tool absorbs, like dwlf_explain_event's occurrences).
  */
 export interface UpstreamRefusal {
   /** The HTTP status, or null when the Block API was unreachable. */
@@ -33,6 +36,8 @@ export class BlockApiClient {
   private http: AxiosInstance;
   private recorder?: UpstreamRecorder;
   readonly signedIn: boolean;
+  /** Names this client's view for a cache: the credential's SHA-256 (hex), or `public` without one. Never the credential. */
+  readonly viewKey: string;
 
   constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder } = {}) {
     this.recorder = options.recorder;
@@ -40,6 +45,7 @@ export class BlockApiClient {
     const raw = 'apiKey' in options ? options.apiKey : process.env.DWLF_BLOCK_KEY;
     const apiKey = raw?.trim() ? raw.trim() : undefined;
     this.signedIn = Boolean(apiKey);
+    this.viewKey = apiKey ? createHash('sha256').update(apiKey).digest('hex') : 'public';
     this.http = axios.create({
       baseURL: `${base}${apiKey ? '/v1' : '/public/v1'}`,
       headers: { Accept: 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },

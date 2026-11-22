@@ -71,8 +71,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
     new SDK major here is a breaking change for `./block`.
   - **Code reachable from `./block` keeps no state read with a credential beyond the server it built.** The default
     catalogue cache lives in the registration, so it dies with the server; anything that must outlive a request is
-    the host's, passed in (`catalogueCache`). A module-level cache there would leak one caller's plan view to the
-    next. Pinned by a test that runs every Block tool on two servers with different credentials and checks each read
+    the host's, passed in (`catalogueCache`, a store the library keys by the credential's SHA-256, so one store can
+    serve a whole host process safely). A module-level cache there would leak one caller's plan view to the next. Pinned by a test that runs every Block tool on two servers with different credentials and checks each read
     carries its own server's credential. `baseURL` is required, so no environment variable is a hidden input.
   - **One version line for the CLI and the library**, not a separate package: the hosted endpoint and npm must run
     the same tool code, and one package keeps one release (invariant 7) behind one tap. *Accepted:* a hosted-only
@@ -350,7 +350,8 @@ A reviewer should be able to test a diff against each of these:
   - Follow-through: step 2a (22-Nov) rescoped both *Not for* lines, invariant 8 and *Interfaces* for the library
     entry. The runtime-role invariant (H8, step 3) and identity's `id-svc` as a third authenticated host (H2, step 7)
     belong to the private repo's charter, unless step 7 adds a seam here. From step 2b on, that charter carries the
-    hosted endpoint's rules (the bullets above included); this one keeps the `./block` contract and this record.
+    hosted endpoint's rules (the bullets above included) and wins where the two differ; this one keeps the `./block`
+    contract and this record.
 - **2026-05-07 — symbol normalisation uses a narrow `KNOWN_PAIRED` allow-list, stocks pass through
   unchanged** — because the previous `KNOWN_STOCKS` allow-list appended `-USD` to any unrecognised
   ticker and the API rejected them (PAAS, DRD, HMY, NEM, SPY); the paired list is "much narrower and

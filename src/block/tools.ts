@@ -27,13 +27,15 @@ const failure = (error: unknown) => ({
 });
 
 /**
- * Where the catalogue tools keep the catalogue between calls. `get` gives a body still fresh, or undefined; `set` keeps
- * a body just read (a failed read is never kept). The default keeps one per registration for 15 minutes. A per-request
- * host passes its own (hosted-auth §1: keyed by the credential, 60 seconds), since its registration lives one request.
+ * Where the catalogue tools keep the catalogue between calls, by `key`: the client's `viewKey` (the credential's
+ * SHA-256, or `public`), so one store shared across a host's process can't hand one caller another's plan view.
+ * `get` gives a body still fresh, or undefined; `set` keeps a body just read (a failed read is never kept). The default
+ * keeps it per registration for 15 minutes. A per-request host passes a store that outlives the request (hosted-auth
+ * §1: 60 seconds, bounded).
  */
 export interface CatalogueCache {
-  get(): Record<string, unknown> | undefined;
-  set(body: Record<string, unknown>): void;
+  get(key: string): Record<string, unknown> | undefined;
+  set(key: string, body: Record<string, unknown>): void;
 }
 
 export function registerBlockApiTools(server: McpServer, client: BlockApiClient,
@@ -108,20 +110,20 @@ const MAX_ITEMS = 40;
 
 // The catalogue is 355 KB and changes slowly: by default kept 15 minutes per registration, as the SPT catalogues are.
 const memoryCache = (ttlMs: number): CatalogueCache => {
-  let cached: { at: number; body: Json } | null = null;
+  const kept = new Map<string, { at: number; body: Json }>();
   return {
-    get: () => (cached && Date.now() - cached.at < ttlMs ? cached.body : undefined),
-    set: (body) => { cached = { at: Date.now(), body }; },
+    get: (key) => { const c = kept.get(key); return c && Date.now() - c.at < ttlMs ? c.body : undefined; },
+    set: (key, body) => { kept.set(key, { at: Date.now(), body }); },
   };
 };
 
 function registerCatalogueTools(server: McpServer, client: BlockApiClient, cache: CatalogueCache): void {
   // A failed read is never kept, so the next call tries again.
   const catalogueOf = async (): Promise<Json> => {
-    const hit = cache.get();
+    const hit = cache.get(client.viewKey);
     if (hit) { return hit; }
     const body = await client.get<Json>('/catalogue');
-    cache.set(body);
+    cache.set(client.viewKey, body);
     return body;
   };
   server.tool(

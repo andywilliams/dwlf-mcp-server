@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -116,19 +117,23 @@ test('a host-supplied catalogue cache: a hit makes no Block API call; a miss rea
   let fail = false;
   const api = await upstream((url) => (url.startsWith('/v1/catalogue') ? (fail ? [503, { error: 'UNAVAILABLE', message: 'down' }] : [200, catalogue]) : [200, {}]));
   try {
+    // One store for the whole process, as a host keeps it: the library keys it by the credential's SHA-256.
     const store = new Map();
-    const cacheFor = (key) => ({ get: () => store.get(key), set: (body) => { store.set(key, body); } });
-    const first = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
+    const shared = { get: (key) => store.get(key), set: (key, body) => { store.set(key, body); } };
+    const keyOf = (c) => createHash('sha256').update(c).digest('hex');
+    const first = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: shared }));
     await first.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
-    const second = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: cacheFor('a') }));
+    const second = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url, catalogueCache: shared }));
     await second.callTool({ name: 'dwlf_describe_onchain_events', arguments: { family: 'cost-basis' } });
     assert.equal(api.seen.filter((s) => s.url.startsWith('/v1/catalogue')).length, 1, 'the second server, same key, read the kept catalogue');
-    assert.deepEqual(store.get('a'), catalogue);
+    assert.deepEqual([...store.keys()], [keyOf('dwlfk_a')], 'keyed by the hash, never the credential');
+    assert.deepEqual(store.get(keyOf('dwlfk_a')), catalogue);
 
     fail = true;
-    const other = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url, catalogueCache: cacheFor('b') }));
-    assert.equal((await other.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} })).isError, true);
-    assert.equal(store.has('b'), false, 'a failed read is never kept');
+    const other = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url, catalogueCache: shared }));
+    assert.equal((await other.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} })).isError, true,
+      'the other caller reads for itself (and fails here), never the first caller\'s kept view');
+    assert.equal(store.has(keyOf('dwlfk_b')), false, 'a failed read is never kept');
   } finally { await api.close(); }
 });
 
