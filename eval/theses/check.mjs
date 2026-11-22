@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 
 const REQUIRED = {
-  pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'],
+  pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'], window_closes: ['timeframe', 'side'],
   trendline_break: ['timeframe', 'direction'], engine_event: ['timeframe', 'eventType'], manual: ['label'],
 };
 const answer = JSON.parse(readFileSync(process.argv[2], 'utf8'));
@@ -13,7 +13,7 @@ const check = (ok, what) => { if (!ok) failures.push(what); };
 
 const all = [...(p.steps || []).flatMap((s) => s.conditions || []), ...(p.invalidation || [])];
 check(String(p.symbol).toUpperCase() === 'NVDA', 'symbol NVDA');
-check(all.every((c) => REQUIRED[c.type]), 'only the six condition types');
+check(all.every((c) => REQUIRED[c.type]), 'only the listed condition types');
 check(all.every((c) => (REQUIRED[c.type] || []).every((f) => c[f] !== undefined && c[f] !== '')), 'every required field present');
 check(all.every((c) => typeof c.label === 'string' && c.label.trim()), 'every condition labelled');
 const s1 = p.steps?.[0]?.conditions || [];

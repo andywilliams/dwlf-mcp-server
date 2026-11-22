@@ -201,6 +201,18 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
     { type: 'volume_spike', multiple: 2 },
   ]);
   assert.equal(parsed.steps[0].match, 'any');
+  // DWLF-897: steps and invalidations now have their own unions; a newer type still reaches SPT as an invalidation.
+  const inv = shape.parse({ thesisId: 't1', expectedRevision: 1, invalidation: [{ type: 'volume_spike', multiple: 2 }] });
+  assert.deepEqual(inv.invalidation, [{ type: 'volume_spike', multiple: 2 }]);
+});
+
+test('★ window_closes state and counts (DWLF-897): a settled one is defined in agentHints; condition-types counts its own types', async () => {
+  const settled = thesis({ invalidation: [{ id: 'v1', type: 'window_closes', timeframe: 'weekly', side: 'low', state: { status: 'pending', settled: 'pivot' } }] });
+  const { call } = setup((m, path) => (path.includes('condition-types') ? { types: [{ type: 'a' }, { type: 'b' }, { type: 'c' }] } : { theses: [settled] }));
+  const { body } = await call('dwlf_list_theses');
+  assert.match(body.agentHints.definitions.settled.pivot, /can no longer be met/);
+  const types = await call('dwlf_list_thesis_condition_types');
+  assert.match(types.body.agentHints.summary, /^The 3 condition types/);
 });
 
 test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and four worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
@@ -256,6 +268,10 @@ test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_clo
   assert.match(bad((a) => { a.payload.invalidation.push({ type: 'close_vs_level', basis: 'weekly_close', op: 'below', value: 40, label: 'Weekly close below 40' }); }), /no price level invented/);
   assert.match(bad((a) => { a.explanation = a.explanation.replace(/28 days|four weeks|4 weeks/gi, 'later'); }), /decided 28 days after the close/);
   assert.match(bad((a) => { a.payload.invalidation = []; }), /invalidation: window_closes on the weekly low window/);
+  // the opposite rule, or the nightly "after the close" alone, is not the strict rule; a disclaimer does not deny a later forecast
+  const strip = (a) => a.explanation.replace(/[^.]*confirmed after the (close|window)[^.]*\./gi, '');
+  assert.match(bad((a) => { a.explanation = `${strip(a)} A low confirmed before the close voids nothing. A low confirmed after the close still counts.`; }), /the strict rule/);
+  assert.match(bad((a) => { a.explanation = `${a.explanation} This is not advice, and GDX will bounce once the window opens.`; }), /no forecast or call to act/);
 });
 
 test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {

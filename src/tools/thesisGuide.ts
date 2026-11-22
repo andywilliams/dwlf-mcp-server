@@ -22,6 +22,12 @@ export const CONDITION_STATE_DEFINITIONS = {
   marked: 'A manual condition the user marked met; the nightly check records it on its next run.',
 } as const;
 
+/** A window_closes condition the evaluator settled (DWLF-897): its status stays pending, but it can no longer be met. */
+export const SETTLED_DEFINITIONS = {
+  pivot: 'A pivot of its side confirmed before the window closed (sourceEventId names it), so this window_closes can no longer be met.',
+  'window-moved': 'The stored window it watched now closes before the condition was saved (its close date moved), so it can no longer be met.',
+} as const;
+
 export const FIRE_KIND_DEFINITIONS = {
   step_met: 'A step\'s conditions were met (any or all, as the step says).',
   condition_missed: 'A step condition was decided outside its level; the thesis is challenged.',

@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import axios from 'axios';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, FIRE_KIND_DEFINITIONS, REPLAY_BEAT_KIND_DEFINITIONS, ROUTE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
+import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, SETTLED_DEFINITIONS, FIRE_KIND_DEFINITIONS, REPLAY_BEAT_KIND_DEFINITIONS, ROUTE_KIND_DEFINITIONS, STATUS_DEFINITIONS, THESIS_GUIDE } from './thesisGuide.js';
 
 /**
  * Theses (thesis alerts, DWLF-855; the guide: thesisGuide.ts, DWLF-891): per symbol, the market events a user is waiting for and why, checked by
@@ -46,6 +46,8 @@ const thesisDefinitions = (theses: Thesis[], fires: Json[] = []) => {
   return {
     status: definitionsFor(STATUS_DEFINITIONS, theses.map((t) => t.status)),
     conditionState: definitionsFor(CONDITION_STATE_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.status)),
+    // A window_closes the evaluator settled (DWLF-897): status stays pending, but it can no longer be met.
+    ...(conditions.some((c) => (c.state as Json | undefined)?.settled) ? { settled: definitionsFor(SETTLED_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.settled)) } : {}),
     ...(fires.length ? { fireKind: definitionsFor(FIRE_KIND_DEFINITIONS, fires.map((f) => f.kind)) } : {}),
   };
 };
@@ -197,10 +199,10 @@ const replayLine = (data: Json, asked: boolean): string => {
 export function registerThesisTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_thesis_guide',
-    'Start here for theses (what a user is waiting for on a symbol, checked by DWLF every night after the close). Returns what theses are, what they save the user (decide once; told when it happens; honest knowable-at timing; how close each is), their honest limits (end of day; information, not advice), the rules for building one that DWLF can check exactly, the workflow across the thesis tools, and three worked examples with the exact dwlf_create_thesis payloads. No API call.',
+    'Start here for theses (what a user is waiting for on a symbol, checked by DWLF every night after the close). Returns what theses are, what they save the user (decide once; told when it happens; honest knowable-at timing; how close each is), their honest limits (end of day; information, not advice), the rules for building one that DWLF can check exactly, the workflow across the thesis tools, and worked examples with the exact dwlf_create_thesis payloads. No API call.',
     {},
     async () => ok({ guide: THESIS_GUIDE }, {
-      summary: 'The theses guide: what, benefits, limits, rules, workflow and three worked examples.',
+      summary: 'The theses guide: what, benefits, limits, rules, workflow and worked examples.',
       why: 'Read before building a thesis or explaining the feature to the user. The condition types and fields themselves come from dwlf_list_thesis_condition_types.',
     })
   );
@@ -212,7 +214,9 @@ export function registerThesisTools(server: McpServer, client: DWLFClient) {
     async () => {
       try {
         const data = await client.get('/theses/condition-types');
-        return ok(data, { summary: 'The six condition types a thesis can wait for, and the rules that apply to all of them.', why: WHY });
+        // SPT owns the vocabulary: the count comes from its answer, never a number that goes stale with the next type.
+        const n = Array.isArray((data as Json)?.types) ? ((data as Json).types as unknown[]).length : null;
+        return ok(data, { summary: `The ${n ?? ''} condition types a thesis can wait for, where each may go (step, invalidation), and the rules that apply to all of them.`.replace('The  ', 'The '), why: WHY });
       } catch (error) { return fail(error); }
     }
   );
