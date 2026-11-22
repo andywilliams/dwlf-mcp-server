@@ -22,7 +22,7 @@ amends `docs/HOSTED-MCP.md` (4-Nov) where that design assumed SPT and a managed 
 > - Still open: Q1 and Q3 (before step 5), and Q5 (before step 3 deploys).
 >
 > **Where the hosted rules live from step 2b on:** the private repo's own charter and design, which take over this
-> note's hosted-side content (§1's runtime, §2, §4–§7, H8, H9, H11's hosted half, the deploy rules) when step 2b
+> note's hosted-side content (§1's runtime, §2, §4–§7, H2's exchange client, H8, H9, H11's hosted half, the deploy rules) when step 2b
 > creates them. This note stays the step-1 record, and this repo's charter keeps only the `./block` contract and the
 > 20-Nov decision record.
 
@@ -144,7 +144,8 @@ the MCP holding no secret at rest, and revoking the grant is one action in one p
 - *Why the MCP exchanges, not the Block API:* the Block API accepting a token issued for the MCP and exchanging it
   itself would be the passthrough the spec forbids, moved one hop: a token for one audience accepted by another.
 - This makes identity's `id-svc` the MCP's **third authenticated outbound host** (after SPT and the Block API), with
-  its own sole signer (SigV4). `hosted/` is inside invariant 3's scope (people run it). The invariant ("the second
+  its own sole signer (SigV4). *(22-Nov: with the hosted code in the private repo, the exchange client and this rule
+  belong to that repo's charter; this repo's invariant 3 changes only if step 7 adds a seam here.)* `hosted/` is inside invariant 3's scope (people run it). The invariant ("the second
   and last authenticated client") is rewritten when the exchange lands (step 7) to drop "last": **one authenticated
   client per outbound host, each the only code that sets `Authorization` or signs for that host, and a new host is a
   charter change with an *Interfaces* row.** The JWKS fetch is unauthenticated and joins *Interfaces* too.

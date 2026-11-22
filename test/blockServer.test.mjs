@@ -51,7 +51,8 @@ test('createBlockServer imports no SPT tool module: a hosted bundle carries the 
   const walk = (file) => {
     if (graph.has(file)) { return; }
     graph.add(file);
-    for (const [, spec] of readFileSync(file, 'utf8').matchAll(/from '(\.[^']+)'/g)) { walk(new URL(spec, file)); }
+    // Every relative specifier: `from '…'`, a side-effect `import '…'`, and a dynamic `import('…')`, either quote.
+    for (const [, spec] of readFileSync(file, 'utf8').matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*)['"](\.[^'"]+)['"]/g)) { walk(new URL(spec, file)); }
   };
   walk(new URL('../dist/block/server.js', import.meta.url));
   const reached = [...graph].map((u) => u.pathname.split('/dist/')[1]).sort();
@@ -63,6 +64,10 @@ test('createBlockServer refuses a missing or blank credential (a hosted caller i
   assert.throws(() => createBlockServer({ credential: '   ', baseURL: 'https://x' }), /credential/);
   assert.throws(() => createBlockServer({ baseURL: 'https://x' }), /credential/);
   assert.throws(() => createBlockServer({ credential: 'dwlfk_a' }), /baseURL/, 'no environment fallback for the upstream');
+  assert.throws(() => createBlockServer({ credential: 'dwlfk_a', baseURL: 'http://api.block.dwlf.co.uk' }), /HTTPS/, 'never a key in cleartext');
+  assert.throws(() => createBlockServer({ credential: 'dwlfk_a', baseURL: 'not a url' }), /baseURL/);
+  createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://api.block.dwlf.co.uk' });
+  createBlockServer({ credential: 'dwlfk_a', baseURL: 'http://localhost:1' });
 });
 
 test('createBlockServer gives the block-api tools and instructions the stdio entry gives, signed in with the key', async () => {
@@ -84,7 +89,8 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
 
 test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and an unreachable API; the tool still answers', async () => {
   const api = await upstream((url) => (url.startsWith('/v1/conditions') ? [401, { error: 'UNAUTHORIZED', message: 'key revoked' }]
-    : url.startsWith('/v1/events') ? [403, '<html>Forbidden</html>', 'text/html'] : [200, { summary: 'ok' }]));
+    : url.startsWith('/v1/events') ? [403, '<html>Forbidden</html>', 'text/html']
+      : url.startsWith('/v1/catalogue') ? [429, { error: 'Too Many Requests' }] : [200, { summary: 'ok' }]));
   try {
     const heard = [];
     const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: api.url, recorder: (r) => heard.push(r) }));
@@ -93,7 +99,9 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
     assert.match(revoked.content[0].text, /Block API 401: .*key revoked/);
     await mcp.callTool({ name: 'dwlf_get_events', arguments: {} });
     await mcp.callTool({ name: 'dwlf_get_series', arguments: { id: 'mvrv' } });
-    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true }, { status: 403, code: null, blockBody: false }]);
+    await mcp.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
+    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true }, { status: 403, code: null, blockBody: false },
+      { status: 429, code: null, blockBody: false }], 'an `error` without Block\'s `message` is an edge\'s answer, not Block\'s');
 
     const offline = [];
     const down = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, recorder: (r) => offline.push(r) }));

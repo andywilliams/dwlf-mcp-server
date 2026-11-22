@@ -61,9 +61,9 @@ export class BlockApiClient {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         const body: unknown = error.response.data;
-        const code = body !== null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-          ? (body as { error: string }).error : null;
-        this.record({ status: error.response.status, code, blockBody: code !== null });
+        const fields = body !== null && typeof body === 'object' ? body as { error?: unknown; message?: unknown } : {};
+        const blockBody = typeof fields.error === 'string' && typeof fields.message === 'string';
+        this.record({ status: error.response.status, code: blockBody ? fields.error as string : null, blockBody });
         // The Block API's own error body is the agent's answer (its code, message, requiredPlan, pricingUrl): kept whole.
         throw new BlockApiError(error.response.status, body, `Block API ${error.response.status}: ${typeof body === 'string' ? body.slice(0, 500) : JSON.stringify(body)}`);
       }

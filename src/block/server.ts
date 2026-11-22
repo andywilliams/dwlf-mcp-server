@@ -8,9 +8,21 @@ import { BLOCK_API_INSTRUCTIONS } from '../profiles.js';
 export type { UpstreamRecorder, UpstreamRefusal } from './client.js';
 export type { CatalogueCache } from './tools.js';
 
-// package.json sits two levels above dist/block/ in both a clone and the published tarball. serverInfo names this
-// package's version, the tool code that answered (what an agent's report needs); the host logs its own release.
-const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
+// package.json sits two levels above dist/block/ in both a clone and the installed package. serverInfo names this
+// package's version, the tool code that answered (what an agent's report needs); the host logs its own release. A host
+// that bundles this module (esbuild moves the file) loses that path: loading still works and the version reads
+// `unknown`, so a host should keep `@dwlf/mcp-server` external to its bundle (CDK `nodeModules`).
+const version = (() => {
+  try { return (createRequire(import.meta.url)('../../package.json') as { version: string }).version; } catch { return 'unknown'; }
+})();
+
+// Plain HTTP only to this machine (the tests' stand-in); anything else must be HTTPS, since every read carries a credential.
+const allowedBase = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname));
+  } catch { return false; }
+};
 
 export interface BlockServerOptions {
   /**
@@ -42,7 +54,9 @@ export interface BlockServerOptions {
 export function createBlockServer(options: BlockServerOptions): McpServer {
   const credential = typeof options.credential === 'string' ? options.credential.trim() : '';
   if (!credential) throw new Error('createBlockServer needs the caller\'s credential (a Block API key).');
-  if (typeof options.baseURL !== 'string' || !/^https?:\/\//.test(options.baseURL)) throw new Error('createBlockServer needs the Block API\'s baseURL.');
+  if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
+    throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
+  }
   const server = new McpServer({ name: 'dwlf', version }, { instructions: BLOCK_API_INSTRUCTIONS });
   const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
