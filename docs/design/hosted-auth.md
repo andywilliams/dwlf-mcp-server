@@ -20,6 +20,11 @@ amends `docs/HOSTED-MCP.md` (4-Nov) where that design assumed SPT and a managed 
 > - **DNS isn't a blocker.** The `dwlf.co.uk` zone's limit has been 10,000 records since 18-Nov (50 used). Q5 (the
 >   name) is still open.
 > - Still open: Q1 and Q3 (before step 5), and Q5 (before step 3 deploys).
+>
+> **Where the hosted rules live from step 2b on:** the private repo's own charter and design, which take over this
+> note's hosted-side content (§1's runtime, §2, §4–§7, H8, H9, H11's hosted half, the deploy rules) when step 2b
+> creates them. This note stays the step-1 record, and this repo's charter keeps only the `./block` contract and the
+> 20-Nov decision record.
 
 ## 0 · What exists (checked read-only, 20-Nov)
 

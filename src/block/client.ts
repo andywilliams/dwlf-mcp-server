@@ -9,6 +9,8 @@ import axios, { type AxiosInstance } from 'axios';
  *
  * `recorder` (hosted-auth H11): a per-request observer told of each refusal or failure, so a hosted entry can turn a
  * revoked key into an HTTP 401 after the tool has answered. The stdio server passes none, so its output is unchanged.
+ * This file is the only code that parses the Block API's error format: the refusal is classified here, and the fields
+ * H4 needs later (the permission named, whether the plan allows it) are added here, additively, in hosted-auth step 7.
  */
 export interface UpstreamRefusal {
   /** The HTTP status, or null when the Block API was unreachable. */
@@ -17,8 +19,6 @@ export interface UpstreamRefusal {
   code: string | null;
   /** True when the body is Block's own `{ error, message }`; false for anything else (an edge's or a proxy's answer). */
   blockBody: boolean;
-  /** The answer's body as received (null when unreachable), so a host can classify it itself. Never a credential. */
-  body: unknown;
 }
 export type UpstreamRecorder = (refusal: UpstreamRefusal) => void;
 
@@ -57,11 +57,11 @@ export class BlockApiClient {
         const body: unknown = error.response.data;
         const code = body !== null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
           ? (body as { error: string }).error : null;
-        this.record({ status: error.response.status, code, blockBody: code !== null, body });
+        this.record({ status: error.response.status, code, blockBody: code !== null });
         // The Block API's own error body is the agent's answer (its code, message, requiredPlan, pricingUrl): kept whole.
         throw new BlockApiError(error.response.status, body, `Block API ${error.response.status}: ${typeof body === 'string' ? body.slice(0, 500) : JSON.stringify(body)}`);
       }
-      this.record({ status: null, code: null, blockBody: false, body: null });
+      this.record({ status: null, code: null, blockBody: false });
       throw new BlockApiError(null, null, `Block API unreachable: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

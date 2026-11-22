@@ -57,10 +57,11 @@ test('createBlockServer imports no SPT tool module: a hosted bundle carries the 
   assert.ok(!reached.some((f) => f.startsWith('tools/') || f === 'register.js' || f === 'client.js'), reached.join(', '));
 });
 
-test('createBlockServer refuses a missing or blank key: a hosted caller is always signed in', () => {
-  assert.throws(() => createBlockServer({ credential: '' }), /credential/);
-  assert.throws(() => createBlockServer({ credential: '   ' }), /credential/);
-  assert.throws(() => createBlockServer({}), /credential/);
+test('createBlockServer refuses a missing or blank credential (a hosted caller is always signed in) and a missing baseURL', () => {
+  assert.throws(() => createBlockServer({ credential: '', baseURL: 'https://x' }), /credential/);
+  assert.throws(() => createBlockServer({ credential: '   ', baseURL: 'https://x' }), /credential/);
+  assert.throws(() => createBlockServer({ baseURL: 'https://x' }), /credential/);
+  assert.throws(() => createBlockServer({ credential: 'dwlfk_a' }), /baseURL/, 'no environment fallback for the upstream');
 });
 
 test('createBlockServer gives the block-api tools and instructions the stdio entry gives, signed in with the key', async () => {
@@ -91,13 +92,12 @@ test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and
     assert.match(revoked.content[0].text, /Block API 401: .*key revoked/);
     await mcp.callTool({ name: 'dwlf_get_events', arguments: {} });
     await mcp.callTool({ name: 'dwlf_get_series', arguments: { id: 'mvrv' } });
-    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true, body: { error: 'UNAUTHORIZED', message: 'key revoked' } },
-      { status: 403, code: null, blockBody: false, body: '<html>Forbidden</html>' }]);
+    assert.deepEqual(heard, [{ status: 401, code: 'UNAUTHORIZED', blockBody: true }, { status: 403, code: null, blockBody: false }]);
 
     const offline = [];
     const down = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, recorder: (r) => offline.push(r) }));
     assert.equal((await down.callTool({ name: 'dwlf_get_conditions', arguments: {} })).isError, true);
-    assert.deepEqual(offline, [{ status: null, code: null, blockBody: false, body: null }]);
+    assert.deepEqual(offline, [{ status: null, code: null, blockBody: false }]);
   } finally { await api.close(); }
 });
 
@@ -132,16 +132,21 @@ test('a host-supplied catalogue cache: a hit makes no Block API call; a miss rea
   } finally { await api.close(); }
 });
 
-test('two callers share nothing: with no host cache, each server reads with its own credential and keeps nothing for the other', async () => {
+test('two callers share nothing: with no host cache, every tool on each server reads with that server\'s own credential', async () => {
   const catalogue = { summary: 'c', items: [{ id: 'onchain.x', kind: 'eventType', family: 'cost-basis' }], definitions: { 'onchain.x': 'd' } };
   const api = await upstream(() => [200, catalogue]);
+  // Minimal arguments per tool; a Block tool added without an entry here fails the test until it gets one.
+  const args = { dwlf_get_conditions: {}, dwlf_get_events: {}, dwlf_get_series: { id: 'mvrv' },
+    dwlf_describe_onchain_events: {}, dwlf_explain_event: { eventType: 'onchain.x' } };
+  assert.deepEqual(Object.keys(args).sort(), [...BLOCK_API_TOOLS].sort());
   try {
-    const a = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: api.url }));
-    await a.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
-    const b = await connect(createBlockServer({ credential: 'dwlfk_b', baseURL: api.url }));
-    await b.callTool({ name: 'dwlf_describe_onchain_events', arguments: {} });
-    await b.callTool({ name: 'dwlf_get_conditions', arguments: {} });
-    assert.deepEqual(api.seen, [{ url: '/v1/catalogue', auth: 'Bearer dwlfk_a' }, { url: '/v1/catalogue', auth: 'Bearer dwlfk_b' },
-      { url: '/v1/conditions', auth: 'Bearer dwlfk_b' }]);
+    for (const credential of ['dwlfk_a', 'dwlfk_b']) {
+      const mcp = await connect(createBlockServer({ credential, baseURL: api.url }));
+      const before = api.seen.length;
+      for (const [name, a] of Object.entries(args)) { assert.notEqual((await mcp.callTool({ name, arguments: a })).isError, true, name); }
+      const mine = api.seen.slice(before);
+      assert.ok(mine.some((s) => s.url.startsWith('/v1/catalogue')), `${credential} read the catalogue itself, not another caller's`);
+      assert.deepEqual([...new Set(mine.map((s) => s.auth))], [`Bearer ${credential}`]);
+    }
   } finally { await api.close(); }
 });

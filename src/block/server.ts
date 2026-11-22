@@ -19,8 +19,11 @@ export interface BlockServerOptions {
    * Required: a hosted caller is always signed in.
    */
   credential: string;
-  /** The Block API's base URL. The host fixes it from its own configuration, never from the request. */
-  baseURL?: string;
+  /**
+   * The Block API's base URL, e.g. `https://api.block.dwlf.co.uk`. Required, so no environment variable is a hidden
+   * input: the host fixes it per stage from its own configuration, never from the request.
+   */
+  baseURL: string;
   timeoutMs?: number;
   /** Told of each Block API refusal or failure during this request (hosted-auth H11). */
   recorder?: UpstreamRecorder;
@@ -38,6 +41,7 @@ export interface BlockServerOptions {
 export function createBlockServer(options: BlockServerOptions): McpServer {
   const credential = typeof options.credential === 'string' ? options.credential.trim() : '';
   if (!credential) throw new Error('createBlockServer needs the caller\'s credential (a Block API key).');
+  if (typeof options.baseURL !== 'string' || !/^https?:\/\//.test(options.baseURL)) throw new Error('createBlockServer needs the Block API\'s baseURL.');
   const server = new McpServer({ name: 'dwlf', version }, { instructions: BLOCK_API_INSTRUCTIONS });
   const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
