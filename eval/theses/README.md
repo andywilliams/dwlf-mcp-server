@@ -29,3 +29,30 @@ Questions the runs raised, now answered in the guide's `glossary`:
 - the `engine_event` allow-list;
 - `group`;
 - whether the `cycle.low.break` level is fixed at save time (it moves with the latest confirmed low).
+
+## Scenario 2: void by time with window_closes (DWLF-897)
+
+**User says:** "I trade GDX. I'm waiting for its weekly cycle low inside the weekly low window. Tell me when that window opens and when the next weekly cycle low is confirmed. I don't have a price level that would prove me wrong, but if the window closes without a confirmed weekly low, the idea is void, so I want to know then. What exactly will DWLF check, and what won't it do?" (The guide's worked example is SLV, so copying it won't pass.)
+
+**Pass** (`node eval/theses/check-window.mjs <answer.json>`):
+1. **Payload:**
+   - `window_closes` (weekly, low) is the invalidation, and it appears in no step;
+   - a step waits for the next confirmed weekly low;
+   - no price level is invented (no `close_vs_level`, no pivot `level`);
+   - only listed types, every field and label present.
+2. **Explanation:**
+   - says it is checked against the stored window's close date;
+   - gives the strict rule (a low confirmed after the close does not count);
+   - says it is decided 28 days after the close;
+   - gives the nightly timing and the limits (not intraday, not advice);
+   - makes no forecast or call to act;
+   - mentions a dry run.
+
+**Recorded:** both runs were made by a fresh general-purpose agent given only the bundle, and both **PASS**.
+- `answer-window-2026-11-22-run1.json`: the first checker missed its wording for the strict rule ("doesn't rescue it"). The checker now reads the rule clause by clause.
+- `answer-window-2026-11-22-run2.json`: a fresh agent on the updated guide.
+
+Questions the runs raised, now answered in the guide's `window_closes` glossary entry and the SLV example's notes:
+- whether the step's low must be dated inside the window (no: the void covers "none by the close");
+- what a low confirmed before the window opens does (it settles the void, and the store measures a new window from it);
+- whether step 2 needs `after` (no: it is armed when step 1 is met).

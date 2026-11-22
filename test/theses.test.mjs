@@ -203,7 +203,7 @@ test('★ drift is visible, not lossy: an unknown status is named; a newer field
   assert.equal(parsed.steps[0].match, 'any');
 });
 
-test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and three worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
+test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary and four worked examples that parse as dwlf_create_thesis input; no advice words anywhere (DWLF-891)', async () => {
   const { z } = await import('zod');
   const { tools, call } = setup();
   const { body } = await call('dwlf_thesis_guide');
@@ -213,9 +213,11 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
   assert.match(g.limits.join(' '), /Information, not advice/);
   assert.match(g.rules.join(' '), /cycle\.low\.break/);
   assert.match(g.statuses.challenged, /review/);
-  assert.equal(g.examples.length, 3);
+  assert.equal(g.examples.length, 4);
+  assert.match(g.rules.join(' '), /window_closes voids a thesis by time: an invalidation only, and optional/);
+  assert.match(g.glossary.window_closes, /Strict: a pivot confirmed after the close does not count/);
   const create = z.object(tools.get('dwlf_create_thesis').schema).strict();
-  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'trendline_break', 'engine_event', 'manual'];
+  const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'window_closes', 'trendline_break', 'engine_event', 'manual'];
   for (const ex of g.examples) {
     const parsed = create.safeParse(ex.create);
     assert.ok(parsed.success, `${ex.create.symbol}: ${JSON.stringify(parsed.error?.issues)}`);
@@ -224,6 +226,10 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
       assert.ok(c.label, 'every example condition has a label saying what is checked');
     }
   }
+  // window_closes (DWLF-897): an invalidation only, so the schema refuses it in a step.
+  const slv = g.examples.find((ex) => ex.create.symbol === 'SLV').create;
+  assert.deepEqual(slv.invalidation.map((c) => c.type), ['window_closes']);
+  assert.equal(create.safeParse({ ...slv, steps: [{ match: 'any', conditions: [slv.invalidation[0]] }] }).success, false);
   // Everything, the payloads agents copy included.
   const ADVICE = /\b(buy|sell|entry|enter|exit|stop|target|risk|reward|should|recommend|opportunity)\b/i;
   assert.doesNotMatch(JSON.stringify(g), ADVICE);
@@ -234,6 +240,22 @@ test('the recorded thesis eval answer still passes its checker (eval/theses, DWL
   const { execFileSync } = await import('node:child_process');
   const out = execFileSync('node', ['eval/theses/check.mjs', 'eval/theses/answer-2026-11-20.json'], { encoding: 'utf8' });
   assert.match(out, /^PASS/);
+});
+
+test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_closes in a step, an invented price level, or no decision delay fails', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const run = (file) => { try { return execFileSync('node', ['eval/theses/check-window.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
+  for (const r of ['run1', 'run2']) { assert.match(run(`eval/theses/answer-window-2026-11-22-${r}.json`), /^PASS/); }
+  const good = JSON.parse(readFileSync('eval/theses/answer-window-2026-11-22-run2.json', 'utf8'));
+  const dir = mkdtempSync(join(tmpdir(), 'wc-eval-'));
+  const bad = (mutate) => { const a = structuredClone(good); mutate(a); const f = join(dir, `${Math.random()}.json`); writeFileSync(f, JSON.stringify(a)); return run(f); };
+  assert.match(bad((a) => { a.payload.steps.push({ match: 'any', conditions: [a.payload.invalidation[0]] }); }), /window_closes only as an invalidation/);
+  assert.match(bad((a) => { a.payload.invalidation.push({ type: 'close_vs_level', basis: 'weekly_close', op: 'below', value: 40, label: 'Weekly close below 40' }); }), /no price level invented/);
+  assert.match(bad((a) => { a.explanation = a.explanation.replace(/28 days|four weeks|4 weeks/gi, 'later'); }), /decided 28 days after the close/);
+  assert.match(bad((a) => { a.payload.invalidation = []; }), /invalidation: window_closes on the weekly low window/);
 });
 
 test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {

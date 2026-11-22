@@ -108,6 +108,18 @@ const cnx1 = {
   invalidation: [{ type: 'close_vs_level', symbol: 'QQQ', basis: 'weekly_close', op: 'below', value: 555.6, label: 'QQQ weekly close below 555.60' }],
 };
 
+const slv = {
+  symbol: 'SLV',
+  title: 'SLV: the weekly low window opens, then a confirmed weekly cycle low; void if the window closes first',
+  context: 'I am waiting for the weekly cycle low inside its window. There is no price that would prove me wrong, only time.',
+  nextStep: 'When the weekly low confirms, decide on size against it.',
+  steps: [
+    { match: 'any', conditions: [{ type: 'window_opens', timeframe: 'weekly', side: 'low', label: 'SLV weekly low window opens' }] },
+    { match: 'any', conditions: [{ type: 'pivot_confirmed', timeframe: 'weekly', side: 'low', label: 'Next confirmed weekly cycle low (any price)' }] },
+  ],
+  invalidation: [{ type: 'window_closes', timeframe: 'weekly', side: 'low', label: 'Void if no confirmed weekly low before the weekly low window closes' }],
+};
+
 export const THESIS_GUIDE = {
   what: 'A thesis is what a user is waiting for on one symbol, saved in their own words: ordered steps of conditions DWLF can detect, optional invalidation conditions, their context (why) and their next step. DWLF checks every condition once a night after the close and records exactly what happened and when it could first be known.',
   benefits: [
@@ -134,6 +146,7 @@ export const THESIS_GUIDE = {
     'Run dwlf_create_thesis with dryRun: true first and show the user the restatement of every condition (`checks`); save only what the user confirms. A condition that can never occur for its symbol is refused; one that is already true is refused unless the user chooses to save it anyway (allowAlreadyMet).',
     'To change a saved thesis, run dwlf_revise_thesis (or dwlf_review_thesis revise) with dryRun: true first: `checks` then covers only the changed conditions (listed in `changed`); an unchanged condition keeps its arming and result, so one already met is fine. Show the user what changes, then save.',
     'Record the user\'s own review answer (keep, revise or close); do not choose it for them.',
+    'window_closes voids a thesis by time: an invalidation only, and optional. Add it only when the user says the idea is void if the window closes first; never as a default, and never invent a price level for a thesis that has none.',
   ],
   workflow: [
     '1. dwlf_list_thesis_condition_types: the types, fields and rules.',
@@ -157,6 +170,7 @@ export const THESIS_GUIDE = {
     planAsDrawn: 'What the thesis\'s chart showed when a revision was saved (windows, levels, pivots, trend lines and their engine versions), stored once and never changed. `reconstructed: true` means it was written after the fact for a thesis saved before plans were captured.',
     replay: 'dwlf_get_thesis_story with replay: true, once a step is met or the thesis has an outcome: the plan as drawn told against what happened. `met` puts the date each step was met beside the date its plan had illustrated it (two dates, never a difference); `windows` sets each window as drawn beside today\'s (`redrawn`); `beats` runs saved, each fire and revision, the outcome; `replaySummary` is one sentence of facts. Nothing is scored: an illustration was never a forecast, so never call it right, wrong, early, late or accurate.',
     checkpoint: 'The plan as it stood just after a fire (a step met, a condition missed, an invalidation), captured that night and never changed. Fires from before checkpoints existed have none, and say so.',
+    window_closes: 'Invalidation only (DWLF-897). The STORED window (dwlf_get_cycle_windows) measured from the last pivot of that side when the condition was saved: met when that window\'s close date passes (the end of its closing bar; a weekly bar ends with its week) with no cycle pivot of that side confirmed on that timeframe since saving. Strict: a pivot confirmed after the close does not count, even one dated inside the window. Decided 7 (daily) or 28 (weekly) days after the close, once a confirmation from before it can no longer be published late as live; one published later still is reported as withdrawn. Once a pivot confirms first it is settled (state.settled = pivot) and can no longer be met; that includes a pivot confirmed before the window even opens (the store then measures a new window from it, so a step waiting for "the window opens" waits for that new window, and the void no longer applies). It does not check where a later pivot is dated: a step\'s pivot_confirmed waits for the next confirmed pivot after the step before it, inside the window or not; the void covers "none by the close". Refused at save when there is no stored window or its closing bar has closed. Progress gives windowCloses (the closing bar), windowEnds (the day it closes) and closesInDays.',
     route: 'An illustrated route in a story (current.routes; routes in a plan are as drawn at that save). The story body\'s own `definitions` (routes, basis) are SPT\'s and authoritative; dwlf_get_thesis_story\'s agentHints define each route kind and basis present.',
   },
   statuses: STATUS_DEFINITIONS,
@@ -170,6 +184,8 @@ export const THESIS_GUIDE = {
       notes: 'Step 1 has no level ("any price"), so any first confirmed daily low after 5 Nov meets it. The invalidation uses cycle.low.break because the low that would confirm step 1 does not exist yet.' },
     { name: 'A confirmed daily low above a known level, challenged by a daily close below it', create: amzn,
       notes: 'The level is a price the user already knows (the 30 Oct low), so a close_vs_level invalidation is exact. A pivot that confirms below 229.36 is a miss and challenges the thesis.' },
+    { name: 'Wait for a weekly low inside its window, voided by time (no price level)', create: slv,
+      notes: 'The user has no price that would prove them wrong, so the thesis is voided by time: window_closes, only because they asked for it. It is checked against the stored window\'s close date and decided 28 days after the closing week (weekly); a low confirmed after the close does not save it. Step 2 needs no `after`: it is armed when step 1 is met (the window opening), so it waits for the next weekly low after that, inside the window or not.' },
     { name: 'Watch one symbol, trade another', create: cnx1,
       notes: 'Each condition names QQQ; the thesis lives on CNX1. Steps are checked in order: the window first, then the low.' },
   ],

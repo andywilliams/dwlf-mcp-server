@@ -14,7 +14,7 @@ import { BASIS_DEFINITIONS, BEAT_KIND_DEFINITIONS, CONDITION_STATE_DEFINITIONS, 
 
 const WHY = 'A thesis is the user\'s own record of what they are waiting for on a symbol and why. DWLF reports which of its conditions the market has met, from events confirmed after each nightly close. It describes events; it does not say what to do about them.';
 
-const TYPE_HINT = 'Condition types: pivot_confirmed (the next confirmed cycle low/high, optionally inside a level), close_vs_level (a daily/weekly close or intraday trade beyond a level), window_opens, trendline_break, engine_event (a short allow-list), manual. Full parameters and definitions: dwlf_list_thesis_condition_types.';
+const TYPE_HINT = 'Condition types: pivot_confirmed (the next confirmed cycle low/high, optionally inside a level), close_vs_level (a daily/weekly close or intraday trade beyond a level), window_opens, window_closes (invalidation only: the stored window closes with no pivot of its side; only when the user asks to void the thesis by time), trendline_break, engine_event (a short allow-list), manual. Full parameters and definitions: dwlf_list_thesis_condition_types.';
 
 type Json = Record<string, unknown>;
 type Thesis = { thesisId?: string; symbol?: string; title?: string; status?: string; currentStep?: number; steps?: unknown[]; liveness?: { note?: string } };
@@ -77,7 +77,7 @@ const timeframe = z.enum(['daily', 'weekly']);
 const idField = z.string().optional().describe('Keep the id you read when revising: an unchanged condition keeps its arming and its result. Omit for a new condition.');
 const label = z.string().optional().describe('Your short name for the condition (≤120 chars).');
 
-const knownCondition = z.discriminatedUnion('type', [
+const stepConditionTypes = [
   z.looseObject({
     type: z.literal('pivot_confirmed'), id: idField, label, symbol: symbolField, timeframe,
     side: z.enum(['low', 'high']),
@@ -98,17 +98,25 @@ const knownCondition = z.discriminatedUnion('type', [
     eventType: z.string().describe('One of the allow-list in dwlf_list_thesis_condition_types (e.g. cycle.low.higher_low).'),
   }),
   z.looseObject({ type: z.literal('manual'), id: idField, label: z.string().describe('What you will mark (required).'), symbol: symbolField }),
-]);
-const conditionSchema = z.union([
-  knownCondition,
-  z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') }),
-]);
+] as const;
+// DWLF-897: an invalidation only (SPT refuses it in a step).
+const windowCloses = z.looseObject({
+  type: z.literal('window_closes'), id: idField, label, symbol: symbolField, timeframe, side: z.enum(['low', 'high']),
+}).describe('Invalidation only. The STORED window for the next cycle low/high, measured from the last pivot of that side when saved: met when its close date passes (the end of its closing bar; a weekly bar ends with its week) with no pivot of that side confirmed since saving. Strict: one confirmed after the close does not count. Decided 7 (daily) or 28 (weekly) days after the close. Add it only when the user wants the thesis voided by time.');
+const newerType = z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') });
+// The fallback for a newer type still refuses window_closes in a step, so the schema says where it goes.
+const newerStepType = z.looseObject({
+  type: z.string().refine((t) => t !== 'window_closes', 'window_closes is an invalidation only: put it under invalidation')
+    .describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.'),
+});
+const stepCondition = z.union([z.discriminatedUnion('type', [...stepConditionTypes]), newerStepType]);
+const invalidationCondition = z.union([z.discriminatedUnion('type', [...stepConditionTypes, windowCloses]), newerType]);
 
 const stepsSchema = z.array(z.looseObject({
   match: z.enum(['any', 'all']).default('any').describe('The step is met when any (or all) of its conditions are.'),
-  conditions: z.array(conditionSchema).min(1),
+  conditions: z.array(stepCondition).min(1),
 })).min(1).describe('Ordered: step n+1 is checked only after step n is met. Limits: dwlf_list_thesis_condition_types.');
-const invalidationSchema = z.array(conditionSchema).describe('Any one of these happening marks the thesis challenged (review it). Optional.');
+const invalidationSchema = z.array(invalidationCondition).describe('Any one of these happening marks the thesis challenged (review it). Optional. window_closes goes only here.');
 
 const textFields = {
   title: z.string().describe('One line: what you are waiting for.'),

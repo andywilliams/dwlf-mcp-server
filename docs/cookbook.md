@@ -286,8 +286,8 @@ A thesis is what a user is waiting for on one symbol, in their own words: ordere
 ### Tool sequence
 
 ```
-1. dwlf_thesis_guide                         → what, benefits, limits, rules, three worked examples
-2. dwlf_list_thesis_condition_types          → the six types and their fields (only these exist)
+1. dwlf_thesis_guide                         → what, benefits, limits, rules, four worked examples
+2. dwlf_list_thesis_condition_types          → the seven types, their fields and where each may go (only these exist)
 3. dwlf_create_thesis { ..., dryRun: true }  → read every restatement in `checks` back to the user
 4. dwlf_create_thesis { ... }                → save what the user confirmed
 5. dwlf_list_theses { includeProgress: true } → how close each is; `closest` to sort by
@@ -297,6 +297,10 @@ A thesis is what a user is waiting for on one symbol, in their own words: ordere
 9. dwlf_get_thesis_story { thesisId }        → the thesis told in beats: what happened, where it stands, what it needs
 10. dwlf_get_thesis_story { thesisId, replay: true } → once a step is met: the plan as drawn against what happened
 ```
+
+### Voided by time: window_closes
+
+A thesis that waits for a cycle window and has no price that would prove it wrong (gold and the miners, typically) can be voided by time, only when the user asks for it: an invalidation `window_closes` on the window's timeframe and side. It is checked against the STORED window's close date (the window measured from the last pivot when saved), decided 28 days (weekly) or 7 days (daily) after the closing bar, once a late-published confirmation can no longer arrive; a pivot confirmed after the close does not count. It is an invalidation only (the schema refuses it in a step), and progress gives `windowCloses`, `windowEnds` and `closesInDays`. Never invent a price level for such a thesis. (eval: `eval/theses`, the window_closes scenario)
 
 ### Telling a thesis's story
 
