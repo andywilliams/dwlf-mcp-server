@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS } from '../dist/profiles.js';
+import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, BLOCK_API_INSTRUCTIONS, blockApiInstructions, keysPageFor } from '../dist/profiles.js';
 import { registerAll } from '../dist/register.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS, NOTED_TOOLS, READING_NOTE } from '../dist/blockDescriptions.js';
 
@@ -159,6 +159,20 @@ test('both Block instructions send a person to upgradeUrl (the plans page) and k
   }
 });
 
+test('the keys page follows the Block API\'s stage; anything that is not a DWLF Block API host gets production\'s', () => {
+  const prod = 'https://block.dwlf.co.uk/account/';
+  assert.equal(keysPageFor('https://api.block.dwlf.co.uk'), prod);
+  assert.equal(keysPageFor('https://api.block-staging.dwlf.co.uk'), 'https://block-staging.dwlf.co.uk/account/');
+  assert.equal(keysPageFor('https://api.block-staging.dwlf.co.uk/'), 'https://block-staging.dwlf.co.uk/account/');
+  for (const other of ['http://127.0.0.1:4010', 'http://api.block-staging.dwlf.co.uk', 'https://api.block-staging.dwlf.co.uk:8443',
+    'https://api.block-staging.dwlf.co.uk.example.com', 'https://api.example.com', 'https://block-staging.dwlf.co.uk', 'not a url', '']) {
+    assert.equal(keysPageFor(other), prod, other);
+  }
+  assert.equal(BLOCK_API_INSTRUCTIONS, blockApiInstructions(prod));
+  const staging = blockApiInstructions('https://block-staging.dwlf.co.uk/account/');
+  assert.equal(staging, BLOCK_API_INSTRUCTIONS.replace(prod, 'https://block-staging.dwlf.co.uk/account/'), 'only the link differs');
+});
+
 test('block-api instructions name what an item is: an event, a condition or a reading', () => {
   assert.match(BLOCK_API_INSTRUCTIONS, /an event, a condition or a reading/);
 });
@@ -190,6 +204,14 @@ test('the built server honours --profile block end to end, with its instructions
   const { tools, instructions } = await listTools(['--profile', 'block']);
   assert.deepEqual(tools.sort(), [...BLOCK_TOOLS].sort());
   assert.match(instructions, /dwlf_get_conditions/);
+});
+
+test('the built server on block-api names the keys page of BLOCK_API_URL\'s stage, production by default', { timeout: 20_000 }, async () => {
+  const args = ['--profile', 'block', '--block-backend', 'block-api'];
+  const staging = await listTools(args, { BLOCK_API_URL: 'https://api.block-staging.dwlf.co.uk', DWLF_BLOCK_KEY: '' });
+  assert.match(staging.instructions, /from https:\/\/block-staging\.dwlf\.co\.uk\/account\/, reads the full history/);
+  const prod = await listTools(args, { BLOCK_API_URL: '', DWLF_BLOCK_KEY: '' });
+  assert.equal(prod.instructions, BLOCK_API_INSTRUCTIONS);
 });
 
 test('an unknown profile exits non-zero with the reason', { timeout: 10_000 }, async () => {

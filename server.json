@@ -8,12 +8,12 @@
     "url": "https://github.com/andywilliams/dwlf-mcp-server",
     "source": "github"
   },
-  "version": "0.76.1",
+  "version": "0.76.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@dwlf/mcp-server",
-      "version": "0.76.1",
+      "version": "0.76.2",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

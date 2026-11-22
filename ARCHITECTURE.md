@@ -146,10 +146,13 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **The Block API** (`https://api.block.dwlf.co.uk`, override `BLOCK_API_URL`), **only when `--profile block` runs
   on the `block-api` backend** (`DWLF_BLOCK_BACKEND`, off by default until the cut; DWLF-876,
   `docs/design/block-repoint.md`). Keyless reads go to `/public/v1/*`. With `DWLF_BLOCK_KEY` (a personal `dwlfk_` key,
-  once keys ship) it reads `/v1/*` with `Bearer`. Responses are the Block envelope, passed through (D4).
+  once keys ship) it reads `/v1/*` with `Bearer`. Responses are the Block envelope, passed through (D4). The instructions' keys
+  page follows the same base (`keysPageFor`): `https://api.<site>` on a DWLF Block site gives `https://<site>/account/`,
+  anything else production's, so a staging view sends a person to staging's keys page.
   *Also (22-Nov):* through `@dwlf/mcp-server/block`, whenever a host calls `createBlockServer`, with no profile or
   backend switch: `/v1/*` only, with the caller's `credential` as `Bearer`, at the `baseURL` the host passes (HTTPS,
-  or plain HTTP to loopback for tests). No environment variable is read on that path.
+  or plain HTTP to loopback for tests), with the keys page of that `baseURL`'s stage. No environment variable is read
+  on that path.
 - **Academy CDN** — `https://academy.dwlf.co.uk/live`, unauthenticated, `manifest.json` shape owned by
   `dwlf-academy-content`; the only place that bypasses `DWLFClient` (direct `axios`, 15-min manifest
   cache) *(inferred from: `src/tools/academy.ts` `ACADEMY_BASE`, `MANIFEST_TTL_MS`;

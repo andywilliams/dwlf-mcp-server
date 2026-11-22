@@ -89,6 +89,12 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
   } finally { await api.close(); }
 });
 
+test('createBlockServer names the keys page of its baseURL\'s stage (staging\'s for the staging API)', async () => {
+  const mcp = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://api.block-staging.dwlf.co.uk' }));
+  assert.match(mcp.getInstructions(), /from https:\/\/block-staging\.dwlf\.co\.uk\/account\/, reads/);
+  assert.doesNotMatch(mcp.getInstructions(), /https:\/\/block\.dwlf\.co\.uk\/account\//);
+});
+
 test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and an unreachable API; the tool still answers', async () => {
   const api = await upstream((url) => (url.startsWith('/v1/conditions') ? [401, { error: 'UNAUTHORIZED', message: 'key revoked' }]
     : url.startsWith('/v1/events') ? [403, '<html>Forbidden</html>', 'text/html']
