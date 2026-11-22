@@ -2,7 +2,7 @@
 // Checks an agent's answer to the window_closes scenario in eval/theses/README.md (DWLF-897):
 // node eval/theses/check-window.mjs answer.json
 import { readFileSync } from 'node:fs';
-import { reader } from './clauses.mjs';
+import { NEG, reader } from './clauses.mjs';
 
 const REQUIRED = {
   pivot_confirmed: ['timeframe', 'side'], close_vs_level: ['basis', 'op', 'value'], window_opens: ['timeframe', 'side'],
@@ -31,19 +31,19 @@ check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 const t = x.toLowerCase();
 const { clauses, partBefore, matchesOf, denied, asserted } = reader(x);
 check(/stored/.test(t) && /(close date|closing (bar|week)|window closes|closes)/.test(t), 'explains: checked against the stored window\'s close date');
-// The strict rule, judged in one clause: a low CONFIRMED after the close is denied as counting / saving / rescuing it
-// ("a low confirmed after the window has closed doesn't save it"), or a low must be confirmed by the close. A clause
-// that only says when the nightly check runs ("after the close") is not it, nor one that says the opposite.
-const AFTER_CLOSE = /\bconfirm\w* after (the |it |its )?(window )?(has |is )?(close|closes|closed|closing|ends|ended)\b/;
-const SAVES = /\b(count|counts|rescue|rescues|save|saves|help|helps|undo|cancel)\b/;
-const NOT = /\b(not|no|never|doesn't|does not|won't|will not|don't|do not)\b/;
-const strict = clauses.some((c) => {
-  const at = c.search(AFTER_CLOSE);
-  // the negation may stand before the low ("no low confirmed after the close counts") or before the verb
-  return at >= 0 && matchesOf(c, SAVES).some((m) => m.index > at && NOT.test(partBefore(c, m.index)));
-}) || clauses.some((c) => /\b(must|has to|needs to|have to|only if)\b[^.]*confirmed (by|before) the (close|window clos)/.test(c)
-  || /\bonly (a |the |one )?[a-z ]{0,20}confirmed (by|before) the (close|window clos)\w*[^.]*\b(counts|saves|rescues)\b/.test(c));
-check(strict, 'explains the strict rule: a low confirmed after the close does not count');
+// Andy's rule (22-Nov), judged in one clause: a low DATED inside the window still counts (saves the thesis) when it
+// confirms after the close, within the decision days. And the old strict rule ("a low confirmed after the close does
+// not count") must not be asserted.
+const INSIDE = /\b(inside|in|within) the window\b|\bdated (inside|in|within|by)\b/;
+const LATE = /\b(after the (close|window)|after it closes|confirm\w* (late|later)|confirmation (lag|takes))/;
+const SAVES = /\b(count|counts|saves|save|rescues|rescue|still)\b/;
+// Judged per sentence, not clause: the rule is a contrast ("confirms after the close, but within those days, still counts").
+const sentences = t.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+const lagCounts = sentences.some((c) => INSIDE.test(c) && LATE.test(c) && matchesOf(c, SAVES).some((m) => !NEG.test(partBefore(c, m.index))));
+check(lagCounts, 'explains Andy\'s rule: a low dated inside the window that confirms after the close (within the days) still counts');
+const OLD = /\bconfirm\w* after (the |it |its )?(window )?(has |is )?(close|closes|closed|closing)\b/;
+const strictAsserted = clauses.some((c) => OLD.test(c) && matchesOf(c, SAVES).some((m) => m.index > c.search(OLD) && NEG.test(partBefore(c, m.index))));
+check(!strictAsserted, 'does not state the old strict rule (a low confirmed after the close does not count)');
 check(/(28 days|four weeks|4 weeks)/.test(t), 'explains: decided 28 days after the close (weekly)');
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');
 check(denied(/\b(intraday|real[- ]time|the moment)\b/) || /end[- ]of[- ]day only/.test(t), 'states the limit: not intraday');
@@ -53,4 +53,4 @@ check(!asserted(CALL), 'no forecast or call to act');
 check(/(dry ?run|restate|before (i |we )?sav)/.test(t), 'mentions a dry run / confirmation before saving');
 
 if (failures.length) { console.log(`FAIL (${failures.length}):\n- ${failures.join('\n- ')}`); process.exit(1); }
-console.log('PASS: window_closes as the invalidation only, no invented level; the stored close date, the strict rule and the decision delay explained.');
+console.log('PASS: window_closes as the invalidation only, no invented level; the stored close date, the decision point and Andy\'s rule explained.');

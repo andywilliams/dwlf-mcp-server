@@ -38,21 +38,25 @@ Questions the runs raised, now answered in the guide's `glossary`:
 1. **Payload:**
    - `window_closes` (weekly, low) is the invalidation, and it appears in no step;
    - a step waits for the next confirmed weekly low;
-   - no price level is invented (no `close_vs_level`, no pivot `level`);
+   - no price level is invented;
    - only listed types, every field and label present.
 2. **Explanation:**
-   - says it is checked against the stored window's close date;
-   - gives the strict rule (a low confirmed after the close does not count);
+   - says it is checked against the stored window's close;
    - says it is decided 28 days after the close;
-   - gives the nightly timing and the limits (not intraday, not advice);
-   - makes no forecast or call to act;
+   - gives **Andy's rule** (22-Nov): a low dated inside the window that confirms after the close, within those days, still counts;
+   - never states the old strict rule;
+   - gives the nightly timing and the limits;
+   - makes no forecast;
    - mentions a dry run.
 
-**Recorded:** both runs were made by a fresh general-purpose agent given only the bundle, and both **PASS**.
-- `answer-window-2026-11-22-run1.json`: the first checker missed its wording for the strict rule ("doesn't rescue it"). The checker now reads the rule clause by clause.
-- `answer-window-2026-11-22-run2.json`: a fresh agent on the updated guide.
+**Recorded:** each run was made by a fresh general-purpose agent given only the bundle.
+- `answer-window-2026-11-22-run3.json`: **PASS**.
+- `answer-window-2026-11-22-run4.json`: **PASS**.
+- Runs 1 and 2, made under the earlier strict rule, are retired: they fail this checker, as they should.
+- The rule is judged per sentence, because it is a contrast ("after the close, but within those 28 days, still counts").
 
-Questions the runs raised, now answered in the guide's `window_closes` glossary entry and the SLV example's notes:
-- whether the step's low must be dated inside the window (no: the void covers "none by the close");
-- what a low confirmed before the window opens does (it settles the void, and the store measures a new window from it);
-- whether step 2 needs `after` (no: it is armed when step 1 is met).
+Questions the runs raised, now answered in the guide:
+- whether a step's low must be dated in the window;
+- what a low confirmed before the window opens does;
+- whether step 2 needs `after`;
+- that a low dated after the close can meet step 2 while the void still fires (both are reported).

@@ -1,0 +1,43 @@
+{
+  "payload": {
+    "symbol": "GDX",
+    "title": "GDX: the weekly low window opens, then a confirmed weekly cycle low; void if the window closes first",
+    "context": "I am waiting for GDX's weekly cycle low inside its weekly low window. There is no price that would prove me wrong, only time: if the window closes without a confirmed weekly low, the idea is void.",
+    "nextStep": "When the weekly low confirms, look at the trade on GDX and decide.",
+    "clientKey": "gdx-weekly-low-window",
+    "steps": [
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "window_opens",
+            "timeframe": "weekly",
+            "side": "low",
+            "label": "GDX weekly low window opens"
+          }
+        ]
+      },
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "pivot_confirmed",
+            "timeframe": "weekly",
+            "side": "low",
+            "label": "Next confirmed weekly cycle low (any price)"
+          }
+        ]
+      }
+    ],
+    "invalidation": [
+      {
+        "type": "window_closes",
+        "timeframe": "weekly",
+        "side": "low",
+        "label": "Void if no confirmed weekly low before the weekly low window closes"
+      }
+    ],
+    "dryRun": true
+  },
+  "explanation": "I'd save this as a 'thesis' on GDX. DWLF checks it once a night after the close. First I'd run it as a dry run, which saves nothing and reads every condition back to you in plain words. I only save it, by sending the same thing without dryRun, once you say the restatement is right.\n\nWhat DWLF will check:\n1) Step 1: the day GDX's weekly low window (as DWLF's engine draws it) opens. You get told then.\n2) Step 2: only after step 1 is met, the next weekly cycle low DWLF confirms, at any price. You get told when it is confirmed. A weekly low is only confirmed some bars after its low week, and every alert says when DWLF could first know it.\n3) Void by time, because you asked for it: the window is the one stored when you save, measured from GDX's last weekly low. If no weekly low dated on or before the window's closing week has been confirmed, the thesis is marked 'challenged' 28 days after that closing week ends. A low dated inside the window that confirms after the window closes, but within those 28 days, still counts and saves the idea. A low dated after the close does not count. Before then, a progress check shows the closing week, the close date, the decision date and how many days are left.\nYou hear about each of these through a Telegram digest (if set up), an in-app notification and the thesis feed. Anything that happened before you save doesn't count.\n\nWhat it won't do:\n- It doesn't watch intraday. Checks are end of day, and a weekly low is known only after its confirmation lag.\n- It gives no advice: no forecast, no entry, no size, no target. It only reports what happened.\n- There's no price stop, because you have none and I won't invent one. 'Challenged' doesn't end the thesis by itself. It asks you to keep, revise or close it, and that choice is yours.\n- Step 2 doesn't check that the low is dated inside the window. It simply takes the next confirmed weekly low after the window opens. Only the void rule looks at the window's dates.\n- If a weekly low confirms before the window even opens, that settles the void rule, and DWLF draws a new window from that low. Step 1 would then wait for the new window to open.\n- The window dates are the engine's estimates. If the stored window moves so that it closes before you saved, the void rule stops being able to fire.\n- DWLF refuses to save the void rule if GDX has no stored weekly low window, or if its closing week has already ended. It refuses step 1 as 'already met' if the window is already open, and in that case you'd choose whether to save anyway.\n\nI can't tell you the actual window dates from here. The dry run, and the progress check after saving, will show the opening date and the close and decision dates."
+}

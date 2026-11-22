@@ -230,7 +230,7 @@ test('★ dwlf_thesis_guide: what, benefits, limits, rules, workflow, glossary a
   assert.match(g.statuses.challenged, /review/);
   assert.equal(g.examples.length, 4);
   assert.match(g.rules.join(' '), /window_closes voids a thesis by time: an invalidation only, and optional/);
-  assert.match(g.glossary.window_closes, /Strict: a pivot confirmed after the close does not count/);
+  assert.match(g.glossary.window_closes, /A low inside the window that confirms after the close but by the decision point still counts/);
   const create = z.object(tools.get('dwlf_create_thesis').schema).strict();
   const TYPES = ['pivot_confirmed', 'close_vs_level', 'window_opens', 'window_closes', 'trendline_break', 'engine_event', 'manual'];
   for (const ex of g.examples) {
@@ -257,29 +257,26 @@ test('the recorded thesis eval answer still passes its checker (eval/theses, DWL
   assert.match(out, /^PASS/);
 });
 
-test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_closes in a step, an invented price level, or no decision delay fails', async () => {
+test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_closes in a step, an invented price level, no decision point, or the old strict rule fails', async () => {
   const { execFileSync } = await import('node:child_process');
   const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const run = (file) => { try { return execFileSync('node', ['eval/theses/check-window.mjs', file], { encoding: 'utf8' }); } catch (e) { return e.stdout; } };
-  for (const r of ['run1', 'run2']) { assert.match(run(`eval/theses/answer-window-2026-11-22-${r}.json`), /^PASS/); }
-  const good = JSON.parse(readFileSync('eval/theses/answer-window-2026-11-22-run2.json', 'utf8'));
+  for (const r of ['run3', 'run4']) { assert.match(run(`eval/theses/answer-window-2026-11-22-${r}.json`), /^PASS/); }
+  const good = JSON.parse(readFileSync('eval/theses/answer-window-2026-11-22-run4.json', 'utf8'));
   const dir = mkdtempSync(join(tmpdir(), 'wc-eval-'));
   const bad = (mutate) => { const a = structuredClone(good); mutate(a); const f = join(dir, `${Math.random()}.json`); writeFileSync(f, JSON.stringify(a)); return run(f); };
   assert.match(bad((a) => { a.payload.steps.push({ match: 'any', conditions: [a.payload.invalidation[0]] }); }), /window_closes only as an invalidation/);
   assert.match(bad((a) => { a.payload.invalidation.push({ type: 'close_vs_level', basis: 'weekly_close', op: 'below', value: 40, label: 'Weekly close below 40' }); }), /no price level invented/);
   assert.match(bad((a) => { a.explanation = a.explanation.replace(/28 days|four weeks|4 weeks/gi, 'later'); }), /decided 28 days after the close/);
   assert.match(bad((a) => { a.payload.invalidation = []; }), /invalidation: window_closes on the weekly low window/);
-  // the opposite rule, or the nightly "after the close" alone, is not the strict rule; a disclaimer does not deny a later forecast
-  const strip = (a) => a.explanation.replace(/[^.]*confirmed after the (close|window)[^.]*\./gi, '');
-  assert.match(bad((a) => { a.explanation = `${strip(a)} A low confirmed before the close voids nothing. A low confirmed after the close still counts.`; }), /the strict rule/);
+  // Andy's rule (22-Nov): a low inside the window that confirms after the close still counts; the old strict rule fails.
+  const strip = (a) => a.explanation.replace(/[^.]*(inside|in) the window[^.]*\./gi, '');
+  assert.match(bad((a) => { a.explanation = strip(a); }), /explains Andy's rule/);
+  assert.match(bad((a) => { a.explanation = `${a.explanation} A low confirmed after the window closes does not count, even one dated inside it.`; }), /does not state the old strict rule/);
   assert.match(bad((a) => { a.explanation = `${a.explanation} This is not advice, and GDX will bounce once the window opens.`; }), /no forecast or call to act/);
-  // the rule with its negation first passes: "no low confirmed after the close counts", "only a low confirmed before the close counts"
-  assert.match(bad((a) => { a.explanation = `${strip(a)} It doesn't watch intraday and a low confirmed after the window closes still counts.`; }), /the strict rule/, 'a disclaimer joined by "and" does not deny the opposite rule');
-  for (const rule of ['No low confirmed after the window closes counts.', 'Only a low confirmed before the close counts.']) {
-    assert.match(bad((a) => { a.explanation = `${strip(a)} ${rule}`; }), /^PASS/, rule);
-  }
+  assert.match(bad((a) => { a.explanation = `${strip(a)} A low dated in the window that is confirmed after the close, within the 28 days, still counts.`; }), /^PASS/);
 });
 
 test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {

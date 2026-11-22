@@ -1,0 +1,43 @@
+{
+  "payload": {
+    "symbol": "GDX",
+    "title": "GDX: the weekly low window opens, then a confirmed weekly cycle low; void if the window closes first",
+    "context": "I am waiting for GDX's weekly cycle low inside its weekly low window. There is no price that would prove me wrong, only time: if the window closes without a confirmed weekly low, the idea is void.",
+    "nextStep": "When the weekly low confirms, look at GDX and decide whether and how to act on it.",
+    "steps": [
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "window_opens",
+            "timeframe": "weekly",
+            "side": "low",
+            "label": "GDX weekly low window opens"
+          }
+        ]
+      },
+      {
+        "match": "any",
+        "conditions": [
+          {
+            "type": "pivot_confirmed",
+            "timeframe": "weekly",
+            "side": "low",
+            "label": "Next confirmed weekly cycle low (any price)"
+          }
+        ]
+      }
+    ],
+    "invalidation": [
+      {
+        "type": "window_closes",
+        "timeframe": "weekly",
+        "side": "low",
+        "label": "Void if no confirmed weekly low before the weekly low window closes"
+      }
+    ],
+    "clientKey": "gdx-weekly-low-window",
+    "dryRun": true
+  },
+  "explanation": "I'd first run this as a dry run (dryRun: true). That saves nothing: DWLF reads each condition back in plain words and checks that it can still happen. I'll show you that readback, and only save the thesis once you agree. After that I'd send the same payload without dryRun, and the clientKey means a retry won't create a second copy.\n\nWhat DWLF will check (once a night, after the close, using its own cycle data rather than anyone reading the chart):\n1) Step 1: GDX's weekly low window opens. This is the window DWLF has stored for the next weekly cycle low, measured from the last confirmed weekly low. You get a Telegram digest (if you've set it up) and an in-app notification when it opens. Until then I can tell you the opening date any time with dwlf_list_theses (includeProgress).\n2) Step 2: the next confirmed weekly cycle low, at any price. This is only checked once step 1 is met. Only a low DWLF learns about strictly after the window opened counts, so a low confirmed on the same bar that opened the window does not count. A cycle low is confirmed some bars after its low bar. The alert gives both the bar and the date DWLF could first know it.\n3) Invalidation (added only because you asked for it): the stored weekly low window closes with no confirmed weekly low. This is decided 28 days after the window's closing week. A weekly low dated inside the window (or before it opens) that confirms after the close, but within those 28 days, still counts and saves the idea. A low dated after the close does not count. If no such low is confirmed by then, the thesis is marked challenged and you're told. Before the window closes, progress shows the closing week, the day it closes, the decision date and how many days are left.\n\nWhat it won't do:\n- It doesn't watch intraday. Everything is end of day.\n- It doesn't give advice or forecasts. It reports which conditions the market met and never says what to do.\n- It has no price stop. You gave no level, so I haven't invented one.\n- It doesn't close the thesis by itself. When the window closes empty, the thesis becomes 'challenged' and waits for your answer: keep, revise or close.\n- It doesn't count anything that happened before you saved the thesis.\n- Step 2 doesn't check where its own low is dated. It takes the next confirmed weekly low after the window opened. Only the invalidation looks at whether a low was dated inside the window. So a low dated after the window closes could still meet step 2 while the invalidation also fires.\n\nEdge cases to know:\n- If a weekly low confirms before the window even opens, the invalidation is settled and can no longer fire. DWLF then measures a new window from that low, and step 1 waits for that new window to open.\n- DWLF refuses the invalidation if there's no stored weekly window for GDX right now, or if that window's closing bar has already closed. The dry run will show either case.\n- I can't tell you the actual GDX window dates yet. They come from DWLF's stored window, and the dry run or progress will show them."
+}

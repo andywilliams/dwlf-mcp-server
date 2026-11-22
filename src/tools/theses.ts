@@ -107,7 +107,7 @@ const stepConditionTypes = [
 // DWLF-897: an invalidation only (SPT refuses it in a step).
 const windowCloses = z.looseObject({
   type: z.literal('window_closes'), id: idField, label, symbol: symbolField, timeframe, side: z.enum(['low', 'high']),
-}).describe('Invalidation only. The STORED window for the next cycle low/high, measured from the last pivot of that side when saved: met when its close date passes (the end of its closing bar; a weekly bar ends with its week) with no pivot of that side confirmed since saving. Strict: one confirmed after the close does not count. Decided 7 (daily) or 28 (weekly) days after the close. Add it only when the user wants the thesis voided by time.');
+}).describe('Invalidation only. The STORED window for the next cycle low/high, measured from the last pivot of that side when saved. Decided 7 (daily) or 28 (weekly) days after its close (the end of its closing bar): met then if no pivot of that side dated by the close (inside the window, or before it opens) has been confirmed since saving. A low inside the window that confirms after the close but within those days still counts; one dated after the close does not. Add it only when the user wants the thesis voided by time.');
 const newerType = z.looseObject({ type: z.string().describe('A condition type newer than this tool version (see dwlf_list_thesis_condition_types); SPT validates it.') });
 // The fallback for a newer type still refuses window_closes in a step, so the schema says where it goes.
 const newerStepType = z.looseObject({

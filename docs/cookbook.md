@@ -300,7 +300,7 @@ A thesis is what a user is waiting for on one symbol, in their own words: ordere
 
 ### Voided by time: window_closes
 
-A thesis that waits for a cycle window and has no price that would prove it wrong (gold and the miners, typically) can be voided by time, only when the user asks for it: an invalidation `window_closes` on the window's timeframe and side. It is checked against the STORED window's close date (the window measured from the last pivot when saved), decided 28 days (weekly) or 7 days (daily) after the closing bar, once a late-published confirmation can no longer arrive; a pivot confirmed after the close does not count. It is an invalidation only (the schema refuses it in a step), and progress gives `windowCloses`, `windowEnds` and `closesInDays`. Never invent a price level for such a thesis. (eval: `eval/theses`, the window_closes scenario)
+A thesis that waits for a cycle window and has no price that would prove it wrong (gold and the miners, typically) can be voided by time, only when the user asks for it: an invalidation `window_closes` on the window's timeframe and side. It is checked against the STORED window's close (the window measured from the last pivot when saved) and decided 28 days (weekly) or 7 days (daily) after the closing bar: met if no low of that side dated by the close has been confirmed by then. A low inside the window that confirms after the close but within those days still counts; one dated after the close does not. It is an invalidation only (the schema refuses it in a step), and progress gives `windowCloses`, `windowEnds`, `decidesOn` and `closesInDays`. Never invent a price level for such a thesis. (eval: `eval/theses`, the window_closes scenario)
 
 ### Telling a thesis's story
 
