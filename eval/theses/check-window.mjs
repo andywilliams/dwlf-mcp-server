@@ -30,9 +30,9 @@ check(inv.every((c) => c.type !== 'manual'), 'no manual invalidation');
 const t = x.toLowerCase();
 const clauses = t.replace(/\b(no doubt|no question|not only|without doubt)\b/g, '~').split(/(?<=[.!?:;])\s+|\n+|\s+(?:but|however|although|though|yet)\s+/).filter(Boolean);
 const NEG = /\b(not|no|never|nothing|won't|doesn't|does not|isn't|is not|can't|cannot|neither|nor|without)\b/;
-// Each match judged on its own: denied only when a negation stands in its own part of the clause (split at commas,
-// semicolons, "and", "so"), so an earlier disclaimer ("not advice, and it will bounce") never denies a later forecast.
-const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/,|;|\band\b|\bso\b/).pop());
+// Each match judged on its own: denied only when a negation stands in its own part of the clause (split at
+// semicolons, "and", "so"; not commas, so a negated list stays one part), so an earlier disclaimer ("not advice, and it will bounce") never denies a later forecast.
+const deniedAt = (c, index) => NEG.test(c.slice(0, index).split(/;|\band\b|\bso\b/).pop());
 const matchesOf = (c, re) => [...c.matchAll(new RegExp(re.source, 'g'))];
 const denied = (re) => clauses.some((c) => matchesOf(c, re).some((m) => deniedAt(c, m.index)));
 const asserted = (re) => clauses.some((c) => matchesOf(c, re).some((m) => !deniedAt(c, m.index)));
@@ -45,8 +45,10 @@ const SAVES = /\b(count|counts|rescue|rescues|save|saves|help|helps|undo|cancel)
 const NOT = /\b(not|no|never|doesn't|does not|won't|will not|don't|do not)\b/;
 const strict = clauses.some((c) => {
   const at = c.search(AFTER_CLOSE);
-  return at >= 0 && matchesOf(c, SAVES).some((m) => m.index > at && NOT.test(c.slice(at, m.index)));
-}) || clauses.some((c) => /\b(must|has to|needs to|have to|only if)\b[^.]*confirmed (by|before) the (close|window clos)/.test(c));
+  // the negation may stand before the low ("no low confirmed after the close counts") or before the verb
+  return at >= 0 && matchesOf(c, SAVES).some((m) => m.index > at && NOT.test(c.slice(0, m.index).split(/,|;|\bbut\b/).pop()));
+}) || clauses.some((c) => /\b(must|has to|needs to|have to|only if)\b[^.]*confirmed (by|before) the (close|window clos)/.test(c)
+  || /\bonly (a |the |one )?[a-z ]{0,20}confirmed (by|before) the (close|window clos)\w*[^.]*\b(counts|saves|rescues)\b/.test(c));
 check(strict, 'explains the strict rule: a low confirmed after the close does not count');
 check(/(28 days|four weeks|4 weeks)/.test(t), 'explains: decided 28 days after the close (weekly)');
 check(/(once a night|every night|nightly|after the close|after each close)/.test(t), 'explains: checked once a night after the close');

@@ -47,7 +47,10 @@ const thesisDefinitions = (theses: Thesis[], fires: Json[] = []) => {
     status: definitionsFor(STATUS_DEFINITIONS, theses.map((t) => t.status)),
     conditionState: definitionsFor(CONDITION_STATE_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.status)),
     // A window_closes the evaluator settled (DWLF-897): status stays pending, but it can no longer be met.
-    ...(conditions.some((c) => (c.state as Json | undefined)?.settled) ? { settled: definitionsFor(SETTLED_DEFINITIONS, conditions.map((c) => (c.state as Json | undefined)?.settled)) } : {}),
+    ...(() => {
+      const settled = conditions.map((c) => (c.state as Json | undefined)?.settled).filter((v) => typeof v === 'string' && v);
+      return settled.length ? { settled: definitionsFor(SETTLED_DEFINITIONS, settled) } : {};
+    })(),
     ...(fires.length ? { fireKind: definitionsFor(FIRE_KIND_DEFINITIONS, fires.map((f) => f.kind)) } : {}),
   };
 };
@@ -256,7 +259,7 @@ clientKey makes the call an upsert (re-sending an identical thesis writes nothin
 
   server.tool(
     'dwlf_list_theses',
-    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or the thesis is complete or challenged; null before).',
+    'The user\'s theses: each with its steps and conditions (pending, met, missed or marked), status (waiting, in_progress, complete, challenged, archived, closed) and liveness (the bar it was last checked against; `stale` when the nightly check has been quiet over 30 hours). A challenged thesis is waiting for the user\'s review. With includeProgress, each active thesis also says how close it is: per pending condition of its current step and per pending invalidation, exact `words` plus fields (a price condition\'s last close and % move to the level; a forming pivot\'s % developed; a weekly window\'s opening date; a window_closes invalidation\'s windowCloses, windowEnds and closesInDays, or pivotConfirmed / windowMoved once it can no longer be met), and `closest`, the one "closest to trigger" choice to sort by (`rank` ascending; `short` for a list). Closes and distances are withheld for keys not entitled to raw prices; the % change since saved is not. With includeStory, each active thesis also carries `storySummary` (the last thing that happened and what it needs next, and `replaySummary`, one sentence of facts, once a step is met or the thesis is complete or challenged; null before).',
     {
       status: z.string().optional().describe('Filter: waiting, in_progress, complete, challenged, archived or closed.'),
       symbol: z.string().optional().describe('Filter by thesis symbol.'),

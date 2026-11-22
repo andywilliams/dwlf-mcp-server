@@ -211,6 +211,9 @@ test('★ window_closes state and counts (DWLF-897): a settled one is defined in
   const { call } = setup((m, path) => (path.includes('condition-types') ? { types: [{ type: 'a' }, { type: 'b' }, { type: 'c' }] } : { theses: [settled] }));
   const { body } = await call('dwlf_list_theses');
   assert.match(body.agentHints.definitions.settled.pivot, /can no longer be met/);
+  const falsy = thesis({ invalidation: [{ id: 'v1', type: 'window_closes', timeframe: 'weekly', side: 'low', state: { status: 'pending', settled: false } }] });
+  const quiet = setup(() => ({ theses: [falsy, settled] }));
+  assert.deepEqual(Object.keys((await quiet.call('dwlf_list_theses')).body.agentHints.definitions.settled), ['pivot'], 'a falsy settled is not a value');
   const types = await call('dwlf_list_thesis_condition_types');
   assert.match(types.body.agentHints.summary, /^The 3 condition types/);
 });
@@ -272,6 +275,10 @@ test('★ the window_closes eval (DWLF-897): both recorded runs pass; window_clo
   const strip = (a) => a.explanation.replace(/[^.]*confirmed after the (close|window)[^.]*\./gi, '');
   assert.match(bad((a) => { a.explanation = `${strip(a)} A low confirmed before the close voids nothing. A low confirmed after the close still counts.`; }), /the strict rule/);
   assert.match(bad((a) => { a.explanation = `${a.explanation} This is not advice, and GDX will bounce once the window opens.`; }), /no forecast or call to act/);
+  // the rule with its negation first passes: "no low confirmed after the close counts", "only a low confirmed before the close counts"
+  for (const rule of ['No low confirmed after the window closes counts.', 'Only a low confirmed before the close counts.']) {
+    assert.match(bad((a) => { a.explanation = `${strip(a)} ${rule}`; }), /^PASS/, rule);
+  }
 });
 
 test('the eval checker fails a wrong answer: a close below a low that does not exist, a forecast, no limits (eval/theses)', async () => {
