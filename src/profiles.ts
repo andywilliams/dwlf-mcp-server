@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS } from './blockDescriptions.js';
+import { withHypotheticalNote } from './caveats.js';
 
 /**
  * Tool profiles (DWLF-621). `full` (the default) registers every tool, exactly as before. `block` registers the
@@ -210,7 +211,8 @@ function blockArgs(name: string, args: unknown[]): unknown[] {
 }
 
 /**
- * A view of `server` that registers only the profile's tools, and for `block` sends their Block wording (blockArgs). Resources, prompts and everything else pass
+ * A view of `server` that registers only the profile's tools, for `block` sends their Block wording (blockArgs), and on
+ * every profile appends the hypothetical note to the tools listed for it (`withHypotheticalNote`). Resources, prompts and everything else pass
  * through unchanged. `registered` collects every tool name offered, including the hidden ones, so a test can
  * check that each profile tool exists.
  */
@@ -223,7 +225,7 @@ export function profiledServer(server: McpServer, profile: ProfileName, register
           const name = String(args[0]);
           registered.add(name);
           if (allowed && !allowed.has(name)) return undefined;
-          return (target.tool as (...a: unknown[]) => unknown).apply(target, profile === 'block' ? blockArgs(name, args) : args);
+          return (target.tool as (...a: unknown[]) => unknown).apply(target, withHypotheticalNote(name, profile === 'block' ? blockArgs(name, args) : args));
         };
       }
       const value = Reflect.get(target, prop, receiver);

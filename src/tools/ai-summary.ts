@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerAISummaryTools(
   server: McpServer,
@@ -53,7 +52,7 @@ export function registerAISummaryTools(
   // 3. AI Strategy Performance
   server.tool(
     'dwlf_ai_strategy_performance',
-    'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns. ' + HYPOTHETICAL_NOTE,
+    'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns.',
     {},
     async () => {
       try {

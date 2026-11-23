@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 1. Get active trade signals
@@ -45,7 +44,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
       'Filters compose: `symbol` (single), `strategy` (full strategy field, e.g. `visual_strategy_X`), ' +
       'and `fromDate`/`toDate` (ISO YYYY-MM-DD) OR `days` (last N). Without any filter the default ' +
       'cutoff is the most-recent N signals up to `limit`. Use this rather than the older `/recent` ' +
-      'endpoint variant — that one has a hard-coded 5-day window that silently hides older fires. ' + HYPOTHETICAL_NOTE,
+      'endpoint variant — that one has a hard-coded 5-day window that silently hides older fires.',
     {
       symbol: z
         .string()
@@ -122,8 +121,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 3. Get signal performance stats
   server.tool(
     'dwlf_get_signal_stats',
-    'Get statistics for your strategies\' recorded fires: win rate, average P&L, totals and a breakdown. ' +
-      HYPOTHETICAL_NOTE,
+    'Get statistics for your strategies\' recorded fires: win rate, average P&L, totals and a breakdown.',
     {},
     async () => {
       try {

@@ -4,7 +4,7 @@ MCP server for the [DWLF](https://www.dwlf.co.uk) market analysis platform. It g
 
 Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible client.
 
-## Who can use it today
+## Who can use it today (status 23 Nov 2026)
 
 | You are | What works | Key |
 |---|---|---|

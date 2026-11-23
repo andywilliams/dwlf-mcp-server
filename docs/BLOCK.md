@@ -3,7 +3,7 @@
 DWLF Block is Bitcoin conditions, not calls: on-chain cost basis, regime, cycle timing and events you can combine
 into your own custom events and alert on. This server's `block` profile gives your agent just the tools for that.
 
-**Two backends, two ways in:**
+**Two backends, two ways in (status 23 Nov 2026):**
 - **No key (works today):** add `--block-backend block-api` to the args and leave out `env`, e.g.
   `claude mcp add dwlf -- npx -y @dwlf/mcp-server --profile block --block-backend block-api`. You get 5 tools on the
   public Block API: conditions, events, on-chain series, the event catalogue and one event explained, recent history

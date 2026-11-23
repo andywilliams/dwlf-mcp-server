@@ -2,7 +2,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import axios from 'axios';
 import { DWLFClient, normalizeSymbol } from '../client.js';
-import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerBacktestTools(
   server: McpServer,
@@ -78,7 +77,7 @@ export function registerBacktestTools(
       '⚠️ When summary=false, the MCP transport will dump the response to disk and ask you to extract ' +
       'via subagent — budget for that. ' +
       '📡 For background polling without burning context window: the REST URL is ' +
-      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`. ' + HYPOTHETICAL_NOTE,
+      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`.',
     {
       requestId: z.string().describe('Backtest request ID'),
       summary: z
@@ -258,7 +257,7 @@ export function registerBacktestTools(
   // 4. Get backtest summary
   server.tool(
     'dwlf_get_backtest_summary',
-    'Get a summary of all backtests — aggregated performance stats. ' + HYPOTHETICAL_NOTE,
+    'Get a summary of all backtests — aggregated performance stats.',
     {},
     async () => {
       try {

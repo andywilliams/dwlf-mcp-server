@@ -2,7 +2,7 @@
 
 This guide explains how AI agents can programmatically register with DWLF and use the same account across both REST API and MCP server.
 
-> **Status (Nov 2026):** DWLF is in private beta. Sign-up is closed, so `POST /v2/agent/register` and `dwlf_register_agent` answer 403 ("Registration is currently closed") until it opens. The steps below apply once it does. For Bitcoin, the keyless DWLF Block view needs no account: see [BLOCK.md](BLOCK.md).
+> **Status (23 Nov 2026):** DWLF is in private beta. Sign-up is closed, so `POST /v2/agent/register` and `dwlf_register_agent` answer 403 ("Registration is currently closed") until it opens. The steps below apply once it does. For Bitcoin, the keyless DWLF Block view needs no account: see [BLOCK.md](BLOCK.md).
 
 ## The Problem
 
