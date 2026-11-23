@@ -61,7 +61,7 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
   if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
-  const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL) });
+  const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL, true) });
   const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;

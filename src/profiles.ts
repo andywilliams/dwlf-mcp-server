@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS } from './blockDescriptions.js';
+import { withHypotheticalNote } from './caveats.js';
 
 /**
  * Tool profiles (DWLF-621). `full` (the default) registers every tool, exactly as before. `block` registers the
@@ -95,8 +96,9 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
 
 /**
  * The Block profile's backend (DWLF-876, docs/design/block-repoint.md D1): `spt` (today's default, SPT /v2) or
- * `block-api` (the Block API, the launch set only). Dark until the cut release flips the default. Not a published
- * contract like a profile name: `spt` stays one minor release after the cut as the rollback, then goes.
+ * `block-api` (the Block API, the launch set only). The cut release flips the default. `block-api` is published (the
+ * README's keyless set-up) and is accepted for good; `spt` stays one minor release after the cut as the
+ * rollback, then goes.
  */
 export type BlockBackend = 'spt' | 'block-api';
 
@@ -104,28 +106,36 @@ export type BlockBackend = 'spt' | 'block-api';
 export const BLOCK_API_TOOLS: ReadonlySet<string> = new Set(['dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series',
   'dwlf_describe_onchain_events', 'dwlf_explain_event']);
 
-/** The production keys page: where a person creates a free DWLF Block account's API key. */
-export const PRODUCTION_KEYS_PAGE = 'https://block.dwlf.co.uk/account/';
+/** The production DWLF Block site. */
+export const PRODUCTION_BLOCK_SITE = 'https://block.dwlf.co.uk';
 
 /**
- * The keys page of the stage a Block API base URL belongs to: `https://api.<site>` → `https://<site>/account/` for a
- * DWLF Block site (`block.dwlf.co.uk`, `block-staging.dwlf.co.uk`, …), so a staging view sends a person to staging's
- * keys page, as the hosted MCP's own refusals do. Anything else (a loopback stand-in, another host) gets production's.
+ * The DWLF Block site of the stage a Block API base URL belongs to: `https://api.<site>` → `https://<site>` for a DWLF
+ * Block site (`block.dwlf.co.uk`, `block-staging.dwlf.co.uk`, …), so a staging view sends a person to staging's pages.
+ * Anything else (a loopback stand-in, another host) gets production's, where real accounts are made. Built here only
+ * because the success envelope names no keys, support or terms page (DWLF-899 asks the Block API to).
  */
-export function keysPageFor(apiBase: string): string {
+export function blockSiteFor(apiBase: string): string {
   try {
     const u = new URL(apiBase);
     const site = u.protocol === 'https:' && !u.port ? /^api\.(block(?:-[a-z0-9]+)*\.dwlf\.co\.uk)$/.exec(u.hostname)?.[1] : undefined;
-    return site ? `https://${site}/account/` : PRODUCTION_KEYS_PAGE;
-  } catch { return PRODUCTION_KEYS_PAGE; }
+    return site ? `https://${site}` : PRODUCTION_BLOCK_SITE;
+  } catch { return PRODUCTION_BLOCK_SITE; }
 }
 
+/** The keys page of `apiBase`'s stage: where a person creates a free DWLF Block account's API key. */
+export const keysPageFor = (apiBase: string): string => `${blockSiteFor(apiBase)}/account/`;
+
 /**
- * Server instructions for `--profile block` on the `block-api` backend, read against the Block API at `apiBase`: a
- * keyless view is sent to that stage's keys page (`keysPageFor`). The base is required, so no caller can name a page
- * that doesn't match the API it reads. Worded within the shared banned-terms list.
+ * Server instructions for `--profile block` on the `block-api` backend, read against the Block API at `apiBase`, with
+ * or without a key (`signedIn`): they say which, so an agent never infers it, and name that stage's keys, support
+ * and terms pages (`blockSiteFor`). Both arguments are required, so no caller can name pages that don't match the API
+ * it reads. Worded within the shared banned-terms list.
  */
-export const blockApiInstructions = (apiBase: string): string =>
+export const blockApiInstructions = (apiBase: string, signedIn: boolean): string =>
+  (signedIn
+    ? 'This connection reads DWLF Block with an API key: what it reads follows that key\'s plan. '
+    : 'This connection has no API key: it reads DWLF Block\'s public view, recent history only. ') +
   'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for where Bitcoin is now, then ' +
   'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Find an event type or ' +
   'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
@@ -133,8 +143,12 @@ export const blockApiInstructions = (apiBase: string): string =>
   '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
   'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
   'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
-  'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
-  `${keysPageFor(apiBase)}, reads the full history. Call each item an event, a condition or a reading. Describe ` +
+  'that says "Recent history only" means this view has no key. Tell your human what that summary says about the ' +
+  'rest, and offer nothing it doesn\'t. Never offer an account or a key from these instructions alone: only once a ' +
+  'summary you have read offers a free account, its API key, from ' +
+  `${keysPageFor(apiBase)}, reads the full history. Help: ${blockSiteFor(apiBase)}/support; the terms: ` +
+  `${blockSiteFor(apiBase)}/legal/#terms (an error's \`supportUrl\` and \`termsUrl\` name the same pages). ` +
+  'Call each item an event, a condition or a reading. Describe ' +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
 
 /**
@@ -198,7 +212,8 @@ function blockArgs(name: string, args: unknown[]): unknown[] {
 }
 
 /**
- * A view of `server` that registers only the profile's tools, and for `block` sends their Block wording (blockArgs). Resources, prompts and everything else pass
+ * A view of `server` that registers only the profile's tools, for `block` sends their Block wording (blockArgs), and on
+ * every profile appends the hypothetical note to the tools listed for it (`withHypotheticalNote`). Resources, prompts and everything else pass
  * through unchanged. `registered` collects every tool name offered, including the hidden ones, so a test can
  * check that each profile tool exists.
  */
@@ -211,7 +226,7 @@ export function profiledServer(server: McpServer, profile: ProfileName, register
           const name = String(args[0]);
           registered.add(name);
           if (allowed && !allowed.has(name)) return undefined;
-          return (target.tool as (...a: unknown[]) => unknown).apply(target, profile === 'block' ? blockArgs(name, args) : args);
+          return (target.tool as (...a: unknown[]) => unknown).apply(target, withHypotheticalNote(name, profile === 'block' ? blockArgs(name, args) : args));
         };
       }
       const value = Reflect.get(target, prop, receiver);

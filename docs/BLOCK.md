@@ -3,8 +3,15 @@
 DWLF Block is Bitcoin conditions, not calls: on-chain cost basis, regime, cycle timing and events you can combine
 into your own custom events and alert on. This server's `block` profile gives your agent just the tools for that.
 
-You need a DWLF API key (`dwlf_sk_…`). An agent can get one itself with `dwlf_register_agent` (`POST
-/v2/agent/register`), and the human confirms by email. Replace `dwlf_sk_your_key_here` below.
+**Two backends, two ways in (status 23 Nov 2026):**
+- **No key (works today):** add `--block-backend block-api` to the args and leave out `env`, e.g.
+  `claude mcp add dwlf -- npx -y @dwlf/mcp-server --profile block --block-backend block-api`. You get 5 tools on the
+  public Block API: conditions, events, on-chain series, the event catalogue and one event explained, recent history
+  only. Block accounts aren't open yet; once they are, a free account's key from https://block.dwlf.co.uk/account/
+  (`DWLF_BLOCK_KEY`) reads the full history.
+- **A DWLF platform key (`dwlf_sk_…`):** the examples below, with 39 tools. DWLF is in private beta: accounts
+  are invite-only, and `dwlf_register_agent` (`POST /v2/agent/register`) answers 403 while sign-up is closed.
+  Replace `dwlf_sk_your_key_here` below.
 
 ## Claude Code
 
@@ -61,7 +68,19 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 2. "Alert me when price crosses the short-term-holder realised price."
 3. "Make a custom event: price below the short-term-holder realised price AND inside a weekly cycle-low window. When did it last happen?"
 
-## What the `block` profile includes
+## On the `block-api` backend (keyless)
+
+Five tools, each answering with the Block envelope (a `summary`, items with `why`, `chartUrl` and `knowableAt`):
+- `dwlf_get_conditions` (no parameters): where Bitcoin stands now, one reading per condition.
+- `dwlf_get_events` (`types` up to 20 ids, `from`, `to`): what happened and when.
+- `dwlf_get_series` (`id`, `from`): one measure over time.
+- `dwlf_describe_onchain_events` (`family`, `search` or `eventType`): find an event type or series; with no
+  parameters, each family's counts.
+- `dwlf_explain_event` (`eventType`, `from`, `to`): one event type in full, with its occurrences.
+
+Without a key each reads recent history only. Items from a paid family come back `locked`, with the plan that reads them.
+
+## What the `block` profile includes (DWLF platform key)
 
 - **Conditions:** `dwlf_get_conditions` (one call: regime, cost-basis ladder, cycle windows, recent events,
   provenance), `dwlf_describe_onchain_events` (what each `onchain.*` event means, read live from the API's public

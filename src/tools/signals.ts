@@ -6,7 +6,8 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 1. Get active trade signals
   server.tool(
     'dwlf_get_active_signals',
-    'Get currently active trade signals. These are open positions or pending entries that DWLF is tracking.',
+    'Get your strategies\' currently active fires: rules that were met and are not yet resolved, which DWLF tracks. ' +
+      'They are not actual positions: a fire\'s marks are what the rules would show, not trades anyone took.',
     {},
     async () => {
       try {
@@ -121,7 +122,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 3. Get signal performance stats
   server.tool(
     'dwlf_get_signal_stats',
-    'Get signal performance statistics — win rate, average P&L, total signals, and performance breakdown.',
+    'Get statistics for your strategies\' recorded fires: win rate, average P&L, totals and a breakdown.',
     {},
     async () => {
       try {

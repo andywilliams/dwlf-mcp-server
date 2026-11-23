@@ -116,9 +116,9 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'processedItems: 1` when done. When the request named symbols this tool adds `symbolsRequested: <count>` beside the ' +
     'summary. When status is "completed", read the fires via dwlf_get_events(type: "custom_event").',
   dwlf_register_agent:
-    'Programmatically register a new DWLF account: no browser or Google sign-in required. It issues an API key ' +
-    'immediately. Email verification unlocks the compute features (custom event evaluations). Useful for onboarding ' +
-    'flows where an agent registers itself.',
+    'Programmatically register a new DWLF account: no browser or Google sign-in required. It works only while DWLF ' +
+    'sign-up is open: while it is closed this answers with a 403 saying so. Tell your human, and don\'t retry. When open, it issues an API key immediately, and email verification unlocks the compute ' +
+    'features (custom event evaluations).',
   dwlf_get_cycle_setups:
     'The cycle screener: across the symbols DWLF tracks, which have their WEEKLY cycle timing window open, and whether a ' +
     'DAILY cycle pivot has confirmed inside it, for lows and highs alike. Stages: `confirmed_setup` (weekly window open ' +

@@ -35,6 +35,9 @@ The cut is a separate PR and a separate tap: it flips the default, removes the 3
 - **After the cut,** `DWLF_BLOCK_BACKEND=spt` stays for **one minor release** as the rollback (the old 39 tools on SPT,
   documented as temporary in `docs/BLOCK.md` and its release notes), then it's removed. Only the profile name is a
   published contract; the backend switch never is.
+- 📌 **Amended 23-Nov-2026 (retail readiness):** the README, `docs/BLOCK.md` and `server.json` now give
+  `--block-backend block-api` / `DWLF_BLOCK_BACKEND=block-api` as the keyless way in, so **the value `block-api` is a
+  published contract**: accepted for good, a no-op once it is the default. Only `spt` stays temporary.
 
 **D2 · Which tools, on each backend.** `BLOCK_API_TOOLS` (`src/profiles.ts`) is the `block-api` list and, at the cut,
 the Block launch set. `BLOCK_TOOLS` stays as the `spt` rollback's list for that one minor release, then goes.

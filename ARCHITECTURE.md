@@ -115,7 +115,12 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **Thesis alerts** (`src/tools/theses.ts`, DWLF-855, 17-Nov): 12 tools over SPT `/v2/theses` (the 12th, `dwlf_get_thesis_story`, DWLF-887: the story SPT builds, passed through; `eval/thesis-story` checks a fresh agent narrates it from its facts without forecasting) plus `dwlf_thesis_guide` (DWLF-891, 20-Nov: a static guide, no API call: benefits, limits, rules, glossary, worked examples; it explains SPT's rules, SPT `condition-types` stays authoritative, and `eval/theses` checks a fresh agent can use it), **full profile only**: theses are an SPT `/v2` feature for DWLF accounts, and the Block API has no theses route at the cut, so a Block key would get nothing. Revisit if Block gains one. Each answer is the backend body plus an additive `agentHints` (`summary`, `definitions` of the statuses/kinds present, `why`); SPT owns the vocabulary, and a value this version does not define is named as unknown, never dropped. The condition schemas are loose (a field or type SPT adds passes through to SPT, which validates and sets the limits). The fire cursor is the agent's to keep.
 - **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
   is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:
-  `src/profiles.ts`)*.
+  `src/profiles.ts`)*. Since 23-Nov the backend value **`block-api`** is published too (README, `docs/BLOCK.md`,
+  `server.json`) and is accepted for good, a no-op once it is the default; only `spt` is temporary, so no published
+  surface names it as a value to set (unset means the platform until the cut).
+- **Hypothetical figures:** every tool whose answer can carry a simulated figure ends its description with
+  `HYPOTHETICAL_NOTE` (`src/caveats.ts`, listed in `HYPOTHETICAL_TOOLS`); `test/caveats.test.mjs` fails a new tool that
+  describes win rates, P&L or replays without being listed (retail readiness audit, 23-Nov).
 - **MCP Registry metadata:** `package.json` `mcpName` and the root `server.json` must agree with each other and with
   the package version (`test/profiles.test.mjs`). Publishing to the registry is a manual, Andy-gated step
   (`docs/REGISTRY.md`).
@@ -146,15 +151,16 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **The Block API** (`https://api.block.dwlf.co.uk`, override `BLOCK_API_URL`), **only when `--profile block` runs
   on the `block-api` backend** (`DWLF_BLOCK_BACKEND`, off by default until the cut; DWLF-876,
   `docs/design/block-repoint.md`). Keyless reads go to `/public/v1/*`. With `DWLF_BLOCK_KEY` (a personal `dwlfk_` key,
-  once keys ship) it reads `/v1/*` with `Bearer`. Responses are the Block envelope, passed through (D4). The instructions' keys
-  page follows the same base (`keysPageFor`): `https://api.<site>` on a DWLF Block site gives `https://<site>/account/`,
-  anything else production's, so a staging view sends a person to staging's keys page. It is built here only because
-  the keyless envelope names no keys URL (it does send `upgradeUrl` per stage); if it ever does, the instructions
-  point to that field instead (asked on DWLF-899). An unknown host gets production's page because that is where real keys are made.
+  once keys ship) it reads `/v1/*` with `Bearer`. Responses are the Block envelope, passed through (D4). The instructions
+  say whether the connection has a key (so an agent never infers it from a summary) and name the site pages of the same
+  base (`blockSiteFor`: `https://api.<site>` on a DWLF Block site gives `https://<site>`, anything else production's,
+  where real accounts are made): the keys page `/account/`, help `/support` and the terms `/legal/#terms`. They are
+  built here only because the success envelope names none of them (it does send `upgradeUrl` per stage); if it ever
+  does, the instructions point to those fields instead (asked on DWLF-899).
   *Also (22-Nov):* through `@dwlf/mcp-server/block`, whenever a host calls `createBlockServer`, with no profile or
   backend switch: `/v1/*` only, with the caller's `credential` as `Bearer`, at the `baseURL` the host passes (HTTPS,
-  or plain HTTP to loopback for tests). Its instructions name the keys page of that `baseURL`'s stage, for sameness
-  only: a signed-in server never sees the keyless summary that sentence is for. No environment variable is read on
+  or plain HTTP to loopback for tests). Its instructions say it reads with a key and name the site pages of that
+  `baseURL`'s stage. No environment variable is read on
   that path.
 - **Academy CDN** — `https://academy.dwlf.co.uk/live`, unauthenticated, `manifest.json` shape owned by
   `dwlf-academy-content`; the only place that bypasses `DWLFClient` (direct `axios`, 15-min manifest

@@ -2,6 +2,8 @@
 
 This guide explains how AI agents can programmatically register with DWLF and use the same account across both REST API and MCP server.
 
+> **Status (23 Nov 2026):** DWLF is in private beta. Sign-up is closed, so `POST /v2/agent/register` and `dwlf_register_agent` answer 403 ("Registration is currently closed") until it opens. The steps below apply once it does. For Bitcoin, the keyless DWLF Block view needs no account: see [BLOCK.md](BLOCK.md).
+
 ## The Problem
 
 Without proper account linking, agents can end up split across two accounts:
@@ -252,7 +254,7 @@ Zero dependencies. Pure math — candles in, values out. Includes: EMA, SMA, Bol
 ```typescript
 import { EMA, Bollinger, DSS, SupportResistance } from '@dwlf/indicators';
 
-// Fetch candles via DWLF API, then compute indicators locally
+// Candles you are licensed to use (the DWLF API serves raw candles to the owner account only), then compute indicators locally
 const ema8 = EMA.computeEMA(candles, 8);
 const bb = Bollinger.computeBollingerBands(candles, { length: 20 });
 const dss = DSS.computeDSS(candles, { length: 10 });

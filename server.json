@@ -8,12 +8,12 @@
     "url": "https://github.com/andywilliams/dwlf-mcp-server",
     "source": "github"
   },
-  "version": "0.76.2",
+  "version": "0.76.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@dwlf/mcp-server",
-      "version": "0.76.2",
+      "version": "0.76.3",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -21,7 +21,7 @@
       "environmentVariables": [
         {
           "name": "DWLF_API_KEY",
-          "description": "Your DWLF API key. An agent can get one from POST https://api.dwlf.co.uk/v2/agent/register.",
+          "description": "Your DWLF platform API key (dwlf_sk_...); DWLF accounts are invite-only for now. For keyless DWLF Block instead, set DWLF_TOOL_PROFILE=block and DWLF_BLOCK_BACKEND=block-api: this key is then not used.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
@@ -36,6 +36,29 @@
             "full",
             "block"
           ]
+        },
+        {
+          "name": "DWLF_BLOCK_BACKEND",
+          "description": "For the block profile: block-api uses the Block API (5 tools, works without a key). Unset, block runs on the DWLF platform with DWLF_API_KEY.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "block-api"
+          ]
+        },
+        {
+          "name": "DWLF_BLOCK_KEY",
+          "description": "On block-api: a DWLF Block API key (dwlfk_...) for the full history. Without it, the public view (recent history).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "BLOCK_API_URL",
+          "description": "Block API base URL. Leave unset for production.",
+          "isRequired": false,
+          "format": "string",
+          "default": "https://api.block.dwlf.co.uk"
         },
         {
           "name": "DWLF_API_URL",
