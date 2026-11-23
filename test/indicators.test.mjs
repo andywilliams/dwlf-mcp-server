@@ -36,7 +36,7 @@ test('withheld values (a key not licensed for raw prices) are not reported as mi
   };
   const out = withLatestMovingAverages(data);
   assert.deepEqual(out.latest, {});
-  assert.deepEqual(out.missing, [], 'withheld, not missing');
+  assert.equal(out.missing, null, 'withheld is not missing, and an empty list would read as complete');
   assert.deepEqual(out.valuesWithheld, data.valuesWithheld, 'the reason passes through');
 });
 
