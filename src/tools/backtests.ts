@@ -66,6 +66,8 @@ export function registerBacktestTools(
   server.tool(
     'dwlf_get_backtest_results',
     'Get results for a backtest by requestId. If status is not "complete", poll again shortly. ' +
+      'Backtest results are hypothetical: simulated on past data, not actual trading. Show `hypotheticalLegend` ' +
+      '(in the response) with any figure you report. ' +
       'DEFAULTS TO SUMMARY MODE: returns DDB-level per-symbol stats (totalReturn, totalTrades, ' +
       'winningTrades, sharpe, maxDrawdown, finalEquity) and the portfolio-level aggregate metrics ' +
       'object, with all bulky fields stripped (per-symbol trades, equityCurve, signals, ' +

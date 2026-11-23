@@ -1,8 +1,17 @@
 # @dwlf/mcp-server
 
-MCP server for the [DWLF](https://www.dwlf.co.uk) market analysis platform. 45+ tools that turn market noise into semantic data AI agents can reason about — candles, indicators, support/resistance, events, strategies, backtests, portfolios, trade journals, symbol activations, and more.
+MCP server for the [DWLF](https://www.dwlf.co.uk) market analysis platform. It gives AI agents dated events and conditions they can reason about: indicator events, support/resistance, market regime, cycle timing, on-chain readings, strategies, backtests, portfolios, trade journals, and more. It describes what happened and where things stand; it doesn't forecast prices or give trading advice.
 
 Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible client.
+
+## Who can use it today
+
+| You are | What works | Key |
+|---|---|---|
+| Anyone curious about Bitcoin | **DWLF Block, keyless:** `--profile block --block-backend block-api`. The 5 Block tools read Bitcoin conditions, events and on-chain series from the public Block API, recent history only. | None. Block accounts aren't open yet; once they are, a free account's key (`DWLF_BLOCK_KEY`, from [block.dwlf.co.uk/account](https://block.dwlf.co.uk/account/)) reads the full history. |
+| A DWLF platform member | Every tool (`full`), or the larger `block` set on the default backend. | A `dwlf_sk_` key from your DWLF account. DWLF is in **private beta**: accounts are invite-only, and sign-up (including `dwlf_register_agent`) is closed for now. |
+
+Set-up for DWLF Block, client by client: [docs/BLOCK.md](docs/BLOCK.md).
 
 > **🤖 AI Agents:** To ensure strategies created via MCP are accessible via REST API, use the same API key for both. See [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md).
 
@@ -21,7 +30,13 @@ npm install -g @dwlf/mcp-server
 dwlf-mcp-server
 ```
 
-You'll need a `DWLF_API_KEY` environment variable. See [Getting an API Key](#getting-an-api-key) below.
+Without arguments it runs every tool and needs a `DWLF_API_KEY` (see [Getting an API Key](#getting-an-api-key)). For keyless DWLF Block:
+
+```bash
+npx -y @dwlf/mcp-server --profile block --block-backend block-api
+```
+
+The client examples below use a `dwlf_sk_` key; for keyless Block, put `"--profile", "block", "--block-backend", "block-api"` in `args` and leave out `env`.
 
 ## Claude Desktop
 
@@ -81,60 +96,52 @@ Add to `.vscode/mcp.json`:
 
 ## Getting an API Key
 
-### Option 1: Web UI (Human Users)
+**DWLF platform (`dwlf_sk_…`):** DWLF is in private beta, so accounts are invite-only. If you have one:
 
-1. Sign up at [dwlf.co.uk](https://www.dwlf.co.uk)
+1. Sign in at [dwlf.co.uk](https://www.dwlf.co.uk)
 2. Go to **Settings → API Keys**
 3. Create a new key — it starts with `dwlf_sk_`
 4. Set it as `DWLF_API_KEY` in your MCP client config
 
-### Option 2: Programmatic Registration (AI Agents)
+Programmatic registration (`POST https://api.dwlf.co.uk/v2/agent/register`, or the `dwlf_register_agent` tool) follows the same gate: while sign-up is closed it answers 403. When it opens, see the [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md).
 
-AI agents can register programmatically without browser access:
-
-```bash
-curl -X POST https://api.dwlf.co.uk/v2/agent/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "your-agent@example.com",
-    "agentId": "my-trading-bot",
-    "purpose": "Autonomous trading"
-  }'
-```
-
-Returns an API key immediately. Use this key for both REST API and MCP to ensure account consistency.
-
-**📖 See [Agent Onboarding Guide](docs/AGENT-ONBOARDING.md) for complete setup instructions.**
+**DWLF Block (`dwlfk_…`):** the keyless view needs no key. Block accounts aren't open yet; once they are, create a free key at [block.dwlf.co.uk/account](https://block.dwlf.co.uk/account/) and set it as `DWLF_BLOCK_KEY`.
 
 ## Configuration
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DWLF_API_KEY` | Yes | — | Your DWLF API key (`dwlf_sk_...`) |
+| `DWLF_API_KEY` | Yes, except on `block-api` | — | Your DWLF API key (`dwlf_sk_...`) |
 | `DWLF_API_URL` | No | `https://api.dwlf.co.uk` | API base URL |
+| `DWLF_BLOCK_BACKEND` | No | `spt` | For `--profile block` only: `spt` (the DWLF platform, needs `DWLF_API_KEY`) or `block-api` (the Block API: 5 tools, keyless or `DWLF_BLOCK_KEY`). The `--block-backend <name>` flag does the same and wins. |
+| `DWLF_BLOCK_KEY` | No | — | On `block-api`: a DWLF Block API key (`dwlfk_...`) for the full history. Without it, the public view (recent history). |
+| `BLOCK_API_URL` | No | `https://api.block.dwlf.co.uk` | Block API base URL (e.g. staging). |
 | `DWLF_TOOL_PROFILE` | No | `full` | Tool set: `full` (every tool) or `block` (the Bitcoin subset for DWLF Block). The `--profile <name>` flag does the same and wins. An unknown name stops the server with the reason. |
 
 ### Tool profiles
 
 - **`full`** (default): every tool, as before.
-- **`block`**: about 50 tools for Bitcoin users of DWLF Block: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. A profile only hides tools: the API key's permissions and quotas are the same either way. Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
+- **`block`** on the **`block-api`** backend (`--block-backend block-api`): 5 tools on the Block API: `dwlf_get_conditions`, `dwlf_get_events`, `dwlf_get_series`, `dwlf_describe_onchain_events` and `dwlf_explain_event`. Works without a key (recent history). This becomes the default for `block` at DWLF Block's launch.
+- **`block`** on the default **`spt`** backend: about 50 tools on the DWLF platform for Bitcoin users: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. Needs a `dwlf_sk_` key. A profile only hides tools: the key's permissions and quotas are the same either way.
+
+Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
 
 ## Tools
 
 ### Market Data
-Get OHLCV candles, list symbols, support/resistance levels, and indicator events (crossovers, breakouts, divergences, candlestick patterns).
+List symbols, support/resistance levels, and indicator events (crossovers, breakouts, divergences, candlestick patterns), each with the price on its date. Raw OHLCV candles (`dwlf_get_market_data`) are licensed for display, not redistribution, so they're served to the owner account only; other keys get a 403 that points to the events instead.
 
 ### Technical Indicators
 Daily SMA/EMA values (10–200), trendlines (daily, weekly, hourly), market regime, and indicator events: DSS, Bollinger, EMA/SMA crosses, swing structure, SMC, VWAP, cycle pivots.
 
-### Trade Signals
-Active signals, signal history with P&L, and performance stats (win rate, avg return).
+### Strategy fires
+When your strategies' rules were met (recorded by the daily evaluator), with their statistics: win rate, average return. These figures are **hypothetical**: simulated on past data, not actual trading. Simulated results benefit from hindsight, may not reflect costs, slippage or liquidity, and past results don't indicate future results.
 
 ### Strategies
 Create, update, compile, and browse visual trading strategies. List public community strategies.
 
 ### Backtesting
-Run backtests (async), get results with Sharpe ratios, and aggregate performance summaries.
+Run backtests (async), get results with Sharpe ratios, and aggregate performance summaries. Results are hypothetical, and each response carries a `hypotheticalLegend` to show with them.
 
 ### Portfolio & Trade Journal
 Portfolio holdings with P&L, historical snapshots, trade logging, notes, and plan templates.
@@ -149,7 +156,7 @@ Create custom indicator-based triggers (e.g. "DSS exits oversold with bullish cr
 Save, per symbol, what you are waiting for and why: ordered steps of conditions DWLF detects itself (a confirmed cycle pivot, a close beyond a level, a cycle window opening, a trend-line break, a structure event), optional invalidations, your context and next step. DWLF checks them once a night after the close and tells you when a step is met or the thesis is challenged (Telegram digest, in-app notification, and a fires feed agents read with a cursor). Every event says when DWLF could first know it, and nothing known before a condition was saved counts. `dwlf_list_theses` with `includeProgress` says how close each is and gives `closest` to sort by; `dwlf_get_thesis_story` tells one thesis in steps (what happened, where it stands, what it needs next), with the plan as drawn when it was saved and illustrated routes (one that meets the steps, one that challenges the thesis; each leg names the engine numbers it was drawn from; illustrations, never forecasts), a one-sentence `replaySummary`, and with `replay: true` the plan as drawn told against what happened (where each step was met beside where it was illustrated; facts only, nothing scored). Start with `dwlf_thesis_guide`: benefits, limits (end of day; information, not advice), the rules for exact, detectable theses, and worked examples. Cookbook: [Save what you're waiting for](docs/cookbook.md#5-save-what-youre-waiting-for-theses).
 
 ### AI Summaries
-Full account dashboard, single-symbol briefs, and strategy performance overviews — pre-aggregated for AI consumption.
+Full account dashboard, single-symbol briefs, and strategy performance overviews (hypothetical figures) — pre-aggregated for AI consumption.
 
 ### Academy
 Browse educational tracks, read lessons, and search academy content.
@@ -158,8 +165,9 @@ Browse educational tracks, read lessons, and search academy content.
 
 ```
 "How's BTC looking right now?"
+"What happened on-chain for Bitcoin this month?"            (keyless Block)
 "Where is AAPL relative to its 50 and 200 day moving averages?"
-"What active trade signals do we have?"
+"Which of my strategies fired this week?"
 "Create a Golden Cross strategy using EMA 50/200"
 "Backtest my strategy on NVDA over the last year"
 "Log a long on ETH at 3,200 with stop at 3,050"
@@ -195,7 +203,7 @@ Building a dashboard or visualization? Use the same libraries that power the DWL
 | [@dwlf/indicators](https://github.com/andywilliams/dwlf-indicators-oss) | Technical indicators (EMA, Bollinger, DSS, Fibonacci, S/R, Swing, Trendlines) — zero dependencies | `npm install @dwlf/indicators` |
 | [@dwlf/charting](https://github.com/andywilliams/dwlf-charting-oss) | React charting library with candlestick charts, 20+ annotations, pan/zoom | `npm install @dwlf/charting` |
 
-Fetch candles via `dwlf_get_market_data`, compute indicators with `@dwlf/indicators`, render with `@dwlf/charting`.
+Compute indicators with `@dwlf/indicators` and render with `@dwlf/charting` on candles you're licensed to use (`dwlf_get_market_data` serves raw candles to the owner account only).
 
 ## License
 

@@ -175,6 +175,11 @@ test('the keys page follows the Block API\'s stage; anything that is not a DWLF 
   assert.equal(staging, BLOCK_API_INSTRUCTIONS.replace(prod, 'https://block-staging.dwlf.co.uk/account/'), 'only the link differs');
 });
 
+test('block-api instructions defer to the summary while accounts are closed, and name the support and terms links', () => {
+  assert.match(BLOCK_API_INSTRUCTIONS, /while it says accounts are not open yet, say so and offer no sign-up/);
+  assert.match(BLOCK_API_INSTRUCTIONS, /`supportUrl` and `termsUrl` are pages for a person/);
+});
+
 test('block-api instructions name what an item is: an event, a condition or a reading', () => {
   assert.match(BLOCK_API_INSTRUCTIONS, /an event, a condition or a reading/);
 });

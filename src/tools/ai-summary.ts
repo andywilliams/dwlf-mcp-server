@@ -29,7 +29,7 @@ export function registerAISummaryTools(
   // 2. AI Symbol Brief
   server.tool(
     'dwlf_ai_symbol_brief',
-    'Get a condensed single-symbol view: latest price with change, recent candles, key indicators, S/R levels, recent events, and active signals. Perfect for "how\'s BTC doing?" queries.',
+    'Get a condensed single-symbol view: latest price with change, key indicators, S/R levels, recent events, and active strategy fires. Raw candles (`recentCandles`) come only to the owner account under the data licence; other keys get `candlesWithheld` in their place. Perfect for "how\'s BTC doing?" queries.',
     {
       symbol: z.string().describe('Symbol to get brief for (e.g. BTC, TSLA, NVDA)'),
     },
@@ -52,7 +52,7 @@ export function registerAISummaryTools(
   // 3. AI Strategy Performance
   server.tool(
     'dwlf_ai_strategy_performance',
-    'Get all strategies with signal stats and performance metrics in a single call: total signals, active signals, win rate, avg R/R, total P&L, and per-strategy breakdowns.',
+    'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns. Every performance figure here (P&L, win rate, average return) is hypothetical: simulated on past data, not actual trading. Say so whenever you report one, and pass on `hypotheticalLegend` when the response carries it.',
     {},
     async () => {
       try {

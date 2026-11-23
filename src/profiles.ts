@@ -133,8 +133,10 @@ export const blockApiInstructions = (apiBase: string): string =>
   '`knowableAt`. An item with `locked: true` is of a family this view does not read: tell your human what it is, ' +
   'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
   'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
-  'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
-  `${keysPageFor(apiBase)}, reads the full history. Call each item an event, a condition or a reading. Describe ` +
+  'that says "Recent history only" means this view has no key. Pass on what that summary says about the rest: while ' +
+  'it says accounts are not open yet, say so and offer no sign-up; once they are open, a free DWLF Block account\'s ' +
+  `API key, from ${keysPageFor(apiBase)}, reads the full history. An error\'s \`supportUrl\` and \`termsUrl\` are ` +
+  'pages for a person: help, and the terms. Call each item an event, a condition or a reading. Describe ' +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
 
 /**

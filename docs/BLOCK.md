@@ -3,8 +3,15 @@
 DWLF Block is Bitcoin conditions, not calls: on-chain cost basis, regime, cycle timing and events you can combine
 into your own custom events and alert on. This server's `block` profile gives your agent just the tools for that.
 
-You need a DWLF API key (`dwlf_sk_…`). An agent can get one itself with `dwlf_register_agent` (`POST
-/v2/agent/register`), and the human confirms by email. Replace `dwlf_sk_your_key_here` below.
+**Two backends, two ways in:**
+- **No key (works today):** add `--block-backend block-api` to the args and leave out `env`, e.g.
+  `claude mcp add dwlf -- npx -y @dwlf/mcp-server --profile block --block-backend block-api`. You get 5 tools on the
+  public Block API: conditions, events, on-chain series, the event catalogue and one event explained, recent history
+  only. Block accounts aren't open yet; once they are, a free account's key from https://block.dwlf.co.uk/account/
+  (`DWLF_BLOCK_KEY`) reads the full history.
+- **A DWLF platform key (`dwlf_sk_…`):** the examples below, with about 50 tools. DWLF is in private beta: accounts
+  are invite-only, and `dwlf_register_agent` (`POST /v2/agent/register`) answers 403 while sign-up is closed.
+  Replace `dwlf_sk_your_key_here` below.
 
 ## Claude Code
 
