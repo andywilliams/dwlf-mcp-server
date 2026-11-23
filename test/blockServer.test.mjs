@@ -9,7 +9,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import * as entry from '@dwlf/mcp-server/block';
 import { registerForProfile } from '../dist/register.js';
-import { BLOCK_API_TOOLS, BLOCK_API_INSTRUCTIONS } from '../dist/profiles.js';
+import { BLOCK_API_TOOLS, blockApiInstructions } from '../dist/profiles.js';
 
 const { createBlockServer } = entry;
 
@@ -74,7 +74,7 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
   const api = await upstream(() => [200, { summary: 'ok', items: [] }]);
   try {
     const mcp = await connect(createBlockServer({ credential: ' dwlfk_test ', baseURL: api.url }));
-    assert.equal(mcp.getInstructions(), BLOCK_API_INSTRUCTIONS);
+    assert.equal(mcp.getInstructions(), blockApiInstructions('https://api.block.dwlf.co.uk'), 'a loopback base reads production\'s text');
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
     assert.deepEqual(mcp.getServerVersion(), { name: 'dwlf', version: pkg.version }, 'serverInfo names the tool code that answered');
     const { tools } = await mcp.listTools();
@@ -87,6 +87,12 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
     await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
     assert.deepEqual(api.seen, [{ url: '/v1/conditions', auth: 'Bearer dwlfk_test' }]);
   } finally { await api.close(); }
+});
+
+test('createBlockServer names the keys page of its baseURL\'s stage (staging\'s for the staging API)', async () => {
+  const mcp = await connect(createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://api.block-staging.dwlf.co.uk' }));
+  assert.match(mcp.getInstructions(), /from https:\/\/block-staging\.dwlf\.co\.uk\/account\/, reads/);
+  assert.doesNotMatch(mcp.getInstructions(), /https:\/\/block\.dwlf\.co\.uk\/account\//);
 });
 
 test('the recorder hears each refusal: Block\'s own body, an edge\'s answer, and an unreachable API; the tool still answers', async () => {

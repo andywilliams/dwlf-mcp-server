@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BlockApiClient, type UpstreamRecorder } from './client.js';
 import { registerBlockApiTools, type CatalogueCache } from './tools.js';
-import { BLOCK_API_INSTRUCTIONS } from '../profiles.js';
+import { blockApiInstructions } from '../profiles.js';
 
 // The published contract of `@dwlf/mcp-server/block` is this file's exports and nothing else (charter *Interfaces*).
 export type { UpstreamRecorder, UpstreamRefusal } from './client.js';
@@ -61,7 +61,7 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
   if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
-  const server = new McpServer({ name: 'dwlf', version }, { instructions: BLOCK_API_INSTRUCTIONS });
+  const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL) });
   const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;

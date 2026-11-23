@@ -32,6 +32,10 @@ export class BlockApiError extends Error {
   }
 }
 
+/** The Block API base this process reads: `baseURL`, else `BLOCK_API_URL`, else production; no trailing slash. */
+export const blockApiBase = (baseURL?: string): string =>
+  (baseURL || process.env.BLOCK_API_URL || 'https://api.block.dwlf.co.uk').replace(/\/+$/, '');
+
 export class BlockApiClient {
   private http: AxiosInstance;
   private recorder?: UpstreamRecorder;
@@ -41,7 +45,7 @@ export class BlockApiClient {
 
   constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder } = {}) {
     this.recorder = options.recorder;
-    const base = (options.baseURL || process.env.BLOCK_API_URL || 'https://api.block.dwlf.co.uk').replace(/\/+$/, '');
+    const base = blockApiBase(options.baseURL);
     const raw = 'apiKey' in options ? options.apiKey : process.env.DWLF_BLOCK_KEY;
     const apiKey = raw?.trim() ? raw.trim() : undefined;
     this.signedIn = Boolean(apiKey);

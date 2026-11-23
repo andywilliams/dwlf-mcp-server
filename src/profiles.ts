@@ -104,8 +104,28 @@ export type BlockBackend = 'spt' | 'block-api';
 export const BLOCK_API_TOOLS: ReadonlySet<string> = new Set(['dwlf_get_conditions', 'dwlf_get_events', 'dwlf_get_series',
   'dwlf_describe_onchain_events', 'dwlf_explain_event']);
 
-/** Server instructions for `--profile block` on the `block-api` backend. Worded within the shared banned-terms list. */
-export const BLOCK_API_INSTRUCTIONS =
+/** The production keys page: where a person creates a free DWLF Block account's API key. */
+export const PRODUCTION_KEYS_PAGE = 'https://block.dwlf.co.uk/account/';
+
+/**
+ * The keys page of the stage a Block API base URL belongs to: `https://api.<site>` → `https://<site>/account/` for a
+ * DWLF Block site (`block.dwlf.co.uk`, `block-staging.dwlf.co.uk`, …), so a staging view sends a person to staging's
+ * keys page, as the hosted MCP's own refusals do. Anything else (a loopback stand-in, another host) gets production's.
+ */
+export function keysPageFor(apiBase: string): string {
+  try {
+    const u = new URL(apiBase);
+    const site = u.protocol === 'https:' && !u.port ? /^api\.(block(?:-[a-z0-9]+)*\.dwlf\.co\.uk)$/.exec(u.hostname)?.[1] : undefined;
+    return site ? `https://${site}/account/` : PRODUCTION_KEYS_PAGE;
+  } catch { return PRODUCTION_KEYS_PAGE; }
+}
+
+/**
+ * Server instructions for `--profile block` on the `block-api` backend, read against the Block API at `apiBase`: a
+ * keyless view is sent to that stage's keys page (`keysPageFor`). The base is required, so no caller can name a page
+ * that doesn't match the API it reads. Worded within the shared banned-terms list.
+ */
+export const blockApiInstructions = (apiBase: string): string =>
   'DWLF Block: Bitcoin conditions, not calls. Start with dwlf_get_conditions for where Bitcoin is now, then ' +
   'dwlf_get_events for what happened and when, and dwlf_get_series for one measure over time. Find an event type or ' +
   'series with dwlf_describe_onchain_events, and read one event type with dwlf_explain_event. Every answer is the ' +
@@ -114,7 +134,7 @@ export const BLOCK_API_INSTRUCTIONS =
   'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
   'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
   'that says "Recent history only" means this view has no key: a free DWLF Block account\'s API key, from ' +
-  'https://block.dwlf.co.uk/account/, reads the full history. Call each item an event, a condition or a reading. Describe ' +
+  `${keysPageFor(apiBase)}, reads the full history. Call each item an event, a condition or a reading. Describe ` +
   'states and conditions; never turn them into buy, sell or hold recommendations. Nothing here is scored as a predictor.';
 
 /**
