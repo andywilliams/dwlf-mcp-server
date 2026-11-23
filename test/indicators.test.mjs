@@ -27,6 +27,19 @@ test('adds the newest finite value per average and lists the missing ones', () =
   assert.equal(out.symbol, 'BTC/USD');
 });
 
+test('withheld values (a key not licensed for raw prices) are not reported as missing', () => {
+  const data = {
+    symbol: 'CAT',
+    combined: true,
+    valuesWithheld: { reason: 'licensing', alternative: 'dwlf_get_regime' },
+    indicators: [{ type: 'ema10', data: [{ date: '2026-11-20', value: null }] }],
+  };
+  const out = withLatestMovingAverages(data);
+  assert.deepEqual(out.latest, {});
+  assert.deepEqual(out.missing, [], 'withheld, not missing');
+  assert.deepEqual(out.valuesWithheld, data.valuesWithheld, 'the reason passes through');
+});
+
 test('an unexpected response shape is an error, not "no averages"', () => {
   assert.throws(() => withLatestMovingAverages({ success: true, data: {} }), /no indicators array/);
   assert.throws(() => withLatestMovingAverages(null), /no indicators array/);
