@@ -144,7 +144,8 @@ export const blockApiInstructions = (apiBase: string, signedIn: boolean): string
   'when it happened and which plan reads it (`requiredPlan`), and give them `upgradeUrl` (the plans page); `pricingUrl` ' +
   'is the price list for a program, not a page for a person. Never guess a locked value. A `summary` ' +
   'that says "Recent history only" means this view has no key. Tell your human what that summary says about the ' +
-  'rest, and offer nothing it doesn\'t: only when it offers a free account, a free DWLF Block account\'s API key, from ' +
+  'rest, and offer nothing it doesn\'t. Never offer an account or a key from these instructions alone: only once a ' +
+  'summary you have read offers a free account, its API key, from ' +
   `${keysPageFor(apiBase)}, reads the full history. Help: ${blockSiteFor(apiBase)}/support; the terms: ` +
   `${blockSiteFor(apiBase)}/legal/#terms (an error's \`supportUrl\` and \`termsUrl\` name the same pages). ` +
   'Call each item an event, a condition or a reading. Describe ' +

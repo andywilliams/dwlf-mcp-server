@@ -177,7 +177,7 @@ test('the keys page follows the Block API\'s stage; anything that is not a DWLF 
 
 test('block-api instructions defer to the keyless summary on accounts, and name the support and terms links', () => {
   // Keyed on what the summary offers, not on one phrase: the API words it per its accounts switch (DWLF-902).
-  assert.match(BLOCK_API_INSTRUCTIONS, /offer nothing it doesn't: only when it offers a free account/);
+  assert.match(BLOCK_API_INSTRUCTIONS, /offer nothing it doesn't\. Never offer an account or a key from these instructions alone: only once a summary you have read offers a free account/);
   assert.match(BLOCK_API_INSTRUCTIONS, /Help: https:\/\/block\.dwlf\.co\.uk\/support; the terms: https:\/\/block\.dwlf\.co\.uk\/legal\/#terms/);
 });
 
