@@ -68,7 +68,19 @@ claude mcp add dwlf -e DWLF_API_KEY=dwlf_sk_your_key_here -- npx -y @dwlf/mcp-se
 2. "Alert me when price crosses the short-term-holder realised price."
 3. "Make a custom event: price below the short-term-holder realised price AND inside a weekly cycle-low window. When did it last happen?"
 
-## What the `block` profile includes
+## On the `block-api` backend (keyless)
+
+Five tools, each answering with the Block envelope (a `summary`, items with `why`, `chartUrl` and `knowableAt`):
+- `dwlf_get_conditions` (no parameters): where Bitcoin stands now, one reading per condition.
+- `dwlf_get_events` (`types` up to 20 ids, `from`, `to`): what happened and when.
+- `dwlf_get_series` (`id`, `from`): one measure over time.
+- `dwlf_describe_onchain_events` (`family`, `search` or `eventType`): find an event type or series; with no
+  parameters, each family's counts.
+- `dwlf_explain_event` (`eventType`, `from`, `to`): one event type in full, with its occurrences.
+
+Without a key each reads recent history only. Items from a paid family come back `locked`, with the plan that reads them.
+
+## What the `block` profile includes (DWLF platform key)
 
 - **Conditions:** `dwlf_get_conditions` (one call: regime, cost-basis ladder, cycle windows, recent events,
   provenance), `dwlf_describe_onchain_events` (what each `onchain.*` event means, read live from the API's public

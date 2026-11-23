@@ -117,8 +117,7 @@ export const BLOCK_DESCRIPTIONS: Readonly<Record<string, string | ((shared: stri
     'summary. When status is "completed", read the fires via dwlf_get_events(type: "custom_event").',
   dwlf_register_agent:
     'Programmatically register a new DWLF account: no browser or Google sign-in required. It works only while DWLF ' +
-    'sign-up is open. DWLF is in private beta, and while sign-up is closed this answers with a 403 saying so: tell your ' +
-    'human, and don\'t retry. When open, it issues an API key immediately, and email verification unlocks the compute ' +
+    'sign-up is open: while it is closed this answers with a 403 saying so. Tell your human, and don\'t retry. When open, it issues an API key immediately, and email verification unlocks the compute ' +
     'features (custom event evaluations).',
   dwlf_get_cycle_setups:
     'The cycle screener: across the symbols DWLF tracks, which have their WEEKLY cycle timing window open, and whether a ' +

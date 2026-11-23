@@ -111,9 +111,9 @@ Programmatic registration (`POST https://api.dwlf.co.uk/v2/agent/register`, or t
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DWLF_API_KEY` | Yes, except on `block-api` | — | Your DWLF API key (`dwlf_sk_...`) |
+| `DWLF_API_KEY` | Yes, except with `--block-backend block-api` | — | Your DWLF API key (`dwlf_sk_...`) |
 | `DWLF_API_URL` | No | `https://api.dwlf.co.uk` | API base URL |
-| `DWLF_BLOCK_BACKEND` | No | `spt` | For `--profile block` only: `spt` (the DWLF platform, needs `DWLF_API_KEY`) or `block-api` (the Block API: 5 tools, keyless or `DWLF_BLOCK_KEY`). The `--block-backend <name>` flag does the same and wins. |
+| `DWLF_BLOCK_BACKEND` | No | unset | For `--profile block` only: `block-api` uses the Block API (5 tools, keyless or `DWLF_BLOCK_KEY`). Unset, `block` runs on the DWLF platform and needs `DWLF_API_KEY`. The `--block-backend block-api` flag does the same and wins. |
 | `DWLF_BLOCK_KEY` | No | — | On `block-api`: a DWLF Block API key (`dwlfk_...`) for the full history. Without it, the public view (recent history). |
 | `BLOCK_API_URL` | No | `https://api.block.dwlf.co.uk` | Block API base URL (e.g. staging). |
 | `DWLF_TOOL_PROFILE` | No | `full` | Tool set: `full` (every tool) or `block` (the Bitcoin subset for DWLF Block). The `--profile <name>` flag does the same and wins. An unknown name stops the server with the reason. |
@@ -122,7 +122,7 @@ Programmatic registration (`POST https://api.dwlf.co.uk/v2/agent/register`, or t
 
 - **`full`** (default): every tool, as before.
 - **`block`** on the **`block-api`** backend (`--block-backend block-api`): 5 tools on the Block API: `dwlf_get_conditions`, `dwlf_get_events`, `dwlf_get_series`, `dwlf_describe_onchain_events` and `dwlf_explain_event`. Works without a key (recent history). This becomes the default for `block` at DWLF Block's launch.
-- **`block`** on the default **`spt`** backend: about 50 tools on the DWLF platform for Bitcoin users: the conditions check, on-chain event descriptions, events, custom events, strategies, backtests, alerts, the academy and quotas. The retail, portfolio, trade-journal and metals tools are hidden. Needs a `dwlf_sk_` key. A profile only hides tools: the key's permissions and quotas are the same either way.
+- **`block`** without `--block-backend` (the DWLF platform): about 50 tools for Bitcoin users: the conditions check, on-chain event descriptions, events, custom events, alerts, the academy and quotas. Strategies, backtests, retail, portfolio, trade-journal and metals tools are hidden. Needs a `dwlf_sk_` key. A profile only hides tools: the key's permissions and quotas are the same either way.
 
 Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
 

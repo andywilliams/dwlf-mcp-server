@@ -172,7 +172,7 @@ export function registerSemanticTools(server: McpServer, client: DWLFClient) {
   // 4. Register agent account (public endpoint, no auth needed)
   server.tool(
     'dwlf_register_agent',
-    'Programmatically register a new DWLF account — no browser or Google OAuth required. Works only while DWLF sign-up is open: DWLF is in private beta, and while sign-up is closed this returns a 403 saying so (tell your human; don\'t retry). When open, it returns an API key immediately, and email verification unlocks compute features (backtests, evaluations).',
+    'Programmatically register a new DWLF account — no browser or Google OAuth required. Works only while DWLF sign-up is open: while it is closed this returns a 403 saying so (tell your human; don\'t retry). When open, it returns an API key immediately, and email verification unlocks compute features (backtests, evaluations).',
     {
       email: z.string().email().describe('Email address for the new account'),
       agentId: z

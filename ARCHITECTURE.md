@@ -116,7 +116,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
 - **Profile names are a published contract** (server.json `choices`, the client configs in `docs/BLOCK.md`): a name
   is never removed. A retired or split profile stays as an alias (`PROFILE_ALIASES`) *(inferred from:
   `src/profiles.ts`)*. Since 23-Nov the backend value **`block-api`** is published too (README, `docs/BLOCK.md`,
-  `server.json`) and is accepted for good, a no-op once it is the default; only `spt` is temporary.
+  `server.json`) and is accepted for good, a no-op once it is the default; only `spt` is temporary, so no published
+  surface names it as a value to set (unset means the platform until the cut).
 - **Hypothetical figures:** every tool whose answer can carry a simulated figure ends its description with
   `HYPOTHETICAL_NOTE` (`src/caveats.ts`, listed in `HYPOTHETICAL_TOOLS`); `test/caveats.test.mjs` fails a new tool that
   describes win rates, P&L or replays without being listed (retail readiness audit, 23-Nov).

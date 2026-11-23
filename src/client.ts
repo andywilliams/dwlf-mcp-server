@@ -93,8 +93,7 @@ export class DWLFClient {
     if (!apiKey) {
       console.error(
         'Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.\n' +
-        'DWLF is in private beta (invite-only accounts). For keyless DWLF Block, run with ' +
-        '--profile block --block-backend block-api (see docs/BLOCK.md).'
+        'Without a DWLF key, keyless DWLF Block runs with --profile block --block-backend block-api (see docs/BLOCK.md).'
       );
     }
 

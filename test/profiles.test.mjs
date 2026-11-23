@@ -249,9 +249,10 @@ test('server.json (MCP Registry) agrees with package.json', () => {
   assert.equal(npm.version, pkg.version);
   assert.equal(npm.transport.type, 'stdio');
   const env = Object.fromEntries(npm.environmentVariables.map((v) => [v.name, v]));
-  assert.equal(env.DWLF_API_KEY.isRequired, false, 'keyless DWLF Block needs none');
+  assert.equal(env.DWLF_API_KEY.isRequired, true, 'the default profile and backend need it');
   assert.doesNotMatch(env.DWLF_API_KEY.description, /agent\/register/, 'sign-up is closed');
-  assert.deepEqual(env.DWLF_BLOCK_BACKEND.choices, ['spt', 'block-api']);
+  assert.deepEqual(env.DWLF_BLOCK_BACKEND.choices, ['block-api'], 'only the published value; spt is temporary');
+  assert.equal(env.DWLF_BLOCK_BACKEND.default, undefined);
   assert.equal(env.DWLF_BLOCK_KEY.isSecret, true);
   assert.equal(env.BLOCK_API_URL.isRequired, false);
   assert.equal(env.DWLF_API_KEY.isSecret, true);

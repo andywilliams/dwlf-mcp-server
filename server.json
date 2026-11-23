@@ -21,8 +21,8 @@
       "environmentVariables": [
         {
           "name": "DWLF_API_KEY",
-          "description": "Your DWLF platform API key (dwlf_sk_...). Not needed for keyless DWLF Block (DWLF_TOOL_PROFILE=block, DWLF_BLOCK_BACKEND=block-api). DWLF is in private beta: accounts are invite-only.",
-          "isRequired": false,
+          "description": "Your DWLF platform API key (dwlf_sk_...); DWLF accounts are invite-only for now. For keyless DWLF Block instead, set DWLF_TOOL_PROFILE=block and DWLF_BLOCK_BACKEND=block-api: this key is then not used.",
+          "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
@@ -39,12 +39,10 @@
         },
         {
           "name": "DWLF_BLOCK_BACKEND",
-          "description": "For the block profile: spt (default; the DWLF platform, needs DWLF_API_KEY) or block-api (the Block API: 5 tools, works without a key).",
+          "description": "For the block profile: block-api uses the Block API (5 tools, works without a key). Unset, block runs on the DWLF platform with DWLF_API_KEY.",
           "isRequired": false,
           "format": "string",
-          "default": "spt",
           "choices": [
-            "spt",
             "block-api"
           ]
         },
