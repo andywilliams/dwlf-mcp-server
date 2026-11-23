@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
+import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerTradeTools(
   server: McpServer,
@@ -433,7 +434,7 @@ export function registerTradeTools(
       'Assumes MECHANICAL execution of the planned levels — no discretionary management; ' +
       'same-bar stop+target counts the stop first (flagged `ambiguousBar`). ' +
       'Pairs with dwlf_list_trades(status:"skipped") and dwlf_skip_trade. ' +
-      'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual',
+      'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual. ' + HYPOTHETICAL_NOTE,
     {},
     async () => {
       try {
@@ -466,7 +467,7 @@ export function registerTradeTools(
       'UI equivalent: https://www.dwlf.co.uk/trades/decisions. ' +
       'Optional recent-window scope — `months` (last N months) or `fromDate` (YYYY-MM-DD); omit for all-time. ' +
       'A growing skip history dilutes the current-form read, so scope to e.g. months=12 for "recent" decisions. ' +
-      '`meta.window` echoes the applied scope.',
+      '`meta.window` echoes the applied scope. ' + HYPOTHETICAL_NOTE,
     {
       months: z
         .number()

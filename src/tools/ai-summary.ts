@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
+import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerAISummaryTools(
   server: McpServer,
@@ -52,7 +53,7 @@ export function registerAISummaryTools(
   // 3. AI Strategy Performance
   server.tool(
     'dwlf_ai_strategy_performance',
-    'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns. Every performance figure here (P&L, win rate, average return) is hypothetical: simulated on past data, not actual trading. Say so whenever you report one, and pass on `hypotheticalLegend` when the response carries it.',
+    'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns. ' + HYPOTHETICAL_NOTE,
     {},
     async () => {
       try {

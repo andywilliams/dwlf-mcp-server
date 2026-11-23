@@ -8,7 +8,7 @@ Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible client.
 
 | You are | What works | Key |
 |---|---|---|
-| Anyone curious about Bitcoin | **DWLF Block, keyless:** `--profile block --block-backend block-api`. The 5 Block tools read Bitcoin conditions, events and on-chain series from the public Block API, recent history only. | None. Block accounts aren't open yet; once they are, a free account's key (`DWLF_BLOCK_KEY`, from [block.dwlf.co.uk/account](https://block.dwlf.co.uk/account/)) reads the full history. |
+| Anyone curious about Bitcoin | **DWLF Block, keyless:** `--profile block --block-backend block-api`. The 5 Block tools read Bitcoin conditions, events and on-chain series from the public Block API, recent history only. | None. Block accounts aren't open yet (live status: `accounts.open` in [the pricing document](https://api.block.dwlf.co.uk/public/v1/pricing)); once they are, a free account's key (`DWLF_BLOCK_KEY`, from [block.dwlf.co.uk/account](https://block.dwlf.co.uk/account/)) reads the full history. |
 | A DWLF platform member | Every tool (`full`), or the larger `block` set on the default backend. | A `dwlf_sk_` key from your DWLF account. DWLF is in **private beta**: accounts are invite-only, and sign-up (including `dwlf_register_agent`) is closed for now. |
 
 Set-up for DWLF Block, client by client: [docs/BLOCK.md](docs/BLOCK.md).

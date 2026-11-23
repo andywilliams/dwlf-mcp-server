@@ -74,7 +74,7 @@ test('createBlockServer gives the block-api tools and instructions the stdio ent
   const api = await upstream(() => [200, { summary: 'ok', items: [] }]);
   try {
     const mcp = await connect(createBlockServer({ credential: ' dwlfk_test ', baseURL: api.url }));
-    assert.equal(mcp.getInstructions(), blockApiInstructions('https://api.block.dwlf.co.uk'), 'a loopback base reads production\'s text');
+    assert.equal(mcp.getInstructions(), blockApiInstructions('https://api.block.dwlf.co.uk', true), 'a loopback base reads production\'s text, signed in');
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
     assert.deepEqual(mcp.getServerVersion(), { name: 'dwlf', version: pkg.version }, 'serverInfo names the tool code that answered');
     const { tools } = await mcp.listTools();

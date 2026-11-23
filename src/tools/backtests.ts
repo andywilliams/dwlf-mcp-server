@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import axios from 'axios';
 import { DWLFClient, normalizeSymbol } from '../client.js';
+import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerBacktestTools(
   server: McpServer,
@@ -66,8 +67,6 @@ export function registerBacktestTools(
   server.tool(
     'dwlf_get_backtest_results',
     'Get results for a backtest by requestId. If status is not "complete", poll again shortly. ' +
-      'Backtest results are hypothetical: simulated on past data, not actual trading. Show `hypotheticalLegend` ' +
-      '(in the response) with any figure you report. ' +
       'DEFAULTS TO SUMMARY MODE: returns DDB-level per-symbol stats (totalReturn, totalTrades, ' +
       'winningTrades, sharpe, maxDrawdown, finalEquity) and the portfolio-level aggregate metrics ' +
       'object, with all bulky fields stripped (per-symbol trades, equityCurve, signals, ' +
@@ -79,7 +78,7 @@ export function registerBacktestTools(
       '⚠️ When summary=false, the MCP transport will dump the response to disk and ask you to extract ' +
       'via subagent — budget for that. ' +
       '📡 For background polling without burning context window: the REST URL is ' +
-      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`.',
+      '`GET https://api.dwlf.co.uk/v2/backtests/{requestId}/results?summary=true`. ' + HYPOTHETICAL_NOTE,
     {
       requestId: z.string().describe('Backtest request ID'),
       summary: z
@@ -259,7 +258,7 @@ export function registerBacktestTools(
   // 4. Get backtest summary
   server.tool(
     'dwlf_get_backtest_summary',
-    'Get a summary of all backtests — aggregated performance stats.',
+    'Get a summary of all backtests — aggregated performance stats. ' + HYPOTHETICAL_NOTE,
     {},
     async () => {
       try {

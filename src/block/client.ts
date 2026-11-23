@@ -36,6 +36,9 @@ export class BlockApiError extends Error {
 export const blockApiBase = (baseURL?: string): string =>
   (baseURL || process.env.BLOCK_API_URL || 'https://api.block.dwlf.co.uk').replace(/\/+$/, '');
 
+/** The Block API key this process reads: `DWLF_BLOCK_KEY`, trimmed; undefined when unset or blank. */
+export const blockApiKeyFromEnv = (): string | undefined => process.env.DWLF_BLOCK_KEY?.trim() || undefined;
+
 export class BlockApiClient {
   private http: AxiosInstance;
   private recorder?: UpstreamRecorder;
@@ -46,8 +49,7 @@ export class BlockApiClient {
   constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder } = {}) {
     this.recorder = options.recorder;
     const base = blockApiBase(options.baseURL);
-    const raw = 'apiKey' in options ? options.apiKey : process.env.DWLF_BLOCK_KEY;
-    const apiKey = raw?.trim() ? raw.trim() : undefined;
+    const apiKey = 'apiKey' in options ? (options.apiKey?.trim() || undefined) : blockApiKeyFromEnv();
     this.signedIn = Boolean(apiKey);
     this.viewKey = apiKey ? createHash('sha256').update(apiKey).digest('hex') : 'public';
     this.http = axios.create({

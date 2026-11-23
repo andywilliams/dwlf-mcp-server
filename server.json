@@ -21,8 +21,8 @@
       "environmentVariables": [
         {
           "name": "DWLF_API_KEY",
-          "description": "Your DWLF API key. An agent can get one from POST https://api.dwlf.co.uk/v2/agent/register.",
-          "isRequired": true,
+          "description": "Your DWLF platform API key (dwlf_sk_...). Not needed for keyless DWLF Block (DWLF_TOOL_PROFILE=block, DWLF_BLOCK_BACKEND=block-api). DWLF is in private beta: accounts are invite-only.",
+          "isRequired": false,
           "isSecret": true,
           "format": "string"
         },
@@ -36,6 +36,31 @@
             "full",
             "block"
           ]
+        },
+        {
+          "name": "DWLF_BLOCK_BACKEND",
+          "description": "For the block profile: spt (default; the DWLF platform, needs DWLF_API_KEY) or block-api (the Block API: 5 tools, works without a key).",
+          "isRequired": false,
+          "format": "string",
+          "default": "spt",
+          "choices": [
+            "spt",
+            "block-api"
+          ]
+        },
+        {
+          "name": "DWLF_BLOCK_KEY",
+          "description": "On block-api: a DWLF Block API key (dwlfk_...) for the full history. Without it, the public view (recent history).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "BLOCK_API_URL",
+          "description": "Block API base URL. Leave unset for production.",
+          "isRequired": false,
+          "format": "string",
+          "default": "https://api.block.dwlf.co.uk"
         },
         {
           "name": "DWLF_API_URL",

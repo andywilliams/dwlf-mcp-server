@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolveProfile, profiledServer, BLOCK_TOOLS, PROFILE_INSTRUCTIONS, blockApiInstructions, keysPageFor } from '../dist/profiles.js';
 
-const BLOCK_API_INSTRUCTIONS = blockApiInstructions('https://api.block.dwlf.co.uk');
+const BLOCK_API_INSTRUCTIONS = blockApiInstructions('https://api.block.dwlf.co.uk', false);
 import { registerAll } from '../dist/register.js';
 import { BLOCK_DESCRIPTIONS, BLOCK_SCHEMAS, BLOCK_HANDLERS, NOTED_TOOLS, READING_NOTE } from '../dist/blockDescriptions.js';
 
@@ -171,13 +171,21 @@ test('the keys page follows the Block API\'s stage; anything that is not a DWLF 
     assert.equal(keysPageFor(other), prod, other);
   }
   assert.match(BLOCK_API_INSTRUCTIONS, /from https:\/\/block\.dwlf\.co\.uk\/account\/, reads/);
-  const staging = blockApiInstructions('https://api.block-staging.dwlf.co.uk');
-  assert.equal(staging, BLOCK_API_INSTRUCTIONS.replace(prod, 'https://block-staging.dwlf.co.uk/account/'), 'only the link differs');
+  const staging = blockApiInstructions('https://api.block-staging.dwlf.co.uk', false);
+  assert.equal(staging, BLOCK_API_INSTRUCTIONS.replaceAll('https://block.dwlf.co.uk/', 'https://block-staging.dwlf.co.uk/'), 'only the site differs');
 });
 
-test('block-api instructions defer to the summary while accounts are closed, and name the support and terms links', () => {
-  assert.match(BLOCK_API_INSTRUCTIONS, /while it says accounts are not open yet, say so and offer no sign-up/);
-  assert.match(BLOCK_API_INSTRUCTIONS, /`supportUrl` and `termsUrl` are pages for a person/);
+test('block-api instructions defer to the keyless summary on accounts, and name the support and terms links', () => {
+  // Keyed on what the summary offers, not on one phrase: the API words it per its accounts switch (DWLF-902).
+  assert.match(BLOCK_API_INSTRUCTIONS, /offer nothing it doesn't: only when it offers a free account/);
+  assert.match(BLOCK_API_INSTRUCTIONS, /Help: https:\/\/block\.dwlf\.co\.uk\/support; the terms: https:\/\/block\.dwlf\.co\.uk\/legal\/#terms/);
+});
+
+test('block-api instructions say whether this connection has a key, so an agent never infers it', () => {
+  assert.match(BLOCK_API_INSTRUCTIONS, /^This connection has no API key: it reads DWLF Block's public view, recent history only\. /);
+  const keyed = blockApiInstructions('https://api.block.dwlf.co.uk', true);
+  assert.match(keyed, /^This connection reads DWLF Block with an API key: what it reads follows that key's plan\. /);
+  assert.equal(keyed.slice(keyed.indexOf('DWLF Block: ')), BLOCK_API_INSTRUCTIONS.slice(BLOCK_API_INSTRUCTIONS.indexOf('DWLF Block: ')), 'only the first sentence differs');
 });
 
 test('block-api instructions name what an item is: an event, a condition or a reading', () => {
@@ -219,6 +227,8 @@ test('the built server on block-api names the keys page of BLOCK_API_URL\'s stag
   assert.match(staging.instructions, /from https:\/\/block-staging\.dwlf\.co\.uk\/account\/, reads the full history/);
   const prod = await listTools(args, { BLOCK_API_URL: '', DWLF_BLOCK_KEY: '' });
   assert.equal(prod.instructions, BLOCK_API_INSTRUCTIONS);
+  const keyed = await listTools(args, { BLOCK_API_URL: '', DWLF_BLOCK_KEY: ' dwlfk_test ' });
+  assert.equal(keyed.instructions, blockApiInstructions('https://api.block.dwlf.co.uk', true));
 });
 
 test('an unknown profile exits non-zero with the reason', { timeout: 10_000 }, async () => {
@@ -239,7 +249,11 @@ test('server.json (MCP Registry) agrees with package.json', () => {
   assert.equal(npm.version, pkg.version);
   assert.equal(npm.transport.type, 'stdio');
   const env = Object.fromEntries(npm.environmentVariables.map((v) => [v.name, v]));
-  assert.equal(env.DWLF_API_KEY.isRequired, true);
+  assert.equal(env.DWLF_API_KEY.isRequired, false, 'keyless DWLF Block needs none');
+  assert.doesNotMatch(env.DWLF_API_KEY.description, /agent\/register/, 'sign-up is closed');
+  assert.deepEqual(env.DWLF_BLOCK_BACKEND.choices, ['spt', 'block-api']);
+  assert.equal(env.DWLF_BLOCK_KEY.isSecret, true);
+  assert.equal(env.BLOCK_API_URL.isRequired, false);
   assert.equal(env.DWLF_API_KEY.isSecret, true);
   assert.deepEqual(env.DWLF_TOOL_PROFILE.choices, ['full', 'block']);
 });

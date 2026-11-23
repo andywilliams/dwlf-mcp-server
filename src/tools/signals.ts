@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { DWLFClient, normalizeSymbol } from '../client.js';
+import { HYPOTHETICAL_NOTE } from '../caveats.js';
 
 export function registerSignalTools(server: McpServer, client: DWLFClient) {
   // 1. Get active trade signals
@@ -40,12 +41,11 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_get_recent_signals',
     'Get user trade signals — strategy fires recorded by the daily evaluator. Shows signal history ' +
-      'with entry/exit prices, R-multiple targets, contextHash, current P&L if filled. The P&L is hypothetical: ' +
-      'what the strategy\'s rules would have made, not actual trading; say so when you report it. ' +
+      'with entry/exit prices, R-multiple targets, contextHash, current P&L if filled. ' +
       'Filters compose: `symbol` (single), `strategy` (full strategy field, e.g. `visual_strategy_X`), ' +
       'and `fromDate`/`toDate` (ISO YYYY-MM-DD) OR `days` (last N). Without any filter the default ' +
       'cutoff is the most-recent N signals up to `limit`. Use this rather than the older `/recent` ' +
-      'endpoint variant — that one has a hard-coded 5-day window that silently hides older fires.',
+      'endpoint variant — that one has a hard-coded 5-day window that silently hides older fires. ' + HYPOTHETICAL_NOTE,
     {
       symbol: z
         .string()
@@ -123,7 +123,7 @@ export function registerSignalTools(server: McpServer, client: DWLFClient) {
   server.tool(
     'dwlf_get_signal_stats',
     'Get statistics for your strategies\' recorded fires: win rate, average P&L, totals and a breakdown. ' +
-      'Every performance figure here (P&L, win rate, average return) is hypothetical: simulated on past data, not actual trading. Say so whenever you report one, and pass on `hypotheticalLegend` when the response carries it.',
+      HYPOTHETICAL_NOTE,
     {},
     async () => {
       try {
