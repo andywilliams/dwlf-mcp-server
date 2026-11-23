@@ -97,7 +97,7 @@ export const PROFILE_INSTRUCTIONS: Record<ProfileName, string | null> = {
 /**
  * The Block profile's backend (DWLF-876, docs/design/block-repoint.md D1): `spt` (today's default, SPT /v2) or
  * `block-api` (the Block API, the launch set only). The cut release flips the default. `block-api` is published (the
- * README's keyless set-up, 23-Nov) and is accepted for good; `spt` stays one minor release after the cut as the
+ * README's keyless set-up) and is accepted for good; `spt` stays one minor release after the cut as the
  * rollback, then goes.
  */
 export type BlockBackend = 'spt' | 'block-api';

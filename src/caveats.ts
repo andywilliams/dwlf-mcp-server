@@ -1,5 +1,5 @@
 /**
- * The hypothetical-performance note (retail readiness audit, 23-Nov, item 3). Every tool whose answer can carry a
+ * The hypothetical-performance note. Every tool whose answer can carry a
  * simulated figure (a backtest, a strategy's recorded fires, a replayed skip) ends its description with this
  * sentence, so an agent never reports one as actual trading. It is applied from HYPOTHETICAL_TOOLS in one place
  * (`withHypotheticalNote`, called by `profiledServer` for every profile), as READING_NOTE is from NOTED_TOOLS. The API's own `hypotheticalLegend` (SPT
@@ -14,8 +14,9 @@ export const HYPOTHETICAL_NOTE =
 
 /** The tools whose answers can carry simulated performance figures. */
 export const HYPOTHETICAL_TOOLS: ReadonlySet<string> = new Set([
-  'dwlf_get_recent_signals', 'dwlf_get_signal_stats', 'dwlf_ai_strategy_performance', 'dwlf_get_backtest_results',
-  'dwlf_get_backtest_summary', 'dwlf_get_skip_outcomes', 'dwlf_get_decision_stats',
+  'dwlf_get_active_signals', 'dwlf_get_recent_signals', 'dwlf_get_signal_stats', 'dwlf_ai_strategy_performance',
+  'dwlf_ai_dashboard', 'dwlf_ai_symbol_brief', 'dwlf_get_backtest_results', 'dwlf_get_backtest_summary',
+  'dwlf_get_skip_outcomes', 'dwlf_get_decision_stats',
 ]);
 
 /**

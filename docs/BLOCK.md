@@ -9,7 +9,7 @@ into your own custom events and alert on. This server's `block` profile gives yo
   public Block API: conditions, events, on-chain series, the event catalogue and one event explained, recent history
   only. Block accounts aren't open yet; once they are, a free account's key from https://block.dwlf.co.uk/account/
   (`DWLF_BLOCK_KEY`) reads the full history.
-- **A DWLF platform key (`dwlf_sk_…`):** the examples below, with about 50 tools. DWLF is in private beta: accounts
+- **A DWLF platform key (`dwlf_sk_…`):** the examples below, with 39 tools. DWLF is in private beta: accounts
   are invite-only, and `dwlf_register_agent` (`POST /v2/agent/register`) answers 403 while sign-up is closed.
   Replace `dwlf_sk_your_key_here` below.
 

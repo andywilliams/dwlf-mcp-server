@@ -9,7 +9,7 @@ export function registerAISummaryTools(
   // 1. AI Dashboard
   server.tool(
     'dwlf_ai_dashboard',
-    'Get a complete account overview in a single call: watchlist with prices, active signals, open trades, portfolios, strategies, and recent events. Ideal for "what\'s going on?" queries. Requires markets:read permission; other sections degrade gracefully based on permissions.',
+    'Get a complete account overview in a single call: watchlist with prices, active strategy fires, open trades, portfolios, strategies, and recent events. Ideal for "what\'s going on?" queries. Requires markets:read permission; other sections degrade gracefully based on permissions.',
     {},
     async () => {
       try {

@@ -1,4 +1,4 @@
-// Retail readiness audit (23-Nov, item 3): every tool whose answer can carry a simulated figure says it is
+// Every tool whose answer can carry a simulated figure says it is
 // hypothetical, with one shared sentence, and a new tool that describes win rates, P&L or replays must be listed
 // here as hypothetical or as known-actual. Reads what an agent is sent: the registered descriptions, per profile.
 import { test } from 'node:test';
@@ -12,7 +12,7 @@ const KNOWN_ACTUAL = new Set(['dwlf_get_holdings', 'dwlf_list_trades']);
 // Name a replay or the scorecard without reporting a figure: a thesis's `replaySummary` (facts), confirm reasons that
 // feed the scorecard, and a note about replaying a fire through the dispatcher.
 const MENTIONS_ONLY = new Set(['dwlf_list_theses', 'dwlf_get_thesis_story', 'dwlf_confirm_trade', 'dwlf_evaluate_strategy']);
-const PERFORMANCE = /win rate|winRate|P&L|average return|counterfactual|replay|backtest results|aggregated performance/i;
+const PERFORMANCE = /win rate|winRate|P&L|average return|counterfactual|replay|backtest results|aggregated performance|active (?:trade )?signals|strategy fires|active fires/i;
 
 const descriptions = (profile) => {
   const server = new McpServer({ name: 't', version: '0' });

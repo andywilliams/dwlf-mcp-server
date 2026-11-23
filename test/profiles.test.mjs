@@ -181,6 +181,28 @@ test('block-api instructions defer to the keyless summary on accounts, and name 
   assert.match(BLOCK_API_INSTRUCTIONS, /Help: https:\/\/block\.dwlf\.co\.uk\/support; the terms: https:\/\/block\.dwlf\.co\.uk\/legal\/#terms/);
 });
 
+test('the help and terms pages the instructions name are the ones the Block API\'s errors carry, per stage', () => {
+  // Error bodies as the Block API wrote them (GET /public/v1/events?from=yesterday, 23-Nov; DWLF-904).
+  const errors = {
+    'https://api.block.dwlf.co.uk': { error: 'BAD_REQUEST', message: 'Query parameter from is not valid.', parameter: 'from',
+      supportUrl: 'https://block.dwlf.co.uk/support', termsUrl: 'https://block.dwlf.co.uk/legal/#terms' },
+    'https://api.block-staging.dwlf.co.uk': { error: 'BAD_REQUEST', message: 'Query parameter from is not valid.', parameter: 'from',
+      supportUrl: 'https://block-staging.dwlf.co.uk/support', termsUrl: 'https://block-staging.dwlf.co.uk/legal/#terms' },
+  };
+  for (const [base, body] of Object.entries(errors)) {
+    const text = blockApiInstructions(base, false);
+    assert.ok(text.includes(`Help: ${body.supportUrl}; the terms: ${body.termsUrl} `), base);
+  }
+});
+
+test('the docs give the platform-backed block profile its real tool count', () => {
+  for (const file of ['../README.md', '../docs/BLOCK.md']) {
+    const text = readFileSync(new URL(file, import.meta.url), 'utf8');
+    assert.match(text, new RegExp(`\\b${BLOCK_TOOLS.size} tools\\b`), file);
+    assert.doesNotMatch(text, /about 50 tools/, file);
+  }
+});
+
 test('block-api instructions say whether this connection has a key, so an agent never infers it', () => {
   assert.match(BLOCK_API_INSTRUCTIONS, /^This connection has no API key: it reads DWLF Block's public view, recent history only\. /);
   const keyed = blockApiInstructions('https://api.block.dwlf.co.uk', true);

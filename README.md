@@ -122,7 +122,7 @@ Programmatic registration (`POST https://api.dwlf.co.uk/v2/agent/register`, or t
 
 - **`full`** (default): every tool, as before.
 - **`block`** on the **`block-api`** backend (`--block-backend block-api`): 5 tools on the Block API: `dwlf_get_conditions`, `dwlf_get_events`, `dwlf_get_series`, `dwlf_describe_onchain_events` and `dwlf_explain_event`. Works without a key (recent history). This becomes the default for `block` at DWLF Block's launch.
-- **`block`** without `--block-backend` (the DWLF platform): about 50 tools for Bitcoin users: the conditions check, on-chain event descriptions, events, custom events, alerts, the academy and quotas. Strategies, backtests, retail, portfolio, trade-journal and metals tools are hidden. Needs a `dwlf_sk_` key. A profile only hides tools: the key's permissions and quotas are the same either way.
+- **`block`** without `--block-backend` (the DWLF platform): 39 tools for Bitcoin users: the conditions check, on-chain event descriptions, events, custom events, alerts, the academy and quotas. Strategies, backtests, retail, portfolio, trade-journal and metals tools are hidden. Needs a `dwlf_sk_` key. A profile only hides tools: the key's permissions and quotas are the same either way.
 
 Set-up for each client: [docs/BLOCK.md](docs/BLOCK.md).
 
