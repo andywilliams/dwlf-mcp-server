@@ -382,7 +382,7 @@ export function registerTradeTools(server, client) {
         'Assumes MECHANICAL execution of the planned levels — no discretionary management; ' +
         'same-bar stop+target counts the stop first (flagged `ambiguousBar`). ' +
         'Pairs with dwlf_list_trades(status:"skipped") and dwlf_skip_trade. ' +
-        'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual.', {}, async () => {
+        'UI equivalent: https://www.dwlf.co.uk/trades/counterfactual', {}, async () => {
         try {
             const data = await client.get('/trades/skip-outcomes');
             return {
