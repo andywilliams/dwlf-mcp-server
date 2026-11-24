@@ -47,7 +47,7 @@ const HEADER_VALUE = /^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/;
  * one (never its value). Checked here, where the request is built, so no caller can replace `Authorization`, `Accept` or
  * anything HTTP means, or split a header line.
  */
-export function checkedHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
+function checkedHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
   if (headers === undefined) return undefined;
   if (headers === null || typeof headers !== 'object') throw new Error('createBlockServer\'s upstreamHeaders must be an object of header names to values.');
   const out: Record<string, string> = {};
