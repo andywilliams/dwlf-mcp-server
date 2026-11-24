@@ -33,10 +33,14 @@ export function withLatestMovingAverages(data: unknown) {
       }
     }
   }
+  // DWLF-917: for a key not licensed for raw prices the backend nulls every value and says so in `valuesWithheld`
+  // (an MA series gives the closes back). Withheld is not missing, and an empty list would read as complete, so
+  // `missing` is null then: not applicable.
+  const withheld = Boolean((data as { valuesWithheld?: unknown }).valuesWithheld);
   return {
     ...(data as object),
     latest,
-    missing: MA_TYPES.filter((t) => !latest[t]),
+    missing: withheld ? null : MA_TYPES.filter((t) => !latest[t]),
   };
 }
 
@@ -50,6 +54,10 @@ export function registerIndicatorTools(
     'Get the stored DAILY moving averages for a symbol: SMA and EMA at 10, 20, 50, 100 and 200 periods ' +
       '(computed nightly from daily closes). `latest` holds the most recent value of each, with its date; ' +
       '`missing` lists any average with no stored value. ' +
+      'Moving-average values give the daily closes back exactly, so they are licensed like raw candles: with an API key ' +
+      'that is not licensed for raw prices every value is null and `valuesWithheld` says why (`latest` is then empty and ' +
+      '`missing` is null). Then use dwlf_get_regime for the trend read (built from EMA alignment and price against the EMAs), and dwlf_get_events ' +
+      '(`ema.cross.*`, `sma.cross.*`, `sma.reclaimed` / `sma.lost`) for crosses, reclaims and losses. ' +
       'The backend response (`indicators`: rows grouped by average, each with its daily `data` points) is returned as is, ' +
       'with `latest` and `missing` added. ' +
       'This is the only indicator data stored as values: there is no RSI, MACD or Bollinger value series, and ' +
