@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerSignalTools(server, client) {
     // 1. Get active trade signals
-    server.tool('dwlf_get_active_signals', 'Get currently active trade signals. These are open positions or pending entries that DWLF is tracking.', {}, async () => {
+    server.tool('dwlf_get_active_signals', 'Get your strategies\' currently active fires: rules that were met and are not yet resolved, which DWLF tracks. ' +
+        'They are not actual positions: a fire\'s marks are what the rules would show, not trades anyone took.', {}, async () => {
         try {
             const data = await client.get('/user/trade-signals/active');
             return {
@@ -107,7 +108,7 @@ export function registerSignalTools(server, client) {
         }
     });
     // 3. Get signal performance stats
-    server.tool('dwlf_get_signal_stats', 'Get signal performance statistics — win rate, average P&L, total signals, and performance breakdown.', {}, async () => {
+    server.tool('dwlf_get_signal_stats', 'Get statistics for your strategies\' recorded fires: win rate, average P&L, totals and a breakdown.', {}, async () => {
         try {
             const data = await client.get('/user/trade-signals/stats');
             return {

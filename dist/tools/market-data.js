@@ -5,8 +5,9 @@ export function registerMarketDataTools(server, client) {
     // 1. Get OHLCV candle data
     server.tool('dwlf_get_market_data', 'Get OHLCV candle data (open, high, low, close, volume) for a trading symbol at a chosen timeframe. ' +
         'Reach for this when you need ACTUAL BARS — sweeps, ranges, exact intraday highs/lows, ' +
-        '"did price touch $X on date D", the close on a specific bar — rather than the pivot-based reconstruction ' +
-        'from `dwlf_get_price_picture` / `dwlf_get_events`. ' +
+        '"did price touch $X on date D", the close on a specific bar. `dwlf_get_price_picture` / `dwlf_get_events` are ' +
+        'something else: dated records of what happened (pivots, crosses, trend-line breaks), each with the price on its date; ' +
+        'they describe structure, cycles and breaks, not candles. ' +
         'Timeframes: `daily`, `weekly`, `hourly` (hourly is available only for symbols that have 1h data). ' +
         'Gated to the owner account; other API keys get a 403 with a pivot-based fallback hint.', {
         symbol: z
@@ -19,7 +20,7 @@ export function registerMarketDataTools(server, client) {
         limit: z
             .number()
             .optional()
-            .describe(`Number of most-recent candles to return (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
+            .describe(`Number of most-recent candles to fetch (default: ${DEFAULT_CANDLE_LIMIT}; the API caps it per timeframe)`),
     }, async ({ symbol, timeframe, limit }) => {
         try {
             const sym = normalizeSymbol(symbol);
@@ -53,7 +54,7 @@ export function registerMarketDataTools(server, client) {
     // cover, without raw candles or a full briefing call.
     server.tool('dwlf_get_quote', 'Get the latest price (close + date) for one or more symbols. Lightweight and API-key-accessible — ' +
         'works for ANY tracked symbol, including off-watchlist ones the daily briefing does not cover. ' +
-        'Returns ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
+        'Gives ONLY the current level (no OHLCV, no history) — for bar data use dwlf_get_market_data (owner-account only) ' +
         'or dwlf_get_price_picture for a pivot narrative. Ideal for marking a trade/skip to current price or pricing ' +
         'an arbitrary symbol. Unknown symbols come back with found:false (not an error).', {
         symbols: z
@@ -138,13 +139,14 @@ export function registerMarketDataTools(server, client) {
         'by `timeframe` (1d / 4h / 1h — without this the response is dominated by hourly noise), ' +
         'and by time window via `days` or explicit `fromDate` / `toDate`. ' +
         '📑 PAGINATION: results are paged. When scoped by `customEventId` or `eventName`, this tool ' +
-        'AUTO-FOLLOWS the cursor and returns the event’s COMPLETE history in one call ' +
-        '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you must still pass a ' +
+        'AUTO-FOLLOWS the cursor and gives the event’s COMPLETE history in one call ' +
+        '(`filtersApplied.autoPaginated` / `pagesFetched` report what happened) — but you still need to pass a ' +
         'wide `days` (e.g. 2000) or `fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
         'For non-scoped queries a `cursor` in the response means there are MORE pages: follow it (or use a ' +
         'tight `fromDate`/`toDate`) before trusting any count or “oldest” date — page 1 holds only the most-recent matches. ' +
-        '💡 For accounts without raw OHLC access (most API-key callers), this is the canonical way to reconstruct price action: ' +
-        'cycle pivots, swing points, MA/EMA crosses and trendline breaks each carry the price at the event date; ' +
+        '💡 Events are dated records of what happened: cycle pivots, swing points, MA/EMA crosses and trend-line breaks, ' +
+        'each with the price on its date. They describe structure, cycles and breaks, and are not candles; for accounts ' +
+        'without raw OHLC access (most API-key callers) they are how DWLF shows what price did. ' +
         'for a single-call summary across those types, use `dwlf_get_price_picture` instead. ' +
         'RSI(14): `rsi.exit.overbought` / `rsi.exit.oversold` (back inside 70 / 30), `rsi.midline.bullish` / `rsi.midline.bearish` (a close across 50). ' +
         'Divergence: `rsi.divergence.*` and `dss.divergence.*`, each `{regular,hidden}.{bullish,bearish}` (e.g. `rsi.divergence.regular.bullish`), ' +
@@ -154,8 +156,12 @@ export function registerMarketDataTools(server, client) {
         'on the other side, each at least half an ATR beyond the average, so a one-day poke through it (`sma.cross.*`) is not one. ' +
         'ADX / DMI (daily, Wilder 14): `adx.trend.started.bullish` / `.bearish` (ADX rises to 25; side from the DIs), `adx.trend.faded` ' +
         '(ADX falls below 20: ranging again), `adx.di.cross.bullish` / `.bearish` (DIs cross while ADX >= 20); each row carries an `adx` block ' +
-        '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not an entry trigger, and events only: not builder ' +
-        'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them.', {
+        '(adx, previousAdx, plusDI, minusDI, threshold). Context (trending vs ranging), not a call, and events only: not builder ' +
+        'nodes. Trend starts and fades fire a few times a year per symbol, so pass a wide `days` (e.g. 365) for them. ' +
+        'On-chain (`onchain.*`, Bitcoin): only on BTCOC/USD and only daily, so pass `symbol: "BTCOC"` and `timeframe: "1d"`; ' +
+        'with no `type` its TA events come too, so name a type to read one (dwlf_describe_onchain_events lists them; ' +
+        'dwlf_explain_event gives one type\'s definition and occurrences). When a row became knowable: its `confirmedAt` ' +
+        '(inside the `onchain` block on on-chain rows) when it has one, else its `eventTimestamp`; give that, not the row\'s date, as when it was known.', {
         symbol: z
             .string()
             .optional()
@@ -168,12 +174,12 @@ export function registerMarketDataTools(server, client) {
         type: z
             .string()
             .optional()
-            .describe('Filter by event type (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
-            '`bullish_reversal`, `dss_breakout`).'),
+            .describe('Filter by one exact event type id, no wildcards (e.g. `cycle.low.confirmed`, `cycle.high.confirmed`, ' +
+            '`onchain.sth_sopr.lose`, `custom_event`).'),
         timeframe: z
             .enum(['1w', '1d', '4h', '1h'])
             .optional()
-            .describe('Filter by candle timeframe. Strongly recommended — without it the API returns ' +
+            .describe('Filter by candle timeframe. Set it — without it the API answers with ' +
             'mostly hourly events and daily-bar fires get truncated past the limit. ' +
             'Use `1w` to query weekly cycle events (e.g. for multi-timeframe DCL analysis).'),
         days: z
@@ -181,7 +187,7 @@ export function registerMarketDataTools(server, client) {
             .optional()
             .describe('Restrict to events fired in the last N days (e.g. `5` for the last 5 days). ' +
             '⚠️ DEFAULT IS 7 DAYS if omitted — anything older is silently hidden. ' +
-            'For historical lookups (verifying old cycle pivots, debugging "where did that signal go") ' +
+            'For historical lookups (verifying old cycle pivots, finding an event that seems to have gone) ' +
             'pass an explicit larger value like `days: 120` or use `fromDate`/`toDate` for a precise window. ' +
             'Hit this footgun multiple times across sessions; documenting loudly.'),
         fromDate: z
@@ -195,24 +201,24 @@ export function registerMarketDataTools(server, client) {
         uniquePerSymbol: z
             .boolean()
             .optional()
-            .describe('If true, return only the most recent event per symbol (useful for "latest fire" snapshots).'),
+            .describe('If true, give only the most recent event per symbol (useful for "latest fire" snapshots).'),
         limit: z
             .number()
             .optional()
-            .describe('Number of events to return (default: 20).'),
+            .describe('Number of events to give (default: 20).'),
         customEventId: z
             .string()
             .optional()
             .describe('Filter to fires of a specific custom event by its event definition ID. ' +
             'Only honoured when `type` is `custom_event` (the tool defaults `type` to `custom_event` ' +
             'when you set this and leave `type` unset). The tool auto-follows pagination for this scoped ' +
-            'query and returns the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
+            'query and gives the event’s COMPLETE set — but pass a wide `days` (e.g. 2000) or ' +
             '`fromDate`/`toDate`, or the 7-day default caps how far back it looks. ' +
             'Combine with `symbol` / `symbols` to scope to a single asset, or omit to see fires across the watchlist.'),
         eventName: z
             .string()
             .optional()
-            .describe('Filter custom event fires by their human-readable name (e.g. `bullish_reversal_1`). ' +
+            .describe('Filter custom event fires by their human-readable name (e.g. `wcl_confirmed`). ' +
             'Only honoured when `type` is `custom_event`. Useful when you know the name but not the ID.'),
     }, async ({ symbol, symbols, type, timeframe, days, fromDate, toDate, uniquePerSymbol, limit, customEventId, eventName }) => {
         try {
@@ -375,7 +381,7 @@ export function registerMarketDataTools(server, client) {
         'Each row carries date + price (or level) + a human-readable label. ' +
         'Use this when you need structural price context for a symbol but do not have raw OHLC access, ' +
         'or when you want a clean one-call summary instead of stitching together multiple `dwlf_get_events` queries. ' +
-        'Returns events sorted newest-first.', {
+        'Events come sorted newest-first.', {
         symbol: z
             .string()
             .describe('Trading symbol — accepts BTC, BTC/USD, BTC-USD, BTCUSD, or stock tickers like AAPL, TSLA'),
@@ -391,7 +397,7 @@ export function registerMarketDataTools(server, client) {
         limit: z
             .number()
             .optional()
-            .describe('Max events to return (default: 50). Most useful narratives fit in 20-40 rows.'),
+            .describe('Max events to give (default: 50). Most useful narratives fit in 20-40 rows.'),
     }, async ({ symbol, days, timeframe, limit }) => {
         try {
             const sym = normalizeSymbol(symbol);
@@ -584,7 +590,7 @@ export function registerMarketDataTools(server, client) {
         '⚠️ A symbol whose weekly window is not yet open is ABSENT from every list, not ' +
         'suppressed — for its window dates call `dwlf_get_cycle_windows`. ' +
         'DEPTH (`depth: true`, DWLF-416): each row also carries `depth`, its weekly window\'s derived price band ' +
-        '(the same object `dwlf_get_cycle_windows` returns; long rows = the fall into the weekly low, short rows = ' +
+        '(the same object `dwlf_get_cycle_windows` gives; long rows = the fall into the weekly low, short rows = ' +
         'the rise into the weekly high), and `depth.reading.position` places the last weekly close: ' +
         '`in-zone` (inside the p25–p75 of past cycles\' moves — call it out), `shallow` / `deep` / `beyond`, or ' +
         '`not-reached` (short of the smallest move on record — not worth raising). Context, NOT a gate or target: it ' +
@@ -594,8 +600,8 @@ export function registerMarketDataTools(server, client) {
         depth: z
             .boolean()
             .optional()
-            .describe('Add each setup\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
-            'Historical context, not a target.'),
+            .describe('Add each row\'s weekly depth band and where the last close sits in it (`depth`, DWLF-416). ' +
+            'Historical context, no targets.'),
     }, async ({ depth }) => {
         try {
             const data = await client.get('/screener/cycle-setups', depth ? { depth: '1' } : undefined);

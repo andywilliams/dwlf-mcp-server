@@ -21,6 +21,8 @@ const KNOWN_PAIRED = new Set([
     'XRP', 'DOGE', 'LTC', 'BCH', 'ATOM', 'FIL', 'NEAR', 'ALGO', 'ICP', 'TRX',
     'XLM', 'XMR', 'INJ', 'OP', 'ARB', 'TIA', 'SEI', 'PEPE', 'SHIB', 'BNB',
     'TON', 'APT', 'SUI', 'STX', 'KAS', 'RNDR', 'FTM', 'HBAR', 'CRO', 'VET',
+    // DWLF's own on-chain BTC price (BTCOC/USD, Block): BTCOC and BTCOCUSD mean BTCOC-USD for every tool.
+    'BTCOC',
     // Commodity / FX pairs that DWLF treats with the same shape
     'XAU', 'XAG', 'XPT', 'XPD',
     'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD',
@@ -48,6 +50,27 @@ export function normalizeSymbol(input) {
     // Default: stock or ETF ticker — pass through as-is.
     return s;
 }
+/**
+ * The plan facts of a refusal (SPT: a DWLF Block plan, quota or family refusal is flat JSON carrying `error`, `family`,
+ * `requiredPlan`, `upgradeUrl`, `pricingUrl`), as a suffix on the error message: every tool reports `error.message`,
+ * and the agent is told to say which plan unlocks a locked family, so these must reach it, not only the message.
+ */
+function planFacts(body) {
+    if (!body || typeof body !== 'object')
+        return '';
+    const top = body;
+    // Either envelope: flat (today's SPT refusals) or `{ error: { code, … } }` (the shape the backend is standardising on).
+    const nested = top.error && typeof top.error === 'object' ? top.error : {};
+    const pick = (k) => (typeof top[k] === 'string' && top[k] ? top[k] : typeof nested[k] === 'string' && nested[k] ? nested[k] : undefined);
+    const code = typeof top.error === 'string' ? top.error : pick('code');
+    const facts = ['family', 'requiredPlan', 'upgradeUrl', 'pricingUrl']
+        .map((k) => [k, pick(k)])
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}=${v}`);
+    if (!facts.length)
+        return '';
+    return ` [${[code, ...facts].filter(Boolean).join('; ')}]`;
+}
 export class DWLFClient {
     http;
     /**
@@ -61,8 +84,7 @@ export class DWLFClient {
         const apiKey = 'apiKey' in options ? options.apiKey : process.env.DWLF_API_KEY;
         if (!apiKey) {
             console.error('Warning: DWLF_API_KEY not set. Authenticated endpoints will fail.\n' +
-                'For AI agents: Use the same API key from /v2/agent/register in your MCP config.\n' +
-                'See docs/AGENT-ONBOARDING.md for setup instructions.');
+                'Without a DWLF key, keyless DWLF Block runs with --profile block --block-backend block-api (see docs/BLOCK.md).');
         }
         this.http = axios.create({
             baseURL: `${baseURL}/v2`,
@@ -93,7 +115,7 @@ export class DWLFClient {
                 else if (typeof body === 'string' && body.trim()) {
                     detail = body.slice(0, 300);
                 }
-                error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}`;
+                error.message = `HTTP ${status}${detail ? ` — ${detail}` : ''}${planFacts(body)}`;
             }
             return Promise.reject(error);
         });

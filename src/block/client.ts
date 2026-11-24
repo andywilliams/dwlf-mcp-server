@@ -46,7 +46,9 @@ export class BlockApiClient {
   /** Names this client's view for a cache: the credential's SHA-256 (hex), or `public` without one. Never the credential. */
   readonly viewKey: string;
 
-  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder } = {}) {
+  constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder;
+    /** A host's own headers on every read (createBlockServer checks them); set first, so they never replace these. */
+    headers?: Readonly<Record<string, string>> } = {}) {
     this.recorder = options.recorder;
     const base = blockApiBase(options.baseURL);
     const apiKey = 'apiKey' in options ? (options.apiKey?.trim() || undefined) : blockApiKeyFromEnv();
@@ -54,7 +56,7 @@ export class BlockApiClient {
     this.viewKey = apiKey ? createHash('sha256').update(apiKey).digest('hex') : 'public';
     this.http = axios.create({
       baseURL: `${base}${apiKey ? '/v1' : '/public/v1'}`,
-      headers: { Accept: 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      headers: { ...options.headers, Accept: 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
       timeout: options.timeoutMs ?? 30000,
     });
   }

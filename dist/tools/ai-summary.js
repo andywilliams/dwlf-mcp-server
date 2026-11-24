@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { normalizeSymbol } from '../client.js';
 export function registerAISummaryTools(server, client) {
     // 1. AI Dashboard
-    server.tool('dwlf_ai_dashboard', 'Get a complete account overview in a single call: watchlist with prices, active signals, open trades, portfolios, strategies, and recent events. Ideal for "what\'s going on?" queries. Requires markets:read permission; other sections degrade gracefully based on permissions.', {}, async () => {
+    server.tool('dwlf_ai_dashboard', 'Get a complete account overview in a single call: watchlist with prices, active strategy fires, open trades, portfolios, strategies, and recent events. Ideal for "what\'s going on?" queries. Requires markets:read permission; other sections degrade gracefully based on permissions.', {}, async () => {
         try {
             const data = await client.get('/ai/dashboard');
             return {
@@ -17,7 +17,7 @@ export function registerAISummaryTools(server, client) {
         }
     });
     // 2. AI Symbol Brief
-    server.tool('dwlf_ai_symbol_brief', 'Get a condensed single-symbol view: latest price with change, recent candles, key indicators, S/R levels, recent events, and active signals. Perfect for "how\'s BTC doing?" queries.', {
+    server.tool('dwlf_ai_symbol_brief', 'Get a condensed single-symbol view: latest price with change, key indicators, S/R levels, recent events, and active strategy fires. Raw candles (`recentCandles`) come only to the owner account under the data licence; other keys get `candlesWithheld` in their place. Perfect for "how\'s BTC doing?" queries.', {
         symbol: z.string().describe('Symbol to get brief for (e.g. BTC, TSLA, NVDA)'),
     }, async ({ symbol }) => {
         try {
@@ -35,7 +35,7 @@ export function registerAISummaryTools(server, client) {
         }
     });
     // 3. AI Strategy Performance
-    server.tool('dwlf_ai_strategy_performance', 'Get all strategies with signal stats and performance metrics in a single call: total signals, active signals, win rate, avg R/R, total P&L, and per-strategy breakdowns.', {}, async () => {
+    server.tool('dwlf_ai_strategy_performance', 'Get all strategies with fire statistics and performance metrics in a single call: total fires, active fires, win rate, avg R/R, total P&L, and per-strategy breakdowns.', {}, async () => {
         try {
             const data = await client.get('/ai/strategy-performance');
             return {

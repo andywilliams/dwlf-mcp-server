@@ -46,6 +46,33 @@ export interface BlockServerOptions {
   recorder?: UpstreamRecorder;
   /** Where the catalogue is kept between requests: one store may serve every caller, since it's keyed by view. */
   catalogueCache?: CatalogueCache;
+  /**
+   * Headers sent on every Block API read, for an agreement between the host and the Block API: the hosted MCP vouching
+   * for its caller's address (`x-dwlf-hosted-secret`, `x-dwlf-hosted-caller`; DWLF-918). Names must be `x-dwlf-…`
+   * (letters, digits, hyphens), so no host replaces `Authorization`, `Accept` or anything HTTP itself means; values are
+   * printable ASCII, no line breaks, not blank. Treated like the credential: never logged or kept, sent only to `baseURL`.
+   */
+  upstreamHeaders?: Readonly<Record<string, string>>;
+}
+
+const HEADER_NAME = /^x-dwlf-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const HEADER_VALUE = /^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/;
+
+/** The host's headers, names lower-cased, or a thrown error naming the first bad one (never its value). */
+function checkedHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  if (headers === null || typeof headers !== 'object') throw new Error('createBlockServer\'s upstreamHeaders must be an object of header names to values.');
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const lower = name.toLowerCase();
+    if (!HEADER_NAME.test(lower)) throw new Error(`createBlockServer's upstreamHeaders: "${name}" isn't an x-dwlf- header name.`);
+    if (typeof value !== 'string' || !HEADER_VALUE.test(value)) {
+      throw new Error(`createBlockServer's upstreamHeaders: the value of ${lower} must be printable ASCII on one line, not blank.`);
+    }
+    if (lower in out) throw new Error(`createBlockServer's upstreamHeaders: ${lower} is given twice.`);
+    out[lower] = value;
+  }
+  return out;
 }
 
 /**
@@ -61,8 +88,9 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
   if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
+  const headers = checkedHeaders(options.upstreamHeaders);
   const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL, true) });
-  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
+  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder, headers });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;
 }
