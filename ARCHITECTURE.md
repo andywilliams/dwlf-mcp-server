@@ -55,11 +55,19 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   consumed by MCP clients (Claude Desktop, Cursor, VS Code, Claude Code) via `npx -y @dwlf/mcp-server`
   *(inferred from: `package.json` `bin`/`publishConfig.access: public`; README client-config snippets)*.
 - **Library entry `@dwlf/mcp-server/block`** (22-Nov, DWLF-622 step 2a; `src/block/server.ts`): `createBlockServer({
-  credential, baseURL, timeoutMs?, recorder?, catalogueCache? })` gives one `McpServer` with the Block profile on the
+  credential, baseURL, timeoutMs?, recorder?, catalogueCache?, upstreamHeaders? })` gives one `McpServer` with the Block profile on the
   `block-api` backend, for the private hosted repo to build per request. `credential` is whatever the Block API takes
   as `Bearer` on `/v1` (a `dwlfk_` key today; identity's exchanged `aud = block` token once OAuth ships), named so
   step 7 needs no breaking change. `recorder` hears each Block API refusal (hosted-auth H11); `catalogueCache` lets
-  the host keep the catalogue per credential. It registers through `registerBlockApiTools`, the function
+  the host keep the catalogue per credential. `upstreamHeaders` (0.77.0, DWLF-918) carries a host's agreement with the
+  Block API on every read (the hosted MCP vouching for its caller's address): `x-dwlf-…` names only, so a host can't
+  replace `Authorization`, `Accept` or anything HTTP means; one-line printable values; handled like the credential
+  (never logged, never in an answer, sent only to `baseURL`: the Block client follows no redirect, so neither these nor
+  the credential can be carried to another host). The header names and their meaning are the host's
+  contract with Block, not this library's (dwlf-mcp-hosted's charter and dwlf-block-api's DWLF-918 record them, the
+  secret's owner and its rotation): an open map keeps Block's agreement out of the published types. Block never
+  refuses over those headers (a bad or missing secret falls back to counting the host's own address), so no H11 401
+  and no catalogue entry depends on them. It registers through `registerBlockApiTools`, the function
   `registerForProfile` calls on `block-api`, so stdio and hosted give the same tools, and it imports no SPT tool module
   (both pinned by `test/blockServer.test.mjs`).
   - **The contract is that file's exports only:** `createBlockServer`, its options, and the `UpstreamRecorder`,

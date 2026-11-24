@@ -46,7 +46,15 @@ export interface BlockServerOptions {
   recorder?: UpstreamRecorder;
   /** Where the catalogue is kept between requests: one store may serve every caller, since it's keyed by view. */
   catalogueCache?: CatalogueCache;
+  /**
+   * Headers sent on every Block API read, for an agreement between the host and the Block API: the hosted MCP vouching
+   * for its caller's address (`x-dwlf-hosted-secret`, `x-dwlf-hosted-caller`; DWLF-918). Names must be `x-dwlf-…`
+   * (letters, digits, hyphens), so no host replaces `Authorization`, `Accept` or anything HTTP itself means; values are
+   * printable ASCII, no line breaks, not blank. Treated like the credential: never logged or kept, sent only to `baseURL`.
+   */
+  upstreamHeaders?: Readonly<Record<string, string>>;
 }
+
 
 /**
  * The library entry for a per-request host (`@dwlf/mcp-server/block`; DWLF-622, docs/design/hosted-auth.md step 2a):
@@ -62,7 +70,7 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
   const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL, true) });
-  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder });
+  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder, headers: options.upstreamHeaders });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;
 }

@@ -171,3 +171,65 @@ test('two callers share nothing: with no host cache, every tool on each server r
     }
   } finally { await api.close(); }
 });
+
+test('upstreamHeaders: a host\'s x-dwlf- headers go on every Block API read, never in an answer; anything else is refused', async () => {
+  const SECRET = 'hosted-secret-0123456789abcdefghijklmnop';
+  const seen = [];
+  const server = createServer((req, res) => {
+    seen.push(req.headers);
+    const fail = req.url.startsWith('/v1/events');
+    res.writeHead(fail ? 500 : 200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(fail ? { error: 'INTERNAL', message: 'boom' } : { summary: 'ok', items: [] }));
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const headers = { 'X-DWLF-Hosted-Secret': SECRET, 'x-dwlf-hosted-caller': '2001:db8::1' };
+    const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: url, upstreamHeaders: headers }));
+    await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
+    const failed = await mcp.callTool({ name: 'dwlf_get_events', arguments: {} });
+    assert.equal(failed.isError, true);
+    assert.ok(!JSON.stringify(failed).includes(SECRET), 'a refusal\'s answer never carries a host header');
+    const down = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: 'http://127.0.0.1:9', timeoutMs: 2000, upstreamHeaders: headers }));
+    assert.ok(!JSON.stringify(await down.callTool({ name: 'dwlf_get_conditions', arguments: {} })).includes(SECRET));
+    assert.equal(seen.length, 2);
+    for (const h of seen) {
+      assert.equal(h['x-dwlf-hosted-secret'], SECRET);
+      assert.equal(h['x-dwlf-hosted-caller'], '2001:db8::1');
+      assert.equal(h.authorization, 'Bearer dwlfk_test');
+      assert.equal(h.accept, 'application/json');
+    }
+    seen.length = 0;
+    await (await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: url }))).callTool({ name: 'dwlf_get_conditions', arguments: {} });
+    assert.deepEqual(Object.keys(seen[0]).filter((k) => k.startsWith('x-dwlf-')), [], 'none unless the host gives them');
+  } finally { await new Promise((r) => server.close(r)); }
+
+  const make = (upstreamHeaders) => createBlockServer({ credential: 'dwlfk_a', baseURL: 'https://api.block.dwlf.co.uk', upstreamHeaders });
+  for (const name of ['authorization', 'Accept', 'host', 'x-other', 'x-dwlf-', 'x-dwlf-a b', 'x-dwlf--a']) {
+    assert.throws(() => make({ [name]: 'v' }), /isn't an x-dwlf- header name/, name);
+  }
+  for (const value of ['', ' ', ' lead', 'trail ', 'a\r\nx-injected: 1', 'café', 42]) {
+    assert.throws(() => make({ 'x-dwlf-a': value }), (e) => /printable ASCII/.test(e.message) && !e.message.includes(String(value).trim() || '\u0000'), JSON.stringify(value));
+  }
+  assert.throws(() => make({ 'x-dwlf-a': 'v', 'X-DWLF-A': 'w' }), /given twice/);
+  assert.throws(() => make('x-dwlf-a: v'), /must be an object/);
+  make({ 'x-dwlf-hosted-secret': 'a b', 'x-dwlf-hosted-caller': '203.0.113.9' });
+});
+
+test('no redirect is followed: the credential and a host\'s headers never leave baseURL', async () => {
+  const elsewhere = [];
+  const other = createServer((req, res) => { elsewhere.push(req.headers); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"summary":"ok"}'); });
+  await new Promise((r) => other.listen(0, '127.0.0.1', r));
+  const target = `http://127.0.0.1:${other.address().port}/v1/conditions`;
+  const api = createServer((req, res) => { res.writeHead(302, { location: target }); res.end(); });
+  await new Promise((r) => api.listen(0, '127.0.0.1', r));
+  try {
+    const heard = [];
+    const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: `http://127.0.0.1:${api.address().port}`,
+      upstreamHeaders: { 'x-dwlf-hosted-secret': 'redirect-secret-0123456789abcdefghij' }, recorder: (r) => heard.push(r) }));
+    const r = await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
+    assert.equal(r.isError, true);
+    assert.deepEqual(elsewhere, [], 'nothing reached the redirect\'s target');
+    assert.deepEqual(heard, [{ status: 302, code: null, blockBody: false }], 'a redirect is recorded as an unexpected answer');
+  } finally { await new Promise((r) => api.close(r)); await new Promise((r) => other.close(r)); }
+});
