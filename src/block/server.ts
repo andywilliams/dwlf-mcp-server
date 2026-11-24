@@ -55,25 +55,6 @@ export interface BlockServerOptions {
   upstreamHeaders?: Readonly<Record<string, string>>;
 }
 
-const HEADER_NAME = /^x-dwlf-[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const HEADER_VALUE = /^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/;
-
-/** The host's headers, names lower-cased, or a thrown error naming the first bad one (never its value). */
-function checkedHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
-  if (headers === undefined) return undefined;
-  if (headers === null || typeof headers !== 'object') throw new Error('createBlockServer\'s upstreamHeaders must be an object of header names to values.');
-  const out: Record<string, string> = {};
-  for (const [name, value] of Object.entries(headers)) {
-    const lower = name.toLowerCase();
-    if (!HEADER_NAME.test(lower)) throw new Error(`createBlockServer's upstreamHeaders: "${name}" isn't an x-dwlf- header name.`);
-    if (typeof value !== 'string' || !HEADER_VALUE.test(value)) {
-      throw new Error(`createBlockServer's upstreamHeaders: the value of ${lower} must be printable ASCII on one line, not blank.`);
-    }
-    if (lower in out) throw new Error(`createBlockServer's upstreamHeaders: ${lower} is given twice.`);
-    out[lower] = value;
-  }
-  return out;
-}
 
 /**
  * The library entry for a per-request host (`@dwlf/mcp-server/block`; DWLF-622, docs/design/hosted-auth.md step 2a):
@@ -88,9 +69,8 @@ export function createBlockServer(options: BlockServerOptions): McpServer {
   if (typeof options.baseURL !== 'string' || !allowedBase(options.baseURL)) {
     throw new Error('createBlockServer needs the Block API\'s baseURL, over HTTPS (plain HTTP only to loopback).');
   }
-  const headers = checkedHeaders(options.upstreamHeaders);
   const server = new McpServer({ name: 'dwlf', version }, { instructions: blockApiInstructions(options.baseURL, true) });
-  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder, headers });
+  const client = new BlockApiClient({ apiKey: credential, baseURL: options.baseURL, timeoutMs: options.timeoutMs, recorder: options.recorder, headers: options.upstreamHeaders });
   registerBlockApiTools(server, client, { catalogueCache: options.catalogueCache });
   return server;
 }

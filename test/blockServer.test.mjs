@@ -215,3 +215,21 @@ test('upstreamHeaders: a host\'s x-dwlf- headers go on every Block API read, nev
   assert.throws(() => make('x-dwlf-a: v'), /must be an object/);
   make({ 'x-dwlf-hosted-secret': 'a b', 'x-dwlf-hosted-caller': '203.0.113.9' });
 });
+
+test('no redirect is followed: the credential and a host\'s headers never leave baseURL', async () => {
+  const elsewhere = [];
+  const other = createServer((req, res) => { elsewhere.push(req.headers); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"summary":"ok"}'); });
+  await new Promise((r) => other.listen(0, '127.0.0.1', r));
+  const target = `http://127.0.0.1:${other.address().port}/v1/conditions`;
+  const api = createServer((req, res) => { res.writeHead(302, { location: target }); res.end(); });
+  await new Promise((r) => api.listen(0, '127.0.0.1', r));
+  try {
+    const heard = [];
+    const mcp = await connect(createBlockServer({ credential: 'dwlfk_test', baseURL: `http://127.0.0.1:${api.address().port}`,
+      upstreamHeaders: { 'x-dwlf-hosted-secret': 'redirect-secret-0123456789abcdefghij' }, recorder: (r) => heard.push(r) }));
+    const r = await mcp.callTool({ name: 'dwlf_get_conditions', arguments: {} });
+    assert.equal(r.isError, true);
+    assert.deepEqual(elsewhere, [], 'nothing reached the redirect\'s target');
+    assert.deepEqual(heard, [{ status: 302, code: null, blockBody: false }], 'a redirect is recorded as an unexpected answer');
+  } finally { await new Promise((r) => api.close(r)); await new Promise((r) => other.close(r)); }
+});

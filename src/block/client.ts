@@ -39,6 +39,30 @@ export const blockApiBase = (baseURL?: string): string =>
 /** The Block API key this process reads: `DWLF_BLOCK_KEY`, trimmed; undefined when unset or blank. */
 export const blockApiKeyFromEnv = (): string | undefined => process.env.DWLF_BLOCK_KEY?.trim() || undefined;
 
+const HEADER_NAME = /^x-dwlf-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const HEADER_VALUE = /^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/;
+
+/**
+ * A host's own headers (createBlockServer's `upstreamHeaders`), names lower-cased, or a thrown error naming the first bad
+ * one (never its value). Checked here, where the request is built, so no caller can replace `Authorization`, `Accept` or
+ * anything HTTP means, or split a header line.
+ */
+export function checkedHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  if (headers === null || typeof headers !== 'object') throw new Error('createBlockServer\'s upstreamHeaders must be an object of header names to values.');
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const lower = name.toLowerCase();
+    if (!HEADER_NAME.test(lower)) throw new Error(`createBlockServer's upstreamHeaders: "${name}" isn't an x-dwlf- header name.`);
+    if (typeof value !== 'string' || !HEADER_VALUE.test(value)) {
+      throw new Error(`createBlockServer's upstreamHeaders: the value of ${lower} must be printable ASCII on one line, not blank.`);
+    }
+    if (lower in out) throw new Error(`createBlockServer's upstreamHeaders: ${lower} is given twice.`);
+    out[lower] = value;
+  }
+  return out;
+}
+
 export class BlockApiClient {
   private http: AxiosInstance;
   private recorder?: UpstreamRecorder;
@@ -47,17 +71,21 @@ export class BlockApiClient {
   readonly viewKey: string;
 
   constructor(options: { apiKey?: string; baseURL?: string; timeoutMs?: number; recorder?: UpstreamRecorder;
-    /** A host's own headers on every read (createBlockServer checks them); set first, so they never replace these. */
+    /** A host's own `x-dwlf-…` headers on every read (`checkedHeaders`); set first, so they never replace these. */
     headers?: Readonly<Record<string, string>> } = {}) {
     this.recorder = options.recorder;
+    const headers = checkedHeaders(options.headers);
     const base = blockApiBase(options.baseURL);
     const apiKey = 'apiKey' in options ? (options.apiKey?.trim() || undefined) : blockApiKeyFromEnv();
     this.signedIn = Boolean(apiKey);
     this.viewKey = apiKey ? createHash('sha256').update(apiKey).digest('hex') : 'public';
     this.http = axios.create({
       baseURL: `${base}${apiKey ? '/v1' : '/public/v1'}`,
-      headers: { ...options.headers, Accept: 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      headers: { ...headers, Accept: 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
       timeout: options.timeoutMs ?? 30000,
+      // Never follow a redirect: the credential and a host's headers go to this base only (follow-redirects would carry
+      // the x-dwlf- headers to another host). The Block API doesn't redirect, so a 3xx is a misconfiguration, recorded.
+      maxRedirects: 0,
     });
   }
 

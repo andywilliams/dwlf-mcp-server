@@ -62,7 +62,8 @@ schema *(inferred from: multi-paragraph ⚠️ descriptions in `src/tools/evalua
   the host keep the catalogue per credential. `upstreamHeaders` (0.77.0, DWLF-918) carries a host's agreement with the
   Block API on every read (the hosted MCP vouching for its caller's address): `x-dwlf-…` names only, so a host can't
   replace `Authorization`, `Accept` or anything HTTP means; one-line printable values; handled like the credential
-  (never logged, never in an answer, sent only to `baseURL`). The header names and their meaning are the host's
+  (never logged, never in an answer, sent only to `baseURL`: the Block client follows no redirect, so neither these nor
+  the credential can be carried to another host). The header names and their meaning are the host's
   contract with Block, not this library's (dwlf-mcp-hosted's charter and dwlf-block-api's DWLF-918 record them, the
   secret's owner and its rotation): an open map keeps Block's agreement out of the published types. Block never
   refuses over those headers (a bad or missing secret falls back to counting the host's own address), so no H11 401
