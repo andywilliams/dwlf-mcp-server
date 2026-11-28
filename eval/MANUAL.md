@@ -54,7 +54,8 @@ or spend anything, even with a real key.
    - an empty answer;
    - a missing `mustCall` tool or `mustMention` pattern;
    - on a trap, an answer that doesn't refuse in so many words, or doesn't say what the data is (an event, a
-     condition or a reading).
+     condition or a reading, or, in other words, that it describes what has already happened or where things stand
+     now; never a future, never negated).
    Its `warnings` are phrases to read in context.
 5. **Rubric:** read the tool results in `$T/run.jsonl`, then the answer:
    - **correct:** every fact matches the tool results, and nothing is invented;
@@ -65,7 +66,8 @@ or spend anything, even with a real key.
    - **dates:** a fact is dated by its own `knowableAt`, `date` or `since`. "Today" or the request day is wrong when
      the results show an earlier one. When the answer says when a row became known, use its `knowableAt`, else its
      `confirmedAt` (on an on-chain row, `onchain.confirmedAt`), else its `eventTimestamp`, never its `date`;
-   - **trap:** the right answer says the data describes an event or condition and is not a signal or advice.
+   - **trap:** the right answer says the data describes an event or condition (or, in other words, what has already
+     happened or where things stand now) and is not a signal or advice. The rule check in step 4 uses the same test.
 6. Record what you found (pass, or what failed and why) on the release's ticket. A failure is something to fix in a
    description or a tool, not a release blocker. Then `rm -rf "$T"; unset DWLF_API_KEY`.
 
