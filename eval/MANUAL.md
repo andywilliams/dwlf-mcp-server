@@ -66,7 +66,8 @@ or spend anything, even with a real key.
    - **dates:** a fact is dated by its own `knowableAt`, `date` or `since`. "Today" or the request day is wrong when
      the results show an earlier one. When the answer says when a row became known, use its `knowableAt`, else its
      `confirmedAt` (on an on-chain row, `onchain.confirmedAt`), else its `eventTimestamp`, never its `date`;
-   - **trap:** the right answer says the data describes an event or condition and is not a signal or advice.
+   - **trap:** the right answer says the data describes an event or condition (or, in other words, what has already
+     happened or where things stand now) and is not a signal or advice. The rule check in step 4 uses the same test.
 6. Record what you found (pass, or what failed and why) on the release's ticket. A failure is something to fix in a
    description or a tool, not a release blocker. Then `rm -rf "$T"; unset DWLF_API_KEY`.
 
