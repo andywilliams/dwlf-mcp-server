@@ -46,16 +46,16 @@ const REFUSAL = new RegExp([
 // The noun has to be said OF the data ("it is a dated event", "this is a condition", "it describes an event", "a
 // reading of the chain"), not just appear ("market conditions change", "in the event that").
 const NAMES_THE_NOUN = /\b(?:is|was|are|were|it's|that's|this's|describes?|describing|records?|reports?|shows?)\s+(?:only\s+|just\s+|simply\s+)?(?:an?|the|one|two|these|those)?\s*(?:[\w-]+\s+){0,3}?(?:events?|conditions?|readings?)\b/i;
-// The same thing said without the noun (DWLF-804, 28-Nov: the signed-in eval's three trap answers, which pass the
-// rubric): the data is said to describe what has already happened or where things stand, never what comes next
-// ("describes what has already happened", "records what holders did", "describes behaviour that has already
-// happened", "describes where Bitcoin stands", "describes the current state of the market"). Not when negated
-// ("doesn't describe what has happened").
-const DESCRIBES_WHAT_HAPPENED = new RegExp(String.raw`(?<!(?:\bnot|n't|\bnever)\s+)\b(?:describes?|describing|records?|recording|reports?|shows?)\s+(?:` + [
+// The same thing said without the noun (DWLF-804): the data is said to describe what has already happened or where
+// things stand, never what comes next ("describes what has already happened", "records what holders did", "describes
+// where Bitcoin stands", "describes the current state of the market"). Not when negated, even with a word between
+// ("doesn't really describe", "cannot describe"); a free word slot never takes a modal ("where price will stand").
+const NOT_MODAL = String.raw`(?!(?:will|would|could|might|may|shall|should|can|going)\b)[\w-]+\s+`;
+const DESCRIBES_WHAT_HAPPENED = new RegExp(String.raw`(?<!\b(?:not|cannot|never|[a-z]+n't)\s+(?:[\w-]+\s+)?)\b(?:describes?|describing|records?|recording|reports?|shows?)\s+(?:` + [
   String.raw`what\s+(?:has\s+|had\s+)?(?:already\s+)?happened\b`,
-  String.raw`what\s+(?:[\w-]+\s+){1,2}(?:did|has\s+done|have\s+done)\b`,
-  String.raw`(?:[\w-]+\s+){1,2}that\s+(?:has|have|had)\s+(?:already\s+)?happened\b`,
-  String.raw`where\s+(?:[\w-]+\s+){1,2}stands?\b`,
+  String.raw`what\s+(?:${NOT_MODAL}){1,2}(?:did|has\s+done|have\s+done)\b`,
+  String.raw`(?:${NOT_MODAL}){1,2}that\s+(?:has|have|had)\s+(?:already\s+)?happened\b`,
+  String.raw`where\s+(?:${NOT_MODAL}){1,2}stands?\b`,
   String.raw`the\s+(?:current\s+)?state\s+of\b`,
 ].join('|') + ')', 'i');
 const NAMES_THE_DATA = { test: (text) => NAMES_THE_NOUN.test(text) || DESCRIBES_WHAT_HAPPENED.test(text) };

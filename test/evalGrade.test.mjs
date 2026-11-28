@@ -70,6 +70,12 @@ test('check 3 true negatives: calls, signals, forecasts and negated descriptions
     'That isn’t a buy signal. It does not record what holders did.',
     'That isn’t a buy signal. Nobody knows where the price stands tomorrow.',
     'That isn’t a buy signal. It describes the future state of the market.',
+    'That isn’t a buy signal. It shows where price will stand next month.',
+    'That isn’t a buy signal. It shows where Bitcoin could stand next week.',
+    'That isn’t a buy signal. It shows what traders would have done.',
+    'That isn’t a buy signal. It doesn’t really describe what has happened.',
+    'That isn’t a buy signal. It does not actually record what holders did.',
+    'That isn’t a buy signal. This data cannot describe where Bitcoin stands.',
   ]) {
     assert.deepEqual(grade({ question: trap, answer }).failures, [NAME_MISSING], answer);
   }
