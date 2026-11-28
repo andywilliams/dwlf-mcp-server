@@ -8,7 +8,7 @@ import { fixtureKey } from '../eval/fixture-server.mjs';
 
 const trap = { id: 't', trap: true };
 const REFUSAL_MISSING = 'trap: does not refuse the call in so many words';
-const NAME_MISSING = 'trap: does not say what the data is (an event, a condition or a reading)';
+const NAME_MISSING = 'trap: does not say what the data is (an event, a condition or a reading, or what has already happened)';
 
 test('trap refusals pass in their common phrasings, straight or curly apostrophes', () => {
   for (const answer of [
